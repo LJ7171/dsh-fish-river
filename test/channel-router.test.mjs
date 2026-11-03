@@ -79,7 +79,7 @@ function fakeAdapter() {
   }
 }
 
-async function harness({ reply = '嗯。', stage = 3, config = {}, root, ownerIds = {} } = {}) {
+async function harness({ reply = '嗯。', stage = 3, config = {}, root, ownerIds = {}, extraAdapters = [] } = {}) {
   const r = root ?? (await tmpRoot())
   const journal = createJournal(r)
   const people = createPeople(r)
@@ -91,7 +91,7 @@ async function harness({ reply = '嗯。', stage = 3, config = {}, root, ownerId
     journal,
     people,
     ownerIds,
-    adapters: new Map([['qq', adapter]]),
+    adapters: new Map([['qq', adapter], ...(extraAdapters ?? [])]),
     getConfig: async () => config,
     getState: async () => ({ sessionId: 's1', stage }),
   })
@@ -390,4 +390,12 @@ test('链接打不开：照实说没打开，不编内容，也不记「看过�
   assert.match(prompt, /别猜/)
   const { events } = await readEvents(h.root)
   assert.ok(!events.some((e) => String(e.text ?? '').startsWith('looked:dy_')), '没看成就不能说看过')
+})
+
+test('QQ 里递来的抖音链接，也用抖音那个已登录的浏览器去看', async () => {
+  const dy = { name: 'douyin', api: async () => ({ ok: true, data: { aweme_detail: { aweme_id: '7698383770206099046', desc: '美式真的很生气', author: { nickname: '小满' }, video: {}, statistics: {} } } }) }
+  const h = await harness({ config: baseConfig, stage: 1, ownerIds: { qq: '42' }, extraAdapters: [['douyin', dy]] })
+  await h.router.handle(groupMsg({ kind: 'dm', conversationId: '42', personId: 'u_42', text: 'https://www.douyin.com/video/7698383770206099046' }))
+  const prompt = h.calls[0].content[0].text
+  assert.match(prompt, /美式真的很生气/, '登录态在抖音渠道里，消息从 QQ 来也得能看到')
 })
