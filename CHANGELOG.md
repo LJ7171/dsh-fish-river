@@ -1,3 +1,7 @@
+## 0.1.44 — 2026-11-03
+
+- 修：`startChannels` 的返回值里没有 `adapters`，于是 `douyinFeedOf(channels)` 永远拿到 undefined —— 手动叫醒那一轮抖音仍然刷不到。现在把它露出来（只读 getter）。
+
 ## 0.1.43 — 2026-11-03
 
 - 修：手动点「让她去刷」那一轮，抖音那条线是空的——定时唤醒与手动 /wake 用的是两份 deps，只给前者接了 `douyinFeed`。现在两边都接（`douyinFeedOf(channels)`）。

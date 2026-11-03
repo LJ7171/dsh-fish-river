@@ -79,3 +79,11 @@ test('host：一个渠道都没开时，不建目录、不连网', async () => {
     await fs.rm(root, { recursive: true, force: true })
   }
 })
+
+test('渠道层把 adapters 露出来：刷站要借它的登录态', async () => {
+  const { startChannels } = await import('../lib/channels/host.js')
+  const r = startChannels({ ctx: { on() { return () => {} } }, root: 'C:/no-such-root', config: { channels: {} }, log: () => {} })
+  assert.equal(typeof r.adapters, 'object')
+  assert.equal(typeof r.adapters.get, 'function')
+  await r.dispose?.().catch?.(() => {})
+})
