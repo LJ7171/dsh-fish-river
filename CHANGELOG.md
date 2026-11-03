@@ -1,3 +1,7 @@
+## 0.1.45 — 2026-11-03
+
+- 手动叫醒留痕：`/wake` 收到请求先记一行 `叫醒请求 focus=…`，分清「没点」和「点了被挡」。
+
 ## 0.1.44 — 2026-11-03
 
 - 修：`startChannels` 的返回值里没有 `adapters`，于是 `douyinFeedOf(channels)` 永远拿到 undefined —— 手动叫醒那一轮抖音仍然刷不到。现在把它露出来（只读 getter）。
