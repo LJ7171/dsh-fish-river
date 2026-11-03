@@ -388,19 +388,15 @@ node tools/check-install.mjs --profile desktop
 
 最后一页是「反馈」：开发者 QQ，加上交流群的二维码与群号。二维码是插件自带的一张图（`media/feedback-qr.jpg`），走插件自己的 `/media` 路由出去，不挂第三方图床——图床挂了这一页就废了。
 
-长这样（三张都是真机截图）：
-
-<img src="media/settings-status.png" alt="设置 → 大肥鱼 → 状态" width="640">
-
-<sub>「状态」：现在是什么状态、走到哪一天、卡在哪个瓶颈、立场攒了几条。</sub>
+长这样（两张都是真机截图）：
 
 <img src="media/settings-growth.png" alt="设置 → 大肥鱼 → 成长" width="640">
 
-<sub>「成长」：四个阶段与三道瓶颈，以及她那几个节奏参数。</sub>
+<sub>「成长」：四个阶段与三道瓶颈，以及她那几个节奏参数——只能改环境，改不了她。</sub>
 
-<img src="media/settings-browse.png" alt="设置 → 大肥鱼 → 上网" width="640">
+<img src="media/settings-channels.png" alt="设置 → 大肥鱼 → 渠道" width="640">
 
-<sub>「上网」：能不能出门、几点到几点、一天刷几次、一次看几条。</sub>
+<sub>「渠道」：她在哪几个地方说话、在哪些群开口、群里要不要 @ 她、她眼下认得谁。主人号打码。</sub>
 
 ## 目录
 
