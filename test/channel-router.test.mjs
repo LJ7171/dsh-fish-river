@@ -360,3 +360,34 @@ test('结账：到轮数却没有屋子（无 wsId）——只记账，不换会
   assert.equal(home.turns, 1)
   assert.ok(!home.rotatedFrom, '没有屋子时不该建新会话')
 })
+
+test('他递来一条抖音链接：她真去看了，提示词里是那条视频的事实', async () => {
+  const h = await harness({ config: baseConfig, stage: 1, ownerIds: { qq: '42' } })
+  h.adapter.api = async () => ({
+    ok: true,
+    data: { aweme_detail: { aweme_id: '7698383770206099046', desc: '原声版来了', author: { nickname: '小满' }, video: {}, statistics: { digg_count: 7 } } },
+  })
+  const r = await h.router.handle(
+    groupMsg({ kind: 'dm', conversationId: '42', personId: 'u_42', text: '看这个 https://www.douyin.com/video/7698383770206099046' }),
+  )
+  assert.equal(r.sent, true)
+  const prompt = h.calls[0].content[0].text
+  assert.match(prompt, /抖音/)
+  assert.match(prompt, /原声版来了/)
+  assert.match(prompt, /作者 小满/)
+  const { events } = await readEvents(h.root)
+  assert.ok(events.some((e) => e.text === 'looked:dy_7698383770206099046'), '看过的要记账，回头能翻到')
+})
+
+test('链接打不开：照实说没打开，不编内容，也不记「看过」', async () => {
+  const h = await harness({ config: baseConfig, stage: 1, ownerIds: { qq: '42' } })
+  h.adapter.api = async () => ({ ok: false, why: '详情没拿到' })
+  await h.router.handle(
+    groupMsg({ kind: 'dm', conversationId: '42', personId: 'u_42', text: 'https://www.douyin.com/video/7698383770206099046' }),
+  )
+  const prompt = h.calls[0].content[0].text
+  assert.match(prompt, /没打开/)
+  assert.match(prompt, /别猜/)
+  const { events } = await readEvents(h.root)
+  assert.ok(!events.some((e) => String(e.text ?? '').startsWith('looked:dy_')), '没看成就不能说看过')
+})
