@@ -1,0 +1,584 @@
+/**
+ * restrict.test.mjs —— 工具面收窄（2026-10-24）
+ *
+ * 为什么值得单独立测：这件事的全部价值在于「她真的看不见那 31 个工具」。
+ * 一旦哪天宿主的 `restrict()` 改了签名、或者我们的名字写错一个字母，
+ * 它会**静默失效**——她照样能看到 shell 和写文件，而我们以为收窄了。
+ * 所以这里钉三件事：
+ *   ① 清单里每个名字都必须是真实存在的工具（名字错＝当场抛错，不是悄悄地过）；
+ *   ② 只对「她的屋子」那一个 agent 下手，别人的会话一个都不碰；
+ *   ③ 结论必须分开报「注册了」与「真挂上了」，不许合并成一句“成功”。
+ */
+
+import { test } from 'node:test'
+import assert from 'node:assert/strict'
+
+import { HER_TOOLS, currentToolSurface, isHerAgent, knownToolNames, ownLayerNames, registerToolRestrict, rememberFromView, rememberKnownTools, readRestrictState, describeRestrict, toolSurfaceText, toolSurfaceFor, outsideSurfaceText, visibleToolsOf } from '../lib/restrict.js'
+
+/** 一个够用的假插件 ctx：能 on('agent/created')，也能被我们主动触发。 */
+function fakeCtx() {
+  const listeners = new Map()
+  return {
+    on(ev, fn) {
+      if (!listeners.has(ev)) listeners.set(ev, [])
+      listeners.get(ev).push(fn)
+      return () => {
+        const arr = listeners.get(ev) ?? []
+        const i = arr.indexOf(fn)
+        if (i >= 0) arr.splice(i, 1)
+      }
+    },
+    emit(ev, payload) {
+      for (const fn of listeners.get(ev) ?? []) fn(payload)
+    },
+    count(ev) {
+      return (listeners.get(ev) ?? []).length
+    },
+  }
+}
+
+/** 一个够用的假 agent：cwd 决定它是不是她。 */
+function fakeAgent(cwd, { withRestrict = true, withGuard = true } = {}) {
+  const calls = []
+  const tools = {}
+  if (withRestrict) {
+    tools.restrict = (filter) => {
+      calls.push(filter)
+      return () => {}
+    }
+  }
+  if (withGuard) {
+    // guard 接一个同步函数，返回 undefined = 放行、返回字符串 = 拒绝（这是宿主的契约）
+    tools.guard = (fn) => {
+      guards.push(fn)
+      return () => {}
+    }
+  }
+  const guards = []
+  return {
+    calls,
+    guards,
+    agent: {
+      session: { header: { cwd } },
+      ctx: { tools, effect: () => {} },
+    },
+  }
+}
+
+test('清单里她该有的工具都在，且不含危险口子', () => {
+  // 八个是她自己的（0.7.6 加了 ask_owner），外加 read_image。
+  // 定时工具默认不放（m04504），要放由用户自己加白名单——这里不许出现。
+  for (const name of ['growth_commit', 'her_recall', 'her_diary', 'her_leave', 'bili_look', 'bili_watch', 'bili_speak', 'ask_owner', 'read_image']) {
+    assert.ok(HER_TOOLS.includes(name), `清单里少了 ${name}`)
+  }
+  // 这几个一旦放进去，收窄就白做了
+  for (const name of ['pwsh', 'bash', 'write', 'edit', 'web_search', 'web_fetch', 'skill', 'subagent', 'workflow']) {
+    assert.ok(!HER_TOOLS.includes(name), `清单里不该有 ${name}`)
+    assert.ok(!HER_TOOLS.includes(name), `清单里不该有 ${name}`)
+  }
+  for (const name of ['schedule_create', 'schedule_list', 'schedule_update', 'schedule_delete']) {
+    assert.ok(!HER_TOOLS.includes(name), `${name} 默认不放：谁想用，自己加白名单`)
+  }
+})
+
+test('isHerAgent 只认她的屋子，不认别的目录', () => {
+  const her = 'C:\\Users\\someone\\.dsh-fish-river\\home'
+  assert.equal(isHerAgent({ session: { header: { cwd: her } } }, her), true)
+  // 末尾斜杠不该影响判断（任何平台）
+  assert.equal(isHerAgent({ session: { header: { cwd: `${her}\\` } } }, her), true)
+  // 大小写不敏感是 Windows 文件系统的性质，macOS/Linux 区分大小写，别在那边硬要求
+  if (process.platform === 'win32') {
+    assert.equal(isHerAgent({ session: { header: { cwd: 'c:/users/someone/.dsh-fish-river/home/' } } }, her), true)
+  }
+  assert.equal(isHerAgent({ session: { header: { cwd: 'D:\\work\\my-project' } } }, her), false)
+  // 拿不到 cwd 时一律不放行（宁可漏收窄，也不误伤别人的会话）
+  assert.equal(isHerAgent({}, her), false)
+  assert.equal(isHerAgent({ session: {} }, her), false)
+})
+
+test('只有她的 agent 被收窄，别人的会话一个都不碰', () => {
+  const ctx = fakeCtx()
+  registerToolRestrict(ctx, { herDir: 'C:\\her-home', log: () => {} })
+
+  const hers = fakeAgent('C:\\her-home')
+  const mine = fakeAgent('D:\\work\\my-project')
+
+  ctx.emit('agent/created', { agent: mine.agent })
+  assert.equal(mine.calls.length, 0, '别人的会话不该被限制')
+
+  ctx.emit('agent/created', { agent: hers.agent })
+  assert.equal(hers.calls.length, 1, '她这条应该被限制一次')
+  assert.deepEqual(hers.calls[0].allow, HER_TOOLS.filter((n) => n !== 'her_dream'), '只写 allow，不在清单里的一律挡掉；her_dream 是 .dev 下才加的工具')
+  assert.equal(hers.calls[0].deny, undefined, '不用 deny：宿主将来新增工具时 allow 会自动挡住它')
+})
+
+test('额外放行会并进 allow，且去重', () => {
+  const ctx = fakeCtx()
+  registerToolRestrict(ctx, { herDir: 'C:\\h', extra: ['web_search', 'web_search', ' read_image '], log: () => {} })
+  const hers = fakeAgent('C:\\h')
+  ctx.emit('agent/created', { agent: hers.agent })
+  const allow = hers.calls[0].allow
+  assert.ok(allow.includes('web_search'), '用户填的额外放行要生效')
+  assert.equal(allow.filter((x) => x === 'web_search').length, 1, '同一名字不许重复')
+  assert.equal(allow.filter((x) => x === 'read_image').length, 1, '原本就在清单里的不该被重复追加')
+})
+
+test('挂上了才算数：结论里 applied 必须 > 0', () => {
+  const ctx = fakeCtx()
+  let seen = null
+  registerToolRestrict(ctx, { herDir: 'C:\\h', onResult: (r) => { seen = r }, log: () => {} })
+  // 注册阶段：还没轮到任何 agent，不能说"已收窄"
+  assert.equal(seen.applied, 0)
+  assert.equal(seen.why, 'registered')
+
+  ctx.emit('agent/created', { agent: fakeAgent('C:\\h').agent })
+  assert.equal(seen.applied, 1, '真挂上之后 applied 要变成 1')
+  assert.equal(seen.why, 'applied')
+  assert.equal(seen.failed, '')
+})
+
+test('宿主不认 restrict 时必须报红，不许静默降级成“全部工具”', () => {
+  const ctx = fakeCtx()
+  let seen = null
+  registerToolRestrict(ctx, { herDir: 'C:\\h', onResult: (r) => { seen = r }, log: () => {} })
+
+  // 没有 restrict 方法的老版本宿主
+  ctx.emit('agent/created', { agent: fakeAgent('C:\\h', { withRestrict: false }).agent })
+  assert.equal(seen.ok, false)
+  assert.match(seen.failed, /restrict/)
+})
+
+test('restrict 抛错（名字不存在/作用域不对）不会硬清空工具面：先延后、最终如实报 deferred', async () => {
+  const ctx = fakeCtx()
+  let seen = null
+  registerToolRestrict(ctx, { herDir: 'C:\\h', onResult: (r) => { seen = r }, log: () => {}, retryMs: 5, retryMax: 2 })
+
+  const bad = fakeAgent('C:\\h')
+  bad.agent.ctx.tools.restrict = () => { throw new Error('unknown tool: growth_commit') }
+  ctx.emit('agent/created', { agent: bad.agent })
+
+  // 0.6.1 起：restrict 抛错不再进「失败」也不按交集硬收，而是先挂着 guard、延后重试。
+  assert.equal(seen.why, 'registered', '注册阶段的回执')
+  await new Promise((r) => setTimeout(r, 40))
+  assert.equal(seen.why, 'deferred', '一直收不上就如实报 deferred，不能假装成功')
+  assert.equal(seen.applied, 0)
+  assert.equal(bad.guards.length, 1, '兜底守卫必须已经挂上')
+})
+
+test('关掉开关就一个都不动', () => {
+  const ctx = fakeCtx()
+  const off = registerToolRestrict(ctx, { herDir: 'C:\\h', enabled: false, log: () => {} })
+  assert.equal(ctx.count('agent/created'), 0, '关掉时不该挂监听')
+  assert.equal(typeof off, 'function')
+  assert.equal(readRestrictState().why, 'disabled')
+})
+
+test('describeRestrict 的三种说法不能混', () => {
+  assert.match(describeRestrict({ applied: 1 }), /已收窄/)
+  assert.match(describeRestrict({ applied: 0 }), /等她的会话下一次启动/)
+  assert.match(describeRestrict({ applied: 0, failed: 'requires a scoped context' }), /没挂上/)
+  assert.doesNotMatch(describeRestrict({ applied: 0, failed: 'requires a scoped context' }), /已收窄/)
+})
+
+// ---------------------------------------------------------------------------
+// 兜底守卫（guard）
+//
+// 为什么单独测：restrict 挡不住「注册在 agent 自己作用域里」的工具——宿主源码里
+// own 层不经过 admits()。实测漏出来的就是 `subagent`，她可以借它派生一个拥有
+// 全部工具的子 agent，等于一条现成的逃生通道。所以必须有一道 guard 在**执行时**拦。
+// ---------------------------------------------------------------------------
+
+test('guard 会拦住名单外的工具，放行名单内的', () => {
+  const ctx = fakeCtx()
+  registerToolRestrict(ctx, { herDir: 'C:\\h', log: () => {} })
+  const a = fakeAgent('C:\\h')
+  ctx.emit('agent/created', { agent: a.agent })
+
+  assert.equal(a.guards.length, 1, '应该挂了一道 guard')
+  const guard = a.guards[0]
+
+  // 名单内：返回 undefined = 放行
+  assert.equal(guard({ name: 'growth_commit' }), undefined)
+  assert.equal(guard({ name: 'read_image' }), undefined)
+
+  // 名单外：返回一句拒绝（不能是 undefined，也不能是 true）
+  const denied = guard({ name: 'subagent' })
+  assert.equal(typeof denied, 'string')
+  assert.ok(denied.length > 0)
+
+  // 拒绝话术里不许出现系统词汇——她要以为是自己做不了，不是以为被管理员拦了
+  assert.doesNotMatch(denied, /权限|禁止|违规|不允许|没有授权/)
+})
+
+test('她自己 scope 里的工具挡不住这件事必须被记下（guard 缺席也不能算失败）', () => {
+  const ctx = fakeCtx()
+  let seen = null
+  registerToolRestrict(ctx, { herDir: 'C:\\h', onResult: (r) => { seen = r }, log: () => {} })
+
+  // 老宿主：有 restrict、没有 guard
+  ctx.emit('agent/created', { agent: fakeAgent('C:\\h', { withGuard: false }).agent })
+
+  assert.equal(seen.why, 'applied', 'restrict 挂上就是挂上了，不能因为缺 guard 就说没生效')
+  assert.equal(seen.applied, 1)
+  assert.equal(seen.guard, false, '但要如实记下没有兜底守卫')
+})
+
+test('guard 自己抛错也不许把 restrict 判成失败', () => {
+  const ctx = fakeCtx()
+  let seen = null
+  registerToolRestrict(ctx, { herDir: 'C:\\h', onResult: (r) => { seen = r }, log: () => {} })
+
+  const a = fakeAgent('C:\\h')
+  a.agent.ctx.tools.guard = () => { throw new Error('guard not supported in this scope') }
+  ctx.emit('agent/created', { agent: a.agent })
+
+  assert.equal(seen.why, 'applied')
+  assert.equal(seen.applied, 1)
+  assert.equal(seen.guard, false)
+})
+
+test('restrict 因「名字还没登记」抛错时：先不收窄，等登记齐了再收（0.6.1）', async () => {
+  // 2026-10-27 另一台真机（0.6.0）：宿主还没登记她的 6 个工具，旧实现拿报错里的
+  // 已知名单取交集、只收窄了 1 个 —— 那条会话从此调 bili_look 报 unknown tool，
+  // 她回答「我没法浏览 B 站」。restrict 只能减不能加，所以名字没齐时必须先不收。
+  const ctx = fakeCtx()
+  const say = []
+  registerToolRestrict(ctx, { herDir: 'C:\\h', log: (m) => say.push(m), retryMs: 5, retryMax: 5 })
+
+  const calls = []
+  let first = true
+  const guards = []
+  let names = new Set(['read_image']) // 宿主此刻只认得 1 个
+  const agent = {
+    session: { header: { cwd: 'C:\\h' } },
+    ctx: {
+      effect: () => {},
+      tools: {
+        view: () => ({ restrictableNames: names }),
+        restrict: (filter) => {
+          calls.push(filter)
+          if (first) {
+            first = false
+            if (filter.allow.some((n) => !names.has(n))) {
+              throw new Error('tools.restrict() names unknown global tool "growth_commit"; known global tools: read_image')
+            }
+          }
+          return () => {}
+        },
+        guard: (fn) => { guards.push(fn); return () => {} },
+      },
+    },
+  }
+  ctx.emit('agent/created', { agent })
+  assert.equal(calls.length, 1, '第一次先按完整清单试一把')
+  assert.equal(guards.length, 1, '兜底守卫要先挂上（不依赖名字表）')
+  assert.ok(say.some((m) => m.includes('延后')), '要如实说这次先不收窄')
+
+  // 宿主随后把她的工具登记齐了
+  names = new Set([...HER_TOOLS])
+  await new Promise((r) => setTimeout(r, 40))
+  assert.equal(calls.length, 2, '登记齐之后应该再收一次')
+  assert.deepEqual(calls[1].allow, HER_TOOLS.filter((n) => n !== 'her_dream'), '收窄用的是完整清单（减去 .dev 专属的 her_dream），不是交集')
+})
+
+test('工具名一直登记不齐：不收窄，但兜底守卫仍然在（挡住 subagent）', async () => {
+  const ctx = fakeCtx()
+  const seen = []
+  registerToolRestrict(ctx, { herDir: 'C:\\h', log: () => {}, onResult: (r) => seen.push(r), retryMs: 5, retryMax: 2 })
+  const guards = []
+  const agent = {
+    session: { header: { cwd: 'C:\\h' } },
+    ctx: {
+      effect: () => {},
+      tools: {
+        view: () => ({ restrictableNames: new Set(['read_image']) }),
+        restrict: () => { throw new Error('boom') },
+        guard: (fn) => { guards.push(fn); return () => {} },
+      },
+    },
+  }
+  ctx.emit('agent/created', { agent })
+  assert.equal(guards.length, 1, 'restrict 挂了，guard 也必须在')
+  assert.equal(guards[0]({ name: 'subagent' }), '这件事我做不到。', '挡不住名字就靠执行时拦')
+  assert.equal(guards[0]({ name: 'her_recall' }), undefined)
+  await new Promise((r) => setTimeout(r, 40))
+  assert.equal(seen.at(-1).why, 'deferred', '如实报「这次没挂上」，不能假装成功')
+  assert.equal(seen.at(-1).applied, 0)
+})
+
+// ---------------------------------------------------------------------------
+// 提示词这一层（2026-10-29，用户 m01276）：收不窄的工具靠说清「哪几样真是我的」。
+// ---------------------------------------------------------------------------
+
+test('toolSurfaceText：把放行的工具逐一点名，并说清多出来的不算', () => {
+  const txt = toolSurfaceText(['growth_commit', 'her_recall', 'read_image'])
+  // 0.8.5（用户 m02004）：不许把「此刻的家当」说成她的上限。
+  assert.match(txt, /现在手边能碰到的是这些/)
+  assert.match(txt, /不是我的上限/)
+  assert.doesNotMatch(txt, /只有这几样/)
+  assert.doesNotMatch(txt, /别去调/)
+  assert.match(txt, /growth_commit/)
+  assert.match(txt, /her_recall/)
+  assert.match(txt, /read_image/)
+  // 挡不掉的那几类要提前点名，不然她只看到 schema 里的名字
+  assert.match(txt, /ops_/)
+  assert.match(txt, /subagent/)
+  // 越界会得到什么，必须和 guard 的原话一致
+  assert.match(txt, /这件事我做不到/)
+  // 不用「权限/禁止/违规」这类系统词——她该以为是自己做不到
+  assert.doesNotMatch(txt, /权限|禁止|违规/)
+  // 空名单 = 这一层不挂
+  assert.equal(toolSurfaceText([]), '')
+})
+
+test('currentToolSurface：默认就是放行清单；收窄关掉时为空', () => {
+  const ctx = fakeCtx()
+  const off = registerToolRestrict(ctx, { herDir: 'C:\\\\h', enabled: true, log: () => {} })
+  assert.match(currentToolSurface(), /growth_commit/)
+  assert.match(currentToolSurface(), /read_image/)
+  off()
+
+  registerToolRestrict(fakeCtx(), { herDir: 'C:\\\\h', enabled: false, log: () => {} })
+  assert.equal(currentToolSurface(), '', '收窄关着就不能替她列家当')
+})
+
+test('currentToolSurface：白名单里额外放行的会跟着进提示词', () => {
+  registerToolRestrict(fakeCtx(), { herDir: 'C:\\\\h', extra: ['web_search'], log: () => {} })
+  assert.match(currentToolSurface(), /web_search/)
+  // 复位，别把额外放行漏给后面的用例
+  registerToolRestrict(fakeCtx(), { herDir: 'C:\\\\h', log: () => {} })
+  assert.doesNotMatch(currentToolSurface(), /web_search/)
+})
+
+
+test('own 层（dsh-ops 的 ops_*）能进白名单，但不会被塞给 restrict（2026-10-29）', () => {
+  // 2026-10-29 真机：ops_bash / ops_discover_tools 在她 9 个工具里，却不在
+  // restrictableNames 里。旧实现把它判成「名字不存在」，白名单永远存不进去；
+  // 硬塞进 allow 又会抛 `names unknown global tool`，整条收窄当场失效。
+  const ctx = fakeCtx()
+  const calls = []
+  const guards = []
+  const agent = {
+    session: { header: { cwd: 'C:\\h' } },
+    ctx: {
+      effect: () => {},
+      tools: {
+        view: (scope) => {
+          // 只有传 agent 才是她的视角；不带参数是全局视角（老代码就踩过这个坑）
+          if (scope !== agent) return { restrictableNames: new Set() }
+          return {
+            restrictableNames: new Set([...HER_TOOLS]),
+            visible: new Map([...HER_TOOLS.map((n) => [n, {}]), ['ops_bash', {}], ['ops_glob', {}]]),
+          }
+        },
+        restrict: (filter) => { calls.push(filter); return () => {} },
+        guard: (fn) => { guards.push(fn); return () => {} },
+      },
+    },
+  }
+  registerToolRestrict(ctx, { herDir: 'C:\\h', extra: ['ops_bash'], log: () => {} })
+  ctx.emit('agent/created', { agent })
+
+  // 白名单校验：ops_bash 是真名字，得能存
+  assert.ok(knownToolNames(ctx).includes('ops_bash'))
+  // 但下给 restrict 的那份不许带它
+  assert.equal(calls.length, 1)
+  assert.ok(!calls[0].allow.includes('ops_bash'))
+  assert.ok(!calls[0].allow.includes('ops_glob'))
+  assert.ok(calls[0].allow.includes('growth_commit'))
+  // own 层名单给设置页用来解释「加进来只是让守卫放行」
+  assert.ok(ownLayerNames().includes('ops_bash'))
+
+  // 守卫放行名单是配置里的全量：写进白名单 = 守卫不再拦
+  assert.equal(guards[0]({ name: 'ops_bash' }), undefined)
+  assert.equal(guards[0]({ name: 'web_search' }), '这件事我做不到。')
+})
+
+test('rememberFromView：restrictable ∪ visible 才算「认得的名字」', () => {
+  rememberKnownTools([]) // 前面的用例留过快照；这里要一个干净的起点
+  rememberFromView({ restrictableNames: new Set(['a_tool']), visible: new Map([['a_tool', {}], ['ops_x', {}]]) })
+  assert.deepEqual(knownToolNames(null), ['a_tool', 'ops_x'])
+  assert.deepEqual(ownLayerNames(), ['ops_x'])
+  // 这次 view 没给 visible：名单不能缩，学到的 own 层也不回头否认
+  // （同一个进程里它确实存在；这份名单只用于界面解释，不是权限判断）
+  rememberFromView({ restrictableNames: new Set(['a_tool']) })
+  assert.deepEqual(knownToolNames(null), ['a_tool', 'ops_x'], '快照只能变多不能变少')
+  assert.deepEqual(ownLayerNames(), ['ops_x'])
+  // 复位
+  rememberFromView({ restrictableNames: new Set([...HER_TOOLS]), visible: new Map(HER_TOOLS.map((n) => [n, {}])) })
+})
+
+test('白名单只写 own 层名字时：不延后、不收窄失败（以前会整条失效）', () => {
+  const ctx = fakeCtx()
+  const seen = []
+  registerToolRestrict(ctx, { herDir: 'C:\\h', extra: ['ops_bash'], log: () => {}, onResult: (r) => seen.push(r) })
+  const calls = []
+  const agent = {
+    session: { header: { cwd: 'C:\\h' } },
+    ctx: {
+      effect: () => {},
+      tools: {
+        view: (scope) => scope === agent
+          ? { restrictableNames: new Set([...HER_TOOLS]), visible: new Map([...HER_TOOLS.map((n) => [n, {}]), ['ops_bash', {}]]) }
+          : { restrictableNames: new Set() },
+        restrict: (filter) => { calls.push(filter); return () => {} },
+        guard: () => () => {},
+      },
+    },
+  }
+  ctx.emit('agent/created', { agent })
+  assert.equal(calls.length, 1, '不该因为 ops_bash 抛错重试')
+  assert.ok(!calls[0].allow.includes('ops_bash'))
+  const last = seen[seen.length - 1]
+  assert.equal(last.why, 'applied')
+  assert.equal(last.applied, 1)
+  assert.ok(last.allow.includes('ops_bash'), '配置里记着它（提示词与守卫都要用）')
+  assert.ok(!last.effective.includes('ops_bash'))
+})
+
+/** 造一个「她」的 agent：visible 可以事后继续变（模拟别的插件 attach 时才注册工具）。 */
+function agentWithDynamicOwnLayer() {
+  const calls = []
+  const guards = []
+  const visible = new Map(HER_TOOLS.map((n) => [n, {}]))
+  const agent = {
+    session: { header: { cwd: 'C:\h' } },
+    ctx: {
+      effect: () => {},
+      tools: {
+        view: (scope) => {
+          if (scope !== agent) return { restrictableNames: new Set() }
+          return { restrictableNames: new Set([...HER_TOOLS]), visible: new Map(visible) }
+        },
+        restrict: (filter) => { calls.push(filter); return () => {} },
+        guard: (fn) => { guards.push(fn); return () => {} },
+      },
+    },
+  }
+  return { agent, calls, guards, visible }
+}
+
+test('别的插件注册在 own 层的工具（不是 ops_）一样能存、能被守卫放行（2026-10-29）', () => {
+  // 用户 m01685：这类情况不该只对 dsh-ops 生效——凡是「插件注册进她自己那一层」的工具，
+  // 用户想授权就该存得进去。这里用 agent-teams 的 team_task_list 和一个假想插件工具。
+  rememberKnownTools([]) // 干净起点（前一个用例留下的快照不能混进来）
+  const ctx = fakeCtx()
+  const { agent, calls, guards, visible } = agentWithDynamicOwnLayer()
+  visible.set('team_task_list', {})
+  visible.set('helper_paint', {})
+
+  registerToolRestrict(ctx, { herDir: 'C:\h', extra: ['team_task_list', 'helper_paint'], log: () => {} })
+  ctx.emit('agent/created', { agent })
+
+  const known = knownToolNames(ctx)
+  assert.ok(known.includes('team_task_list'), 'agent-teams 的工具名也得能存进白名单')
+  assert.ok(known.includes('helper_paint'), '不是 ops_ 前缀的 own 层工具同样要认')
+  assert.ok(known.includes('growth_commit'), '原来的名字一个都不能少')
+
+  assert.equal(calls.length, 1)
+  assert.ok(!calls[0].allow.includes('team_task_list'), 'own 层名字不能下给 restrict，否则整段抛错')
+  assert.ok(!calls[0].allow.includes('helper_paint'))
+  assert.ok(calls[0].allow.includes('growth_commit'))
+  assert.deepEqual(ownLayerNames().filter((n) => n === 'team_task_list' || n === 'helper_paint'), ['helper_paint', 'team_task_list'])
+
+  assert.equal(guards[0]({ name: 'team_task_list' }), undefined, '白名单放行 = 守卫不拦')
+  assert.equal(guards[0]({ name: 'helper_paint' }), undefined)
+  assert.equal(guards[0]({ name: 'web_search' }), '这件事我做不到。', '没授权的照旧拦')
+})
+
+test('插件在 agent 建好之后才注册的工具，不重启也能认出来（2026-10-29）', () => {
+  rememberKnownTools([])
+  const ctx = fakeCtx()
+  const { agent, calls, visible } = agentWithDynamicOwnLayer()
+
+  registerToolRestrict(ctx, { herDir: 'C:\h', extra: [], log: () => {} })
+  ctx.emit('agent/created', { agent })
+  assert.ok(!knownToolNames(ctx).includes('late_tool'), '还没注册的时候当然不认得')
+
+  // dsh-ops 是 attach 时才 publish；别的插件也可能在 agent 建好之后补工具。
+  visible.set('late_tool', {})
+  const known = knownToolNames(ctx)
+  assert.ok(known.includes('late_tool'), '每次问名单都现取一次 view，才认得到后注册的工具')
+  assert.ok(ownLayerNames().includes('late_tool'), '晚来的 own 层工具也要能解释「收窄挡不住」')
+  assert.equal(calls.length, 1, '这次刷新不该再下一次 restrict')
+})
+
+// ---------------------------------------------------------------------------
+// 出门在外的「手边有什么」（0.7.3，用户 m00339）
+//
+// 病根：`surfaceNow` 是进程级单例、只由 registerToolRestrict 写过一次，值是**家里的白名单**；
+// 而 attachIdentity 无条件挂 fish:tools 段 —— 出门那条会话照样念家里那份，
+// 于是她人在别人工作区、手里握着那个工作区的全部工具，提示词却说「那不是我的：别去调」。
+// 出门不收窄（isHerAgent 为假就 return），awayGuard 又只比对参数里的路径、不看工具名，
+// 所以她**调得动**，只是被自己吓住了。出门打工这个场景就废在这一段话上。
+// ---------------------------------------------------------------------------
+
+/** 一条「在外面」的假 agent：cwd 在别的工作区，view() 报得出此刻看得见的工具。 */
+function outsideAgent(cwd, visibleNames) {
+  const visible = new Map((visibleNames ?? []).map((n) => [n, {}]))
+  const restrictable = new Set(['growth_commit', 'her_recall'])
+  return {
+    session: { header: { cwd } },
+    ctx: {
+      tools: {
+        view: () => ({ visible, restrictableNames: restrictable }),
+      },
+      effect: () => {},
+    },
+  }
+}
+
+test('outsideSurfaceText：念的是那个工作区真给的工具，并且明说放开用', () => {
+  const txt = outsideSurfaceText(['bash', 'read', 'write', 'growth_commit'])
+  assert.match(txt, /bash/)
+  assert.match(txt, /read/)
+  assert.match(txt, /write/)
+  assert.match(txt, /growth_commit/)
+  // 出门就是来干活的：不许再出现「别去调」「那不是我的」这类自我劝阻
+  assert.doesNotMatch(txt, /别去调/)
+  assert.doesNotMatch(txt, /那不是我的/)
+  assert.doesNotMatch(txt, /只有这几样/)
+  // 唯一留着的一条：不许伸手回自己屋子，话术与 awayGuard 一致
+  assert.match(txt, /这件事我做不到/)
+  // 空名单 = 这一层不挂（拿不到工具表时宁可不说，也别瞎说「一样都没有」）
+  assert.equal(outsideSurfaceText([]), '')
+  assert.equal(outsideSurfaceText(null), '')
+})
+
+test('toolSurfaceFor：在家念白名单，在外面念那个工作区的工具', () => {
+  const herDir = 'C:/her-home'
+  registerToolRestrict(fakeCtx(), { herDir, log: () => {} })
+
+  // 在家里：照旧那份白名单（收窄真的在下，她确实只有那几样）
+  const atHome = { session: { header: { cwd: herDir } } }
+  assert.equal(toolSurfaceFor(atHome, { herDir }), currentToolSurface())
+  assert.match(toolSurfaceFor(atHome, { herDir }), /现在手边能碰到的是这些/)
+
+  // 在外面：按此刻看得见的现算，绝不能是家里那份
+  const away = outsideAgent('D:/work/somewhere', ['bash', 'read', 'write', 'growth_commit'])
+  const txt = toolSurfaceFor(away, { herDir })
+  assert.match(txt, /bash/)
+  assert.match(txt, /write/)
+  assert.doesNotMatch(txt, /现在手边能碰到的是这些/, '出门还念家里白名单就是把她说成残废')
+
+  // 拿不到工具表：说空串，不猜
+  const blind = { session: { header: { cwd: 'D:/work/x' } }, ctx: {} }
+  assert.equal(toolSurfaceFor(blind, { herDir }), '')
+
+  // 没传 herDir：退回家里那份（老调用点/单测兼容，生产上两个调用点都传了）
+  assert.equal(toolSurfaceFor(away, {}), currentToolSurface())
+})
+
+test('visibleToolsOf：优先 visible；老宿主没有 visible 才退回 restrictableNames', () => {
+  const a = outsideAgent('D:/w', ['bash', 'read'])
+  assert.deepEqual(visibleToolsOf(a).sort(), ['bash', 'read'])
+
+  const legacy = {
+    ctx: { tools: { view: () => ({ restrictableNames: new Set(['growth_commit', 'her_recall']) }) } },
+  }
+  assert.deepEqual(visibleToolsOf(legacy).sort(), ['growth_commit', 'her_recall'])
+
+  // 两条路都拿不到 = null（「不知道」不能当成「一样都没有」）
+  assert.equal(visibleToolsOf({ ctx: {} }), null)
+  assert.equal(visibleToolsOf(undefined), null)
+})

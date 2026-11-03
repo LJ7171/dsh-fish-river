@@ -1,0 +1,40 @@
+# 依赖
+node_modules/
+
+# 打包产物
+*.tgz
+*.tar.gz
+
+# 运行时与调试残留
+*.log
+*.out
+*.err
+npm-debug.log*
+pnpm-debug.log*
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/
+
+# 本机状态（cookie / 配置 / 测试标记）——绝不提交
+owner.json
+config.json
+.dev
+
+# 自带的 ffmpeg：100 MB，超过 GitHub 单文件上限，本机用 tools/setup-ffmpeg.mjs 装
+bin/
+.ffmpeg-setup-tmp/
+probe-local.mjs
+probe-*.local.mjs
+probe-*.out.txt
+# 本机调试脚本：只对这台机器有意义
+probe-growth.mjs
+peek-sessions.mjs
+probe-split.mjs
+
+HANDOFF.md

@@ -1,0 +1,19 @@
+{
+  "name": "dsh-fish-river-douyin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "抖音渠道（可选装）：用一个真的 Chromium 收发私信。dsh-fish-river 的独立子包。",
+  "type": "module",
+  "main": "index.js",
+  "exports": { ".": "./index.js" },
+  "files": ["index.js", "README.md"],
+  "engines": { "node": ">=22" },
+  "dependencies": {},
+  "peerDependencies": {},
+  "peerDependenciesMeta": {},
+  "dsh": {
+    "channel": "douyin",
+    "requires": ["a real Chromium (Edge or Chrome) on this machine"]
+  },
+  "license": "MIT"
+}
