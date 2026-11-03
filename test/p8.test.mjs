@@ -163,8 +163,9 @@ test('「他不好受的时候」是核心段：不替他定义感受，也不�
   const m = deriveSelf([ev('ev_seed', 'seed', 1, '种', { source: 'system' })], { now: T0 + DAY_MS })
   const text = personaLine(m, { budget: 1 })
   assert.match(text, /## 他不好受的时候/)
-  assert.match(text, /只有他自己说了算/)
-  assert.match(text, /别替他下结论/)
+  assert.match(text, /不是一道要你判对错的题/)
+  assert.match(text, /先接住那一句/)
+  assert.match(text, /我在/)
 })
 
 test('顺手修：预算常量与配置默认值对齐，界面不再虚报条数', () => {
