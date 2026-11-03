@@ -512,6 +512,8 @@ test('互动计数的问号写清四个数字的口径（用户定稿）', async
   assert.ok(src.includes('改口=按照规则推翻历史认知并指明改的是哪条'))
   assert.ok(src.includes('拒绝=她明确登记拒绝过什么'))
   assert.ok(src.includes('重聚=久别之后她自己写下的感受'))
+  assert.ok(src.includes('让步 '), '互动计数里要有让步')
+  assert.ok(src.includes('只算对你的'), '让步的口径要写明只算对主人')
   assert.ok(!src.includes('她自己写下的事件条数，不含系统记的。'), '旧口径已作废')
 })
 
