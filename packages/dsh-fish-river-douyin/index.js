@@ -508,9 +508,10 @@ export function createCdpTransport(opts = {}) {
       }
     },
 
-    async evaluate(expression) {
+    async evaluate(expression, opts = {}) {
       try {
-        const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: false })
+        // awaitPromise 默认关：老的调用点都是同步表达式。要读 fetch 的结果必须显式开。
+        const r = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: Boolean(opts?.awaitPromise) })
         if (r?.exceptionDetails) return { ok: false, why: 'page-script-error', raw: r }
         return { ok: true, value: r?.result?.value }
       } catch (err) {

@@ -1,3 +1,8 @@
+## 0.1.36 — 2026-11-03
+
+- 修：抖音链接那条路真机上一直是「返回的不是 JSON」。根因是子包的 `evaluate()` 写死 `awaitPromise: false`，`fetch(...).then(...)` 拿回来的是 Promise 对象，序列化成 `{}`。现在 `evaluate(expression, opts)` 接受 `awaitPromise`，`lib/channels/douyin.js` 的 `api()` 显式打开它。
+- 测试 +2：适配器读接口必须带 `awaitPromise`、只收站内路径。
+
 ﻿## 0.1.35 — 2026-11-03
 
 - **他能把一条抖音视频递给她，她会真的去看。** 任何渠道的消息里出现

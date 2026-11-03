@@ -84,3 +84,32 @@ test('抖音适配器：send 直接交给子包，没起来时不假装成功', 
   assert.equal(after.ok, true)
   assert.equal(record.sent.text, 'hi')
 })
+
+test('抖音适配器：读只读接口要等 Promise，不然拿回的是 "{}"', async () => {
+  const seen = []
+  const inner = () => ({
+    _transport: {
+      async evaluate(expression, opts) {
+        seen.push(opts)
+        // 真实浏览器里没开 awaitPromise 会返回 {}；这里模拟「等了才有字符串」
+        return { ok: true, value: opts?.awaitPromise ? '{"status_code":0}' : '{}' }
+      },
+    },
+    onMessage() {}, start: async () => ({ ok: true }), stop() {}, status() { return {} }, send: async () => ({ ok: true }), poll() {},
+  })
+  const a = create({ root: 'C:/data', config: {}, inner })
+  await a.start()
+  const r = await a.api('/aweme/v1/web/aweme/detail/?aweme_id=1')
+  assert.equal(seen[0]?.awaitPromise, true)
+  assert.equal(r.ok, true)
+  assert.equal(r.data.status_code, 0)
+})
+
+test('抖音适配器：只收站内路径，整条 URL 不接', async () => {
+  const inner = () => ({ _transport: { evaluate: async () => ({ ok: true, value: '{}' }) }, onMessage() {}, start: async () => ({ ok: true }), stop() {}, status() { return {} }, send: async () => ({ ok: true }), poll() {} })
+  const a = create({ root: 'C:/data', config: {}, inner })
+  await a.start()
+  const r = await a.api('https://www.douyin.com/aweme/v1/x')
+  assert.equal(r.ok, false)
+  assert.match(String(r.why), /站内/)
+})
