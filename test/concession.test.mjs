@@ -53,6 +53,22 @@ test('对陌生人让步不算：客套不能改她的判断', () => {
   assert.equal(m.facts.conceded, 0)
 })
 
+test('她真机上那句「这两处我认，是我语气没收拾」也算：明确认错不比「你说得对」弱', () => {
+  const m = deriveSelf([
+    ev('seed', 0, { source: 'system' }),
+    ev('utterance', 1, { text: '这两处我认，是我语气没收拾。' }),
+  ], { now: T0 })
+  assert.equal(m.facts.conceded, 1)
+})
+
+test('否定不算：「但这个词，我不认」不是让步', () => {
+  const m = deriveSelf([
+    ev('seed', 0, { source: 'system' }),
+    ev('utterance', 1, { text: '但「讨厌」这个词，我不认。' }),
+  ], { now: T0 })
+  assert.equal(m.facts.conceded, 0)
+})
+
 test('让步不进 beliefs：那是回应，不是新判断', () => {
   const before = deriveSelf([ev('seed', 0, { source: 'system' })], { now: T0 }).beliefs.length
   const after = deriveSelf([ev('seed', 0, { source: 'system' }), concede(1)], { now: T0 }).beliefs.length
