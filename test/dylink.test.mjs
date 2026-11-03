@@ -132,3 +132,31 @@ test('详情里没有视频时不假装有', async () => {
   assert.equal(r.ok, false)
   assert.match(r.why, /没有这条视频/)
 })
+
+test('抽帧拼图有上限：留最新的 20 张，残留视频顺手清掉', async () => {
+  const { mkdtemp, writeFile, readdir, utimes } = await import('node:fs/promises')
+  const os = await import('node:os')
+  const pathMod = await import('node:path')
+  const { pruneMedia } = await import('../lib/dylink.js')
+  const dir = await mkdtemp(pathMod.join(os.tmpdir(), 'dyprune-'))
+  for (let i = 0; i < 25; i++) {
+    const f = pathMod.join(dir, `dy-sheet-${i}.png`)
+    await writeFile(f, 'x')
+    const t = new Date(Date.now() + i * 1000)
+    await utimes(f, t, t)
+  }
+  await writeFile(pathMod.join(dir, 'dy-orphan.mp4'), 'x')
+  await writeFile(pathMod.join(dir, 'keep-me.txt'), 'x')
+
+  const r = await pruneMedia(dir)
+  assert.equal(r.ok, true)
+  assert.equal(r.kept, 20)
+  assert.equal(r.removed, 5)
+  const left = (await readdir(dir)).filter((n) => n.startsWith('dy-sheet-'))
+  assert.equal(left.length, 20)
+  assert.ok(!left.includes('dy-sheet-0.png'), '最旧的那张该被清掉')
+  assert.ok(left.includes('dy-sheet-24.png'), '最新的要留着')
+  const all = await readdir(dir)
+  assert.ok(!all.includes('dy-orphan.mp4'), '残留视频要收尸')
+  assert.ok(all.includes('keep-me.txt'), '别人的文件一个字不许动')
+})
