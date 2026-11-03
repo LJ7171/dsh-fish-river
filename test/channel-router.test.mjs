@@ -1,4 +1,4 @@
-﻿/**
+/**
  * channel-router.test.mjs —— 渠道层从「收到」到「发出」的守门测试
  *
  * 这组测试不碰网络、不碰模型：假宿主、假渠道、真事件流。
@@ -375,6 +375,9 @@ test('他递来一条抖音链接：她真去看了，提示词里是那条视�
   assert.match(prompt, /抖音/)
   assert.match(prompt, /原声版来了/)
   assert.match(prompt, /作者 小满/)
+  // 这一轮没有图片通道：不许写「你看了三帧」，否则她会被问画面里是什么（2026-11-03 真机踩过）
+  assert.doesNotMatch(prompt, /你看了三帧/)
+  assert.match(prompt, /画面没拉到|没有图片|看不到图/)
   const { events } = await readEvents(h.root)
   assert.ok(events.some((e) => e.text === 'looked:dy_7698383770206099046'), '看过的要记账，回头能翻到')
 })
