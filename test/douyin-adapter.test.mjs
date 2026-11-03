@@ -113,3 +113,48 @@ test('抖音适配器：只收站内路径，整条 URL 不接', async () => {
   assert.equal(r.ok, false)
   assert.match(String(r.why), /站内/)
 })
+
+function feedInner(payload, record = {}) {
+  return () => ({
+    async start() { return { ok: true } },
+    async stop() {},
+    async send() { return { ok: true } },
+    onMessage() { return () => {} },
+    status() { return { ok: true, connected: true, since: 0, lastError: '', sent: 0, received: 0 } },
+    _transport: {
+      async evaluate(expr, opts) {
+        record.expr = expr
+        record.awaitPromise = opts?.awaitPromise
+        return { ok: true, value: typeof payload === 'string' ? payload : JSON.stringify(payload) }
+      },
+    },
+  })
+}
+
+test('抖音适配器：推荐流走 tab/feed，带 cookie、等 Promise，只回她用得上的字段', async () => {
+  const record = {}
+  const a = create({
+    root: 'C:/data',
+    config: { channels: { douyin: {} } },
+    inner: feedInner({ aweme_list: [
+      { aweme_id: '701', desc: '一条讲徒步的视频', author: { nickname: '行者' }, statistics: { digg_count: 12 } },
+      { aweme_id: '702', desc: '' },
+    ] }, record),
+  })
+  await a.start()
+  const r = await a.feed({ count: 5 })
+  assert.equal(r.ok, true)
+  assert.equal(r.items.length, 1)
+  assert.equal(r.items[0].id, '701')
+  assert.equal(r.items[0].author, '行者')
+  assert.match(record.expr, /aweme\/v1\/web\/tab\/feed\/\?.*count=5/)
+  assert.equal(record.awaitPromise, true)
+})
+
+test('抖音适配器：推荐流是空的就说空的，不编', async () => {
+  const a = create({ root: 'C:/data', config: { channels: { douyin: {} } }, inner: feedInner({ aweme_list: [] }) })
+  await a.start()
+  const r = await a.feed()
+  assert.equal(r.ok, false)
+  assert.match(r.why, /空/)
+})
