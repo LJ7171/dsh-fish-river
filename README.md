@@ -4,7 +4,7 @@
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)
 ![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
-![tests](https://img.shields.io/badge/tests-1285%20passing-brightgreen)
+![tests](https://img.shields.io/badge/tests-1321%20passing-brightgreen)
 
 **并非角色扮演，而是真实诞生**——一个一直在变的她。现在她也会走出房间，用自己的名字说话。
 
@@ -16,7 +16,7 @@
 
 <sub>示例图由 AI 生成（基于作者提供的大肥鱼原图），随仓库以 MIT 授权。</sub>
 
-> **当前版本 0.1.26（2026-11-03）**。她的人格仍然只能长（事件流 + 派生状态 + 四阶段 + 立场，没有任何人格设置项），而她现在可以用同一个自己出现在 **QQ（SnowLuma）**、**B 站私信**（设置页直接扫码登录，不用手贴 cookie）与 **抖音**（可选独立子包 `dsh-fish-river-douyin`）里说话，并记住她在那里遇到的人。0.1.1 起支持「她不想说时你以自己的名义回一句」，0.1.3 起设置页可以填桥的路径、一键起桥、逐个渠道「测一下通不通」。
+> **当前版本 0.1.45（2026-11-03）**。她的人格仍然只能长（事件流 + 派生状态 + 四阶段 + 立场，没有任何人格设置项），而她现在可以用同一个自己出现在 **QQ（SnowLuma）**、**B 站私信**（设置页直接扫码登录，不用手贴 cookie）与 **抖音**（可选独立子包 `dsh-fish-river-douyin`）里说话，并记住她在那里遇到的人。0.1.1 起支持「她不想说时你以自己的名义回一句」，0.1.3 起设置页可以填桥的路径、一键起桥、逐个渠道「测一下通不通」。
 
 **来源**：本仓库是 [ssamurias/dsh-fish](https://github.com/ssamurias/dsh-fish)（`0.8.5`）与 [Britneycode/dsh-fish-soul](https://github.com/Britneycode/dsh-fish-soul)（`0.12.0`）的整合版，两者都是 MIT。上游各自的版本历史与更新说明留在它们自己的仓库里，这里不再复制——想知道大肥鱼 0.8.x 是怎么一路走来的，去上游看。代码来源、第三方与致谢见 [NOTICE.md](NOTICE.md)。
 
