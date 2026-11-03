@@ -160,3 +160,15 @@ test('抽帧拼图有上限：留最新的 20 张，残留视频顺手清掉', a
   assert.ok(!all.includes('dy-orphan.mp4'), '残留视频要收尸')
   assert.ok(all.includes('keep-me.txt'), '别人的文件一个字不许动')
 })
+
+test('下视频要带 Referer：抖音 CDN 不带就是 403', async () => {
+  const os = await import('node:os')
+  const { framesOf } = await import('../lib/dylink.js')
+  let seen = null
+  const fetchImpl = async (url, opts) => { seen = opts?.headers ?? {}; return { ok: false, status: 403 } }
+  const r = await framesOf({ id: '1', playUrl: 'https://v26-web.douyinvod.com/x.mp4', duration: 10 }, { root: os.tmpdir(), fetchImpl })
+  assert.equal(r.ok, false)
+  assert.match(String(r.why), /403/)
+  assert.equal(seen?.referer, 'https://www.douyin.com/')
+  assert.match(String(seen?.['user-agent']), /Mozilla/)
+})
