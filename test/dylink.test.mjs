@@ -172,3 +172,17 @@ test('下视频要带 Referer：抖音 CDN 不带就是 403', async () => {
   assert.equal(seen?.referer, 'https://www.douyin.com/')
   assert.match(String(seen?.['user-agent']), /Mozilla/)
 })
+
+test('图文作品：没有视频流也能拼一张（三张图）', () => {
+  const a = normalizeAweme({ aweme_id: '7703868127586578105', desc: '', images: [{ url_list: ['https://p3/a.webp'] }, { url_list: ['https://p3/b.webp'] }, { url_list: ['https://p3/c.webp'] }], statistics: { digg_count: 1251, comment_count: 519 }, author: { nickname: '请叫我豪门' } })
+  assert.equal(a.kind, 'images')
+  assert.equal(a.images.length, 3)
+  const line = describeAweme(a)
+  assert.match(line, /图文/)
+  assert.match(line, /请叫我豪门/)
+})
+
+test('图文作品的图多于三张时只取前三（上下文别被撑爆）', () => {
+  const a = normalizeAweme({ aweme_id: '1', images: Array.from({ length: 9 }, (_, i) => ({ url_list: [`https://p3/${i}.webp`] })) })
+  assert.equal(a.images.length, 3)
+})
