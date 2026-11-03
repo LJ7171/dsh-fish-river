@@ -402,3 +402,10 @@ test('QQ 里递来的抖音链接，也用抖音那个已登录的浏览器去�
   const prompt = h.calls[0].content[0].text
   assert.match(prompt, /美式真的很生气/, '登录态在抖音渠道里，消息从 QQ 来也得能看到')
 })
+
+test('跟别人说话时不必交代自己怎么想；跟主人可以', () => {
+  const g = buildPrompt({ channel: 'qq', kind: 'group', conversationId: '1', conversationName: '群', personName: '某人' }, [], { isOwner: false })
+  assert.match(g, /不用交代你怎么想/)
+  const o = buildPrompt({ channel: 'qq', kind: 'dm', conversationId: '2', conversationName: '', personName: '某人' }, [], { isOwner: true })
+  assert.doesNotMatch(o, /不用交代你怎么想/)
+})
