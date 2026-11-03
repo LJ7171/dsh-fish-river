@@ -159,6 +159,14 @@ test('冲突与固化都要进她的身份文档，而且冲突不给结论', ()
   assert.match(personaLine(m, { budget: 1 }), /## 他说的事和你记得的不一样时/)
 })
 
+test('「他不好受的时候」是核心段：不替他定义感受，也不许把它改得更说得通', () => {
+  const m = deriveSelf([ev('ev_seed', 'seed', 1, '种', { source: 'system' })], { now: T0 + DAY_MS })
+  const text = personaLine(m, { budget: 1 })
+  assert.match(text, /## 他不好受的时候/)
+  assert.match(text, /只有他自己说了算/)
+  assert.match(text, /别替他下结论/)
+})
+
 test('顺手修：预算常量与配置默认值对齐，界面不再虚报条数', () => {
   assert.equal(SELF_DOC_BUDGET, 1800, '常量与配置默认值必须是同一个数（2026-10-25：都改成 1800）')
   assert.equal(BELIEF_SHOWN, 3)
