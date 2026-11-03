@@ -90,3 +90,20 @@ test('比重上限：让步最多顶一次，两次让步也过不了「主动�
   ], { now: T0 })
   assert.equal(gatePassed('competence', mixed), true, '一次真修正 + 一次让步 = 够')
 })
+
+test('「但有一点我认：她不表演」是同意自己刚说的话，不是让步', () => {
+  const m = deriveSelf([
+    ev('seed', 0, { source: 'system' }),
+    ev('utterance', 1, { text: '稳可以是真的性子。但有一点我认：她不表演。' }),
+  ], { now: T0 })
+  assert.equal(m.facts.conceded, 0)
+})
+
+test('群里当众认错算半次：入账但不进 beliefs', () => {
+  const m = deriveSelf([
+    ev('seed', 0, { source: 'system' }),
+    ev('utterance', 1, { text: '这句我认：能说的和该说的是两回事。', visibility: 'public', channel: 'qq', influence: 'constitution' }),
+  ], { now: T0 })
+  assert.equal(m.facts.conceded, 0)
+  assert.equal(m.facts.concededPublic, 1)
+})
