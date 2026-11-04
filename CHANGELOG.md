@@ -1,3 +1,17 @@
+## 0.1.61 — 2026-11-04
+
+- 新增**知乎素材源（只读）**：当日热榜 + 关注动态，可选子包 `packages/dsh-fish-river-zhihu/`。
+  和刷 B 站同一个位置——醒来前拉一次，素材进提示词，**不写事件流**；配额记在
+  `zhihu-state.json`（0600），不占她的记忆。
+- 扫码登录（纯接口，不用浏览器）：`POST /api/v3/account/api/login/qrcode` → 轮询 `scan_info`；
+  cookie 只写 `<root>/zhihu-auth.json`（0600）。
+- 关键发现写进子包 README：网页端要 `x-zse-96` 签名（403 / code 10003），
+  移动端 `api.zhihu.com` 不校验签名，所以关注动态走移动端。
+- 设置页「上网」加一块知乎（开关 / 扫码 / 每天几次 / 热榜几条 / 关注几条 / 浏览历史开关——
+  历史这一版只留开关，内容下一版接）；`/config` 白名单登记 `zhihu`。
+- 去重：同一批内容只递一次（300 个 id、7 天过期）；两路都失败就不打扰她。
+- `test/zhihu.test.mjs` 11 条。
+
 ## 0.1.60 — 2026-11-04
 
 - Linux WebUI 可以在设置页里把已经下好、验过的包装上去。平台是 `linux`、依赖是 `github:` 或 registry 版本号时，安装会在数据目录 `updates/` 写一份 bash（`install-v<版本>.sh`），`detached` 交给 `bash` 跑，HTTP 响应先回到页面。
