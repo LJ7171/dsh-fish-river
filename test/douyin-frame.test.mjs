@@ -7,7 +7,7 @@
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { parseDmFrame } from 'dsh-fish-river-douyin'
+import { parseDmFrame } from '../packages/dsh-fish-river-douyin/index.js'
 
 /** 按真机帧的形状拼一个：字段名明文 + 三段中文 + 二进制控制字节。 */
 function frame(sender, text) {

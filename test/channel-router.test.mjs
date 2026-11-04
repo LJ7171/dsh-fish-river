@@ -11,7 +11,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { createRouter, buildPrompt } from '../lib/channels/router.js'
+import { createRouter, buildPrompt, splitBubbles, bubbleGapMs, bubbleSplitOn, BUBBLE_MAX, BUBBLE_GAP_MIN_MS, BUBBLE_GAP_MAX_MS } from '../lib/channels/router.js'
 import { createJournal } from '../lib/journal.js'
 import { createPeople } from '../lib/people.js'
 import { appendEvent, readEvents } from '../lib/store.js'
@@ -79,7 +79,7 @@ function fakeAdapter() {
   }
 }
 
-async function harness({ reply = '嗯。', stage = 3, config = {}, root, ownerIds = {}, extraAdapters = [] } = {}) {
+async function harness({ reply = '嗯。', stage = 3, config = {}, root, ownerIds = {}, extraAdapters = [], sleep, bubbleGapMs: gap } = {}) {
   const r = root ?? (await tmpRoot())
   const journal = createJournal(r)
   const people = createPeople(r)
@@ -94,6 +94,8 @@ async function harness({ reply = '嗯。', stage = 3, config = {}, root, ownerId
     adapters: new Map([['qq', adapter], ...(extraAdapters ?? [])]),
     getConfig: async () => config,
     getState: async () => ({ sessionId: 's1', stage }),
+    sleep,
+    bubbleGapMs: gap,
   })
   await router.start()
   return { router, adapter, journal, people, calls, root: r }
@@ -413,4 +415,158 @@ test('跟别人说话时不必交代自己怎么想；跟主人可以', () => {
 test('群里就算是主人问，也不摊开自己：群里有人旁听', () => {
   const g = buildPrompt({ channel: 'qq', kind: 'group', conversationId: '1', conversationName: '群', personName: '主人' }, [], { isOwner: true })
   assert.match(g, /这里不是只有你和他/)
+})
+
+function squash(s) {
+  return String(s ?? '').replace(/\s+/g, '')
+}
+
+test('splitBubbles：一句不切，切了也不丢字，最多四条', () => {
+  assert.deepEqual(splitBubbles('嗯。'), ['嗯。'])
+  assert.deepEqual(splitBubbles('  嗯。  '), ['  嗯。  '], '切不出来就原样送，连空白都不改')
+  const two = splitBubbles('在。刚看到。')
+  assert.deepEqual(two, ['在。', '刚看到。'])
+  const blank = splitBubbles('在。\n\n刚看到你消息。\n今天有点忙。')
+  assert.deepEqual(blank, ['在。', '刚看到你消息。', '今天有点忙。'])
+  assert.equal(squash(blank.join('')), squash('在。\n\n刚看到你消息。\n今天有点忙。'))
+  // 英文句号和网址里的 ? 不是句末
+  const url = '看这个 https://example.com/a?x=1.2 就行。还有一句。'
+  const urlParts = splitBubbles(url)
+  assert.equal(urlParts.length, 2)
+  assert.match(urlParts[0], /https:\/\/example\.com\/a\?x=1\.2/)
+  assert.equal(squash(urlParts.join('')), squash(url))
+  const many = splitBubbles('一。二。三。四。五。六。')
+  assert.equal(many.length, BUBBLE_MAX)
+  assert.equal(squash(many.join('')), '一。二。三。四。五。六。')
+  assert.equal(bubbleSplitOn({}), false)
+  assert.equal(bubbleSplitOn({ im: { bubbleSplit: true } }), true)
+  assert.equal(bubbleSplitOn({ config: { im: { bubbleSplit: true } } }), true)
+  assert.equal(bubbleGapMs(0), BUBBLE_GAP_MIN_MS)
+  assert.equal(bubbleGapMs(0.999999), BUBBLE_GAP_MAX_MS)
+})
+
+test('buildPrompt：分段连发开着才提聊天窗口，而且不是人设', () => {
+  const msg = groupMsg()
+  const on = buildPrompt(msg, [], { isOwner: false, bubbleSplit: true })
+  assert.match(on, /能短就短/)
+  assert.match(on, /分成几句/)
+  assert.match(on, /聊天窗口/)
+  assert.doesNotMatch(on, /你是/)
+  assert.doesNotMatch(on, /话少/)
+  const off = buildPrompt(msg, [], { isOwner: false })
+  assert.doesNotMatch(off, /能短就短/)
+  assert.doesNotMatch(off, /聊天窗口/)
+})
+
+test('router：分段连发关着时，多句仍一次发出，提示词不提聊天窗口', async () => {
+  const reply = '在。\n\n刚看到你消息。今天有点忙。'
+  const gaps = []
+  const h = await harness({
+    reply,
+    config: baseConfig,
+    sleep: async (ms) => { gaps.push(ms) },
+    bubbleGapMs: () => 400,
+  })
+  const r = await h.router.handle(groupMsg())
+  assert.equal(r.sent, true)
+  assert.equal(r.text, reply)
+  assert.equal(h.adapter.sent.length, 1)
+  assert.equal(h.adapter.sent[0].text, reply)
+  assert.deepEqual(gaps, [], '关着时泡间不该停')
+  assert.doesNotMatch(h.calls[0].content[0].text, /能短就短/)
+  const { events } = await readEvents(h.root)
+  const said = events.filter((e) => e.type === 'utterance')
+  assert.equal(said.length, 1)
+  assert.equal(said[0].text, reply)
+  const lines = await h.journal.recent({ channel: 'qq', kind: 'group', conversationId: '111' })
+  const hers = lines.filter((l) => l.role === 'her')
+  assert.equal(hers.length, 1)
+  assert.equal(hers[0].text, reply.replace(/\s+/g, ' ').trim())
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('router：分段连发开着时连发短消息，事件流和流水仍各记全文一条', async () => {
+  const reply = '在。\n\n刚看到你消息。今天有点忙。'
+  const gaps = []
+  const h = await harness({
+    reply,
+    config: { ...baseConfig, im: { bubbleSplit: true } },
+    sleep: async (ms) => { gaps.push(ms) },
+    bubbleGapMs: () => 450,
+  })
+  const r = await h.router.handle(groupMsg())
+  assert.equal(r.sent, true)
+  assert.equal(r.text, reply, '返回给调用方的仍是合并后的全文')
+  assert.deepEqual(h.adapter.sent.map((m) => m.text), ['在。', '刚看到你消息。', '今天有点忙。'])
+  assert.deepEqual(gaps, [450, 450], '第一条立刻发，后面每条之前才停')
+  assert.match(h.calls[0].content[0].text, /能短就短/)
+  const { events } = await readEvents(h.root)
+  const said = events.filter((e) => e.type === 'utterance')
+  assert.equal(said.length, 1, '不按泡各写一条成长事件')
+  assert.equal(said[0].text, reply)
+  const lines = await h.journal.recent({ channel: 'qq', kind: 'group', conversationId: '111' })
+  const hers = lines.filter((l) => l.role === 'her')
+  assert.equal(hers.length, 1)
+  assert.equal(hers[0].text, '在。 刚看到你消息。今天有点忙。')
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('router：分段连发开着但只有一句，仍只发一次、也不停', async () => {
+  const gaps = []
+  const h = await harness({
+    reply: '嗯。',
+    config: { ...baseConfig, im: { bubbleSplit: true } },
+    sleep: async (ms) => { gaps.push(ms) },
+    bubbleGapMs: () => 400,
+  })
+  const r = await h.router.handle(groupMsg())
+  assert.equal(r.sent, true)
+  assert.equal(h.adapter.sent.length, 1)
+  assert.equal(h.adapter.sent[0].text, '嗯。')
+  assert.deepEqual(gaps, [])
+  const { events } = await readEvents(h.root)
+  assert.equal(events.filter((e) => e.type === 'utterance').length, 1)
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('router：连发中途失败，已发出的并成一条记，不按泡各记', async () => {
+  const reply = '在。刚看到。'
+  const h = await harness({
+    reply,
+    config: { ...baseConfig, im: { bubbleSplit: true } },
+    sleep: async () => {},
+    bubbleGapMs: () => 300,
+  })
+  let n = 0
+  h.adapter.send = async (m) => {
+    n += 1
+    h.adapter.sent.push(m)
+    if (n === 2) return { ok: false, why: 'nope' }
+    return { ok: true, id: 'x1' }
+  }
+  const r = await h.router.handle(groupMsg())
+  assert.equal(r.sent, false)
+  assert.equal(r.why, 'send-failed')
+  assert.equal(r.text, '在。')
+  assert.equal(h.adapter.sent.length, 2)
+  const { events } = await readEvents(h.root)
+  const said = events.filter((e) => e.type === 'utterance')
+  assert.equal(said.length, 1)
+  assert.equal(said[0].text, '在。')
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('代发不拆气泡，哪怕分段连发开着', async () => {
+  const h = await harness({
+    config: { ...baseConfig, im: { bubbleSplit: true } },
+    sleep: async () => { throw new Error('代发不该停') },
+  })
+  const text = '第一句。第二句。第三句。'
+  const r = await h.router.sendAs({ channel: 'qq', kind: 'group', conversationId: '111', text })
+  assert.equal(r.ok, true)
+  assert.equal(h.adapter.sent.length, 1)
+  assert.equal(h.adapter.sent[0].text, text)
+  const { events } = await readEvents(h.root)
+  assert.equal(events.length, 0)
+  await fs.rm(h.root, { recursive: true, force: true })
 })
