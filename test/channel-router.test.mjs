@@ -284,6 +284,21 @@ test('router：她复述别人的私聊，出门前被拦下', async () => {
   await fs.rm(root, { recursive: true, force: true })
 })
 
+test('buildPrompt：本地图片路径会告诉她可以用 read_image 看', () => {
+  const msg = { channel: 'weixin', kind: 'dm', personId: 'u_x', text: '', images: ['/home/u/.dsh-fish-river/weixin-media/m1-0.jpg'] }
+  const out = buildPrompt(msg, [], { isOwner: true })
+  assert.match(out, /他发了一张图/)
+  assert.match(out, /read_image/)
+  assert.match(out, /weixin-media\/m1-0\.jpg/)
+})
+
+test('buildPrompt：外部 http 图片不写路径（read_image 读不了，不能骗她）', () => {
+  const msg = { channel: 'qq', kind: 'group', personId: 'u_y', text: '', images: ['https://example.com/a.jpg'] }
+  const out = buildPrompt(msg, [], { isOwner: false })
+  assert.match(out, /只发了图/)
+  assert.doesNotMatch(out, /read_image/)
+})
+
 test('buildPrompt：有印象时说出来，没印象时明说没有', () => {
   const msg = groupMsg()
   const a = buildPrompt(msg, [], { isOwner: false, impression: '话少但讲理' })

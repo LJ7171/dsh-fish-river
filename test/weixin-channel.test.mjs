@@ -14,6 +14,7 @@ import { mkdtemp, readFile, stat, rm } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { create } from '../lib/channels/weixin.js'
+import { createCipheriv, randomBytes } from 'crypto'
 import { createQr, pollQr, saveCredential, loadCredential, credentialPath, publicCredential } from '../lib/weixinqr.js'
 import { canReply } from '../lib/channels/gate.js'
 
@@ -204,19 +205,26 @@ test('图片消息 text 为空但 images 非空：不能当成空消息丢掉', 
       message_type: 1,
       item_list: [{ type: 2, image_item: { media: { encrypt_query_param: 'ENC=abc', aes_key: 'k' } } }],
     }
-    const fetchImpl = fakeFetch({
+    const base = fakeFetch({
       '/ilink/bot/msg/notifystart': [{}],
       '/ilink/bot/msg/notifystop': [{}],
       '/ilink/bot/getupdates': [{ ret: 0, get_updates_buf: 'c1', msgs: [inbound] }],
     })
+    // CDN 这一跳故意失败：验证「图没拿到，消息仍然在」
+    const fetchImpl = async (url, init) => {
+      if (String(url).includes('/download?')) return { ok: false, status: 502, arrayBuffer: async () => Buffer.alloc(0), headers: { getSetCookie: () => [] } }
+      return base(url, init)
+    }
     const a = create({ root, config: { enabled: true }, fetchImpl })
     const got = []
     a.onMessage((m) => got.push(m))
     await a.start()
     await waitFor(() => got.length === 1)
     assert.equal(got[0].text, '')
+    // 2026-11-04：改成「下载 + 解密 + 落盘」之后，拿不到图时不再塞 CDN 地址，
+    // 但**这条消息仍然要交出去**（空占位让 router 说「只发了图」），不能凭空消失。
     assert.equal(got[0].images.length, 1)
-    assert.ok(got[0].images[0].includes('encrypted_query_param=ENC%3Dabc'))
+    assert.equal(got[0].images[0], '')
     await a.stop()
   } finally {
     await rm(root, { recursive: true, force: true })
@@ -335,6 +343,93 @@ test('host：微信开着但还没扫码时，渠道层照样起得来（不崩�
     await adapter.stop() // 从没连过，stop 也必须安静返回
     assert.equal(adapter.status().connected, false)
     await h.dispose()
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+
+/* ---------------------------- 图片：下载 + 解密 + 落盘 ---------------------------- */
+
+test('图片：CDN 上是密文，落盘后是能读的 PNG（read_image 才读得到）', async () => {
+  const root = await tempRoot()
+  try {
+    await saveCredential(root, { token: 'tok', accountId: 'bot_1', baseUrl: 'https://ilinkai.weixin.qq.com' })
+    // 造一张 1×1 PNG，再按 iLink 的规矩 AES-128-ECB 加密
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+    const key = randomBytes(16)
+    const cipher = createCipheriv('aes-128-ecb', key, null)
+    const encrypted = Buffer.concat([cipher.update(png), cipher.final()])
+
+    const inbound = {
+      message_id: 'm-img',
+      from_user_id: 'wxid_pic',
+      message_type: 1,
+      item_list: [{
+        type: 2,
+        image_item: {
+          media: { encrypt_query_param: 'ENC=abc', aes_key: key.toString('base64') },
+        },
+      }],
+    }
+    const fetchImpl = fakeFetch({
+      '/ilink/bot/msg/notifystart': [{}],
+      '/ilink/bot/msg/notifystop': [{}],
+      '/ilink/bot/getupdates': [{ ret: 0, get_updates_buf: 'c1', msgs: [inbound] }],
+    })
+    // CDN 下载走的是一个不同 host 的 GET：给个专门的处理
+    const baseFetch = fetchImpl
+    const withCdn = async (url, init) => {
+      if (String(url).includes('/download?')) {
+        return { ok: true, status: 200, arrayBuffer: async () => encrypted, headers: { getSetCookie: () => [] } }
+      }
+      return baseFetch(url, init)
+    }
+    withCdn.calls = fetchImpl.calls
+    const a = create({ root, config: { enabled: true }, fetchImpl: withCdn })
+    const got = []
+    a.onMessage((m) => got.push(m))
+    await a.start()
+    assert.ok(await waitFor(() => got.length === 1), '应当收到这条图')
+    const img = got[0].images[0]
+    assert.match(img, /weixin-media\/m-img-0\.png$/)
+    const disk = await readFile(img)
+    assert.deepEqual(disk, png, '落盘内容必须等于解密后的原图')
+    const mode = (await stat(img)).mode & 0o777
+    assert.equal(mode, 0o600, '图片是她的数据，0600')
+    await a.stop()
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('图片：CDN 失败就不塞路径，消息照常交出去（不丢正文）', async () => {
+  const root = await tempRoot()
+  try {
+    await saveCredential(root, { token: 'tok', accountId: 'bot_1', baseUrl: 'https://ilinkai.weixin.qq.com' })
+    const inbound = {
+      message_id: 'm-img2',
+      from_user_id: 'wxid_pic2',
+      message_type: 1,
+      item_list: [{ type: 1, text_item: { text: '你看这个' } }, { type: 2, image_item: { media: { encrypt_query_param: 'X=1' } } }],
+    }
+    const base = fakeFetch({
+      '/ilink/bot/msg/notifystart': [{}],
+      '/ilink/bot/msg/notifystop': [{}],
+      '/ilink/bot/getupdates': [{ ret: 0, get_updates_buf: 'c1', msgs: [inbound] }],
+    })
+    const withCdn = async (url, init) => {
+      if (String(url).includes('/download?')) return { ok: false, status: 502, arrayBuffer: async () => Buffer.alloc(0), headers: { getSetCookie: () => [] } }
+      return base(url, init)
+    }
+    const a = create({ root, config: { enabled: true }, fetchImpl: withCdn })
+    const got = []
+    a.onMessage((m) => got.push(m))
+    await a.start()
+    assert.ok(await waitFor(() => got.length === 1))
+    assert.equal(got[0].text, '你看这个')
+    assert.deepEqual(got[0].images, [''])
+    await a.stop()
   } finally {
     await rm(root, { recursive: true, force: true })
   }
