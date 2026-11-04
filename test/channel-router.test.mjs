@@ -11,7 +11,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { createRouter, buildPrompt, splitBubbles, bubbleGapMs, bubbleSplitOn, BUBBLE_MAX, BUBBLE_GAP_MIN_MS, BUBBLE_GAP_MAX_MS } from '../lib/channels/router.js'
+import { createRouter, buildPrompt, splitBubbles, bubbleGapMs, bubbleSplitOn, casualPunctuationOn, casualizePunctuation, BUBBLE_MAX, BUBBLE_GAP_MIN_MS, BUBBLE_GAP_MAX_MS } from '../lib/channels/router.js'
 import { createJournal } from '../lib/journal.js'
 import { createPeople } from '../lib/people.js'
 import { appendEvent, readEvents } from '../lib/store.js'
@@ -229,7 +229,8 @@ test('router：该问的时候，提示词里有处境没有台词', async () =>
   assert.match(prompt, /Lily/)
   assert.match(prompt, /在吗/)
   assert.doesNotMatch(prompt, /你是一个|请你扮演/)
-  assert.equal(h.adapter.sent[0].text, '在。')
+  assert.match(prompt, /少用句号/)
+  assert.equal(h.adapter.sent[0].text, '在', '口语化默认开，句末句号不发出去')
   assert.equal(h.adapter.sent[0].conversation.id, '111')
   // 她说的话要落成事件，且群里的可见性是 public
   const { events } = await readEvents(h.root)
@@ -456,6 +457,18 @@ test('buildPrompt：分段连发开着才提聊天窗口，而且不是人设', 
   const off = buildPrompt(msg, [], { isOwner: false })
   assert.doesNotMatch(off, /能短就短/)
   assert.doesNotMatch(off, /聊天窗口/)
+  assert.doesNotMatch(off, /少用句号/)
+})
+
+test('buildPrompt：口语化开着才提少用句号，而且不是人设', () => {
+  const msg = groupMsg()
+  const on = buildPrompt(msg, [], { isOwner: false, casualPunctuation: true })
+  assert.match(on, /少用句号/)
+  assert.match(on, /像微信聊天/)
+  assert.doesNotMatch(on, /你是/)
+  assert.doesNotMatch(on, /不可以/)
+  const off = buildPrompt(msg, [], { isOwner: false, casualPunctuation: false })
+  assert.doesNotMatch(off, /少用句号/)
 })
 
 test('router：分段连发关着时，多句仍一次发出，提示词不提聊天窗口', async () => {
@@ -463,7 +476,7 @@ test('router：分段连发关着时，多句仍一次发出，提示词不提�
   const gaps = []
   const h = await harness({
     reply,
-    config: baseConfig,
+    config: { ...baseConfig, im: { casualPunctuation: false } },
     sleep: async (ms) => { gaps.push(ms) },
     bubbleGapMs: () => 400,
   })
@@ -474,6 +487,7 @@ test('router：分段连发关着时，多句仍一次发出，提示词不提�
   assert.equal(h.adapter.sent[0].text, reply)
   assert.deepEqual(gaps, [], '关着时泡间不该停')
   assert.doesNotMatch(h.calls[0].content[0].text, /能短就短/)
+  assert.doesNotMatch(h.calls[0].content[0].text, /少用句号/)
   const { events } = await readEvents(h.root)
   const said = events.filter((e) => e.type === 'utterance')
   assert.equal(said.length, 1)
@@ -490,7 +504,7 @@ test('router：分段连发开着时连发短消息，事件流和流水仍各�
   const gaps = []
   const h = await harness({
     reply,
-    config: { ...baseConfig, im: { bubbleSplit: true } },
+    config: { ...baseConfig, im: { bubbleSplit: true, casualPunctuation: false } },
     sleep: async (ms) => { gaps.push(ms) },
     bubbleGapMs: () => 450,
   })
@@ -515,7 +529,7 @@ test('router：分段连发开着但只有一句，仍只发一次、也不停',
   const gaps = []
   const h = await harness({
     reply: '嗯。',
-    config: { ...baseConfig, im: { bubbleSplit: true } },
+    config: { ...baseConfig, im: { bubbleSplit: true, casualPunctuation: false } },
     sleep: async (ms) => { gaps.push(ms) },
     bubbleGapMs: () => 400,
   })
@@ -533,7 +547,7 @@ test('router：连发中途失败，已发出的并成一条记，不按泡各�
   const reply = '在。刚看到。'
   const h = await harness({
     reply,
-    config: { ...baseConfig, im: { bubbleSplit: true } },
+    config: { ...baseConfig, im: { bubbleSplit: true, casualPunctuation: false } },
     sleep: async () => {},
     bubbleGapMs: () => 300,
   })
@@ -558,7 +572,7 @@ test('router：连发中途失败，已发出的并成一条记，不按泡各�
 
 test('代发不拆气泡，哪怕分段连发开着', async () => {
   const h = await harness({
-    config: { ...baseConfig, im: { bubbleSplit: true } },
+    config: { ...baseConfig, im: { bubbleSplit: true, casualPunctuation: false } },
     sleep: async () => { throw new Error('代发不该停') },
   })
   const text = '第一句。第二句。第三句。'
@@ -568,5 +582,74 @@ test('代发不拆气泡，哪怕分段连发开着', async () => {
   assert.equal(h.adapter.sent[0].text, text)
   const { events } = await readEvents(h.root)
   assert.equal(events.length, 0)
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('router：口语化默认开，句号去掉，数字和链接还在；流水仍是原句', async () => {
+  // 不写 https://：出站筛会把 `s://` 当成盘符路径拦下。域名本身够测「点还在」。
+  const reply = '在。今天看了 v1.2，去 example.com/a?x=1.2 呢？'
+  const h = await harness({ reply, config: baseConfig })
+  const r = await h.router.handle(groupMsg())
+  assert.equal(r.sent, true, JSON.stringify(r))
+  assert.equal(r.text, reply, '返回给调用方的仍是筛过的原文')
+  assert.equal(h.adapter.sent.length, 1)
+  assert.equal(h.adapter.sent[0].text, '在 今天看了 v1.2，去 example.com/a?x=1.2 呢？')
+  assert.match(h.calls[0].content[0].text, /少用句号/)
+  const { events } = await readEvents(h.root)
+  assert.equal(events.find((e) => e.type === 'utterance').text, reply)
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('router：口语化关掉时，发出去的字和原文一样', async () => {
+  const reply = '在。今天看了 v1.2。'
+  const h = await harness({
+    reply,
+    config: { ...baseConfig, im: { casualPunctuation: false } },
+  })
+  const r = await h.router.handle(groupMsg())
+  assert.equal(r.sent, true)
+  assert.equal(h.adapter.sent[0].text, reply)
+  assert.doesNotMatch(h.calls[0].content[0].text, /少用句号/)
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('router：分段之后每一段各自去掉句号', async () => {
+  const reply = '在。\n\n刚看到你消息。今天有点忙。'
+  const gaps = []
+  const h = await harness({
+    reply,
+    config: { ...baseConfig, im: { bubbleSplit: true } },
+    sleep: async (ms) => { gaps.push(ms) },
+    bubbleGapMs: () => 450,
+  })
+  const r = await h.router.handle(groupMsg())
+  assert.equal(r.sent, true)
+  assert.equal(r.text, reply)
+  assert.deepEqual(h.adapter.sent.map((m) => m.text), ['在', '刚看到你消息', '今天有点忙'])
+  assert.deepEqual(gaps, [450, 450])
+  assert.equal(casualPunctuationOn({ im: { bubbleSplit: true } }), true, '只开分段时口语化仍默认开')
+  const { events } = await readEvents(h.root)
+  assert.equal(events.find((e) => e.type === 'utterance').text, reply)
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('router：口语化后没有字可发，就不发空消息', async () => {
+  const h = await harness({ reply: '。', config: baseConfig })
+  const r = await h.router.handle(groupMsg())
+  assert.equal(r.sent, false)
+  assert.equal(r.why, 'silent')
+  assert.equal(h.adapter.sent.length, 0)
+  const { events } = await readEvents(h.root)
+  assert.equal(events.filter((e) => e.type === 'utterance').length, 0)
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('代发不口语化，哪怕开关开着', async () => {
+  const h = await harness({ config: baseConfig })
+  const text = '这事我来定。'
+  const r = await h.router.sendAs({ channel: 'qq', kind: 'group', conversationId: '111', text })
+  assert.equal(r.ok, true)
+  assert.equal(h.adapter.sent[0].text, text)
+  assert.equal(casualizePunctuation(text), '这事我来定')
   await fs.rm(h.root, { recursive: true, force: true })
 })
