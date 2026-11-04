@@ -1,6 +1,6 @@
 {
   "name": "dsh-fish-river",
-  "version": "0.1.62",
+  "version": "0.1.63",
   "description": "养一条会自己长大的鱼：没有人格设置，人格只能通过事件流长出来；她会自己刷 B 站，也能在 QQ、B 站私信（抖音可选）里说话，并记住在外面遇到的人。四个阶段完成后才开始有立场。状态库在 ~/.dsh-fish-river，不能删除记录。",
   "type": "module",
   "main": "lib/index.js",

@@ -118,6 +118,86 @@ export async function fetchFollow({ cookie = '', limit = 8, fetchImpl = fetch } 
   }
 }
 
+/**
+ * 浏览历史（**他**看过的，不是她看过的）。
+ * GET www.zhihu.com/api/v4/unify-consumption/read_history?offset=0&limit=N
+ *
+ * @returns {Promise<{ok:boolean, items:{id,title,url,readAt}[], why:string}>}
+ */
+export async function fetchHistory({ cookie = '', limit = 10, fetchImpl = fetch } = {}) {
+  try {
+    const n = clamp(limit, 1, 20)
+    const r = await getJson({
+      fetchImpl,
+      url: `${WEB}/api/v4/unify-consumption/read_history?offset=0&limit=${n}`,
+      cookie,
+      referer: `${WEB}/history`,
+    })
+    if (!Array.isArray(r.json?.data)) return { ok: false, items: [], why: `浏览历史拿不到（HTTP ${r.status}）` }
+    const items = []
+    for (const card of r.json.data) {
+      const d = card?.data ?? {}
+      const title = String(d?.header?.title ?? '').trim()
+      if (!title) continue
+      const extra = d?.extra ?? {}
+      items.push({
+        id: `hist:${String(extra.content_token ?? d?.action?.url ?? title)}`,
+        title,
+        url: String(d?.action?.url ?? '').trim(),
+        readAt: Number(extra.read_time) || 0,
+      })
+    }
+    return { ok: items.length > 0, items, why: items.length ? '' : '浏览历史是空的' }
+  } catch (error) {
+    return { ok: false, items: [], why: `浏览历史请求失败：${errorText(error)}` }
+  }
+}
+
+/**
+ * 首页推荐（今天外面推到你面前的东西）。
+ * GET www.zhihu.com/api/v3/feed/topstory/recommend?…&page_number=N
+ *
+ * 不需要 session_token（2026-11-04 实测）：带上 cookie 直接回 6 条/页。
+ *
+ * @returns {Promise<{ok:boolean, items:{id,kind,author,title,url}[], why:string}>}
+ */
+export async function fetchRecommend({ cookie = '', limit = 6, pages = 1, fetchImpl = fetch } = {}) {
+  try {
+    const want = clamp(limit, 1, 20)
+    const out = []
+    for (let page = 1; page <= Math.max(1, Math.min(3, pages)); page += 1) {
+      const r = await getJson({
+        fetchImpl,
+        url: `${WEB}/api/v3/feed/topstory/recommend?action=down&ad_interval=-10&after_id=${page * 5}&desktop=true&end_offset=${page * 5}&page_number=${page}`,
+        cookie,
+        referer: `${WEB}/`,
+      })
+      const list = Array.isArray(r.json?.data) ? r.json.data : []
+      if (!list.length) break
+      for (const x of list) {
+        const tgt = x?.target ?? {}
+        const title = String(tgt.title ?? tgt.question?.title ?? '').trim()
+        if (!title) continue
+        const kind = String(tgt.type ?? '').trim()
+        const id = String(tgt.id ?? tgt.question?.id ?? title)
+        const url = kind === 'article'
+          ? `https://zhuanlan.zhihu.com/p/${id}`
+          : kind === 'answer'
+            ? `https://www.zhihu.com/answer/${id}`
+            : kind === 'question'
+              ? `https://www.zhihu.com/question/${id}`
+              : String(tgt.url ?? '').trim()
+        out.push({ id: `rec:${id}`, kind, author: String(tgt.author?.name ?? '').trim(), title, url })
+        if (out.length >= want) break
+      }
+      if (out.length >= want) break
+    }
+    return { ok: out.length > 0, items: out, why: out.length ? '' : '推荐是空的' }
+  } catch (error) {
+    return { ok: false, items: [], why: `推荐请求失败：${errorText(error)}` }
+  }
+}
+
 /** 认一下这份 cookie 是谁（登录后校验 / 设置页显示用）。 */
 export async function probe({ cookie = '', fetchImpl = fetch } = {}) {
   try {
@@ -137,4 +217,4 @@ export async function probe({ cookie = '', fetchImpl = fetch } = {}) {
 }
 
 export const ENDPOINTS = { WEB, MOBILE }
-export default { fetchHot, fetchFollow, probe, ENDPOINTS }
+export default { fetchHot, fetchFollow, fetchHistory, fetchRecommend, probe, ENDPOINTS }

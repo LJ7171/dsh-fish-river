@@ -42,6 +42,8 @@ cookie 只写 `<数据目录>/zhihu-auth.json`（0600），不进日志、不回
 | 用途 | 接口 | 说明 |
 |---|---|---|
 | 热榜 | `www.zhihu.com/api/v3/feed/topstory/hot-lists/total` | 网页端，**不需要**签名 |
+| 首页推荐 | `www.zhihu.com/api/v3/feed/topstory/recommend` | 网页端，不需要 `session_token`（实测） |
+| 浏览历史 | `www.zhihu.com/api/v4/unify-consumption/read_history` | 网页端，读的是「他看过什么」 |
 | 关注动态 | `api.zhihu.com/moments` | **移动端**，只要 cookie，不校验 `x-zse-96` |
 | 认账号 | `www.zhihu.com/api/v4/me` | 登录后校验用 |
 

@@ -5,7 +5,7 @@
  * 这样知乎改接口 / 加签名时，改动都留在这个目录里。
  */
 
-export { fetchHot, fetchFollow, probe, ENDPOINTS } from './api.js'
+export { fetchHot, fetchFollow, fetchHistory, fetchRecommend, probe, ENDPOINTS } from './api.js'
 export {
   createQr,
   pollQr,
@@ -16,12 +16,14 @@ export {
   credentialPath,
 } from './auth.js'
 
-import { fetchHot, fetchFollow, probe } from './api.js'
+import { fetchHot, fetchFollow, fetchHistory, fetchRecommend, probe } from './api.js'
 import { createQr, pollQr, saveCookie, readAuth, loadCookie, clearAuth, credentialPath } from './auth.js'
 
 export default {
   fetchHot,
   fetchFollow,
+  fetchHistory,
+  fetchRecommend,
   probe,
   createQr,
   pollQr,
