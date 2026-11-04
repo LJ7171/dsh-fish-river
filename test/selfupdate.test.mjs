@@ -15,6 +15,7 @@ import assert from 'node:assert/strict'
 import http from 'node:http'
 import zlib from 'node:zlib'
 import { mkdtemp, rm, readFile, stat, writeFile, mkdir } from 'node:fs/promises'
+import { spawnSync } from 'node:child_process'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -27,6 +28,8 @@ import {
   inspectPackage,
   downloadTarball,
   scriptFor,
+  scriptForLinux,
+  LINUX_SYSTEMD_UNIT,
   runtimeBins,
   profileDirOf,
   createSelfUpdater,
@@ -355,6 +358,13 @@ test('没有自带 pnpm 时退回 PATH 上的 pnpm，而不是拼一个不存在
 
 // ---------------------------------------------------------------- 状态机
 
+function dependencySpec(kind) {
+  if (kind === 'github') return 'github:ssamurias/dsh-fish#v0.6.13'
+  if (kind === 'registry') return '^0.6.13'
+  if (kind === 'other') return 'npm:@scope/pkg@1.0.0'
+  return 'link:D:/src/plugin'
+}
+
 async function fakeProfile(kind = 'github') {
   const base = await tmp(`profile-${kind}`)
   const profile = join(base, 'profile')
@@ -363,7 +373,7 @@ async function fakeProfile(kind = 'github') {
   await writeFile(join(pkg, 'lib', 'index.js'), 'export default {}\n')
   await writeFile(join(pkg, 'package.json'), JSON.stringify({ name: 'dsh-fish-river', version: '0.6.13' }))
   await writeFile(join(profile, 'package.json'), JSON.stringify({
-    dependencies: { 'dsh-fish-river': kind === 'github' ? 'github:ssamurias/dsh-fish#v0.6.13' : 'link:D:/src/plugin' },
+    dependencies: { 'dsh-fish-river': dependencySpec(kind) },
   }))
   return { base, profile, moduleUrl: pathToFileURL(join(pkg, 'lib', 'selfupdate.js')).href }
 }
@@ -468,7 +478,7 @@ test('非桌面版（execPath 是 node）不许装：没有能重开的目标就
   }
 })
 
-test('非 Windows 不许起安装脚本：脚本是 cmd 批处理，别的系统上跑不起来', async () => {
+test('macOS 不许起安装脚本：没有对应的安装器', async () => {
   const { base, moduleUrl } = await fakeProfile()
   try {
     const up = createSelfUpdater({
@@ -522,9 +532,254 @@ test('安装：写好脚本、起在子进程里、状态切到 installing', asy
     assert.equal(spawned.length, 1)
     assert.equal(spawned[0].cmd, 'cmd.exe')
     assert.equal(spawned[0].opts.detached, true, '宿主被杀不能带走安装脚本')
+    assert.ok(String(spawned[0].args[1]).endsWith('.cmd'))
     const script = await readFile(spawned[0].args[1], 'utf8')
     assert.ok(script.includes('v0.6.14'))
     assert.ok(script.includes('taskkill'))
+  } finally {
+    await rm(base, { recursive: true, force: true })
+  }
+})
+
+// ---------------------------------------------------------------- Linux 安装脚本
+
+function assertBash(script) {
+  const r = spawnSync('bash', ['-n'], { input: script, encoding: 'utf8' })
+  assert.equal(r.status, 0, r.stderr || r.stdout)
+}
+
+test('Linux 安装脚本：先离开 cgroup、停服务、备份、装验过的包、失败回滚、最后 systemctl restart', () => {
+  assert.equal(LINUX_SYSTEMD_UNIT, 'deepseek-harness')
+  const script = scriptForLinux({
+    version: '0.6.14',
+    profileDir: '/home/u/My Profile',
+    nodeBin: '/usr/bin/node',
+    pnpmScript: '/usr/bin/pnpm.mjs',
+    logFile: '/home/u/.dsh-fish-river/updates/last.log',
+    backupDir: '/home/u/.dsh-fish-river/updates/backup-v0.6.14',
+    tarball: '/home/u/.dsh-fish-river/updates/dsh-fish-river-v0.6.14.tgz',
+    pathEnv: '/home/u/.local/share/pnpm:/usr/bin',
+  })
+  assertBash(script)
+  assert.equal(script.includes('\r'), false, 'bash 脚本用 LF')
+  assert.doesNotMatch(script, /[\u4e00-\u9fa5]/, '日志用英文，和 Windows 脚本一致')
+  assert.ok(script.startsWith('#!/bin/bash'))
+  assert.ok(script.includes("PROFILE='/home/u/My Profile'"), '路径里的空格要留在引号里')
+  assert.ok(script.includes('/home/u/.local/share/pnpm'), '沿用宿主的 PATH，pnpm 才找得到')
+  assert.ok(script.includes('/usr/bin:/sbin:/bin'), '系统目录还在，systemctl 不会丢')
+  // 先脱离 cgroup，再等两秒，再 stop。stop 在 pnpm 之前。
+  const addAt = script.indexOf('add "$SPEC"')
+  assert.ok(addAt > 0, 'pnpm add 用的是已经写进 SPEC 的那个包')
+  assert.ok(script.indexOf('systemd-run') < script.indexOf('sleep 2'), '先离开服务 cgroup')
+  assert.ok(script.indexOf('sleep 2') < script.indexOf('systemctl stop deepseek-harness'), '先等两秒再停服务')
+  assert.ok(script.indexOf('systemctl stop deepseek-harness') < addAt, '服务停稳之前不动文件')
+  assert.ok(script.indexOf('is-active deepseek-harness') < addAt, '等到 inactive 才装')
+  const backupPkg = script.indexOf('cp -a "$PROFILE/package.json" "$BK/package.json"')
+  const backupLock = script.indexOf('cp -a "$PROFILE/pnpm-lock.yaml" "$BK/pnpm-lock.yaml"')
+  const backupMod = script.indexOf('cp -a "$PROFILE/node_modules/dsh-fish-river" "$BK/dsh-fish-river"')
+  assert.ok(backupPkg > 0 && backupPkg < addAt)
+  assert.ok(backupLock > 0 && backupLock < addAt)
+  assert.ok(backupMod > 0 && backupMod < addAt)
+  assert.ok(script.includes('file:/home/u/.dsh-fish-river/updates/dsh-fish-river-v0.6.14.tgz'), '装的是下好验过的那个包')
+  assert.ok(!script.includes('github:ssamurias'), '有本地包就不要走 git 协议')
+  assert.ok(script.includes('--config.minimumReleaseAge=0'))
+  assert.ok(script.includes('dsh-fish-river/package.json'), '装完要核对版本')
+  assert.ok(script.includes('0.6.14'))
+  assert.ok(script.includes("'/usr/bin/node' '/usr/bin/pnpm.mjs'"))
+  assert.match(script, /restart_host\(\) \{[^}]*systemctl restart deepseek-harness/s)
+  const failAt = script.indexOf('FAILED - rolling back')
+  const abortAt = script.indexOf('nothing changed')
+  const okAt = script.indexOf('installed OK')
+  assert.ok(failAt > 0 && script.indexOf('restart_host', failAt) > failAt, '回滚之后也要拉起服务')
+  assert.ok(abortAt > 0 && script.indexOf('restart_host', abortAt) > abortAt, '没停下来也不能把服务留在半截')
+  assert.ok(okAt > 0 && script.indexOf('restart_host', okAt) > okAt, '装完要重启')
+  assert.ok(script.includes('--outside'), '第二次进入才真正动手，避免 systemd-run 套娃')
+  assert.equal(script.includes('taskkill'), false)
+  assert.equal(script.includes('.exe'), false)
+})
+
+test('Linux 脚本没有自带 pnpm、也没有 tarball 时，退回 PATH 上的 pnpm 和 github: spec', () => {
+  const script = scriptForLinux({
+    version: 'v0.6.14',
+    profileDir: '/p',
+    logFile: '/l.log',
+    backupDir: '/b',
+  })
+  assertBash(script)
+  assert.match(script, /^pnpm add "\$SPEC"/m)
+  assert.ok(script.includes('github:LJ7171/dsh-fish-river#v0.6.14'))
+  assert.match(script, /^node -e /m)
+})
+
+test('Linux 脚本：版本或 profile 认不出就抛，不要求 exe', () => {
+  assert.throws(() => scriptForLinux({ version: 'latest', profileDir: '/p' }), /版本号/)
+  assert.throws(() => scriptForLinux({ version: '0.6.14' }), /profile/)
+  const script = scriptForLinux({ version: '0.6.14', profileDir: '/p', logFile: '/l', backupDir: '/b' })
+  assert.ok(script.includes('systemctl restart deepseek-harness'))
+})
+
+async function prepareLinux({ kind = 'github', exe = '/usr/bin/node', nodeBin = '/usr/bin/node', pnpmScript = '' } = {}) {
+  const prof = await fakeProfile(kind)
+  const spawned = []
+  const root = join(prof.base, 'data')
+  const up = createSelfUpdater({
+    root,
+    current: '0.6.13',
+    moduleUrl: prof.moduleUrl,
+    exe,
+    nodeBin,
+    pnpmScript,
+    platform: 'linux',
+    downloadImpl: async () => ({
+      ok: true,
+      file: '/var/tmp/dsh-fish-river-v0.6.14.tgz',
+      bytes: 2048,
+      source: '源',
+    }),
+    spawnImpl: (cmd, args, opts) => {
+      spawned.push({ cmd, args, opts })
+      return { unref() {} }
+    },
+  })
+  await up.start('0.6.14')
+  for (let i = 0; i < 50 && up.status().phase === 'downloading'; i += 1) {
+    await new Promise((r) => setTimeout(r, 10))
+  }
+  return { ...prof, root, up, spawned }
+}
+
+test('Linux + node：托管安装写 bash、detached 拉起，不再报「只做了 Windows」', async () => {
+  const { base, up, spawned } = await prepareLinux()
+  try {
+    assert.equal(up.status().phase, 'prepared')
+    assert.equal(up.status().kind, 'github')
+    const r = await up.install('0.6.14')
+    assert.equal(r.ok, true, r.error)
+    assert.equal(r.phase, 'installing')
+    assert.match(r.note, /停止服务/)
+    assert.equal(up.status().phase, 'installing')
+    assert.equal(spawned.length, 1)
+    assert.equal(spawned[0].cmd, 'bash')
+    assert.equal(spawned[0].opts.detached, true, '响应先回到页面，再停服务')
+    assert.equal(spawned[0].opts.stdio, 'ignore')
+    assert.equal(spawned[0].opts.windowsHide, undefined)
+    assert.ok(String(r.script).endsWith('.sh'))
+    assert.deepEqual(spawned[0].args, [r.script])
+    const script = await readFile(r.script, 'utf8')
+    assertBash(script)
+    assert.ok(script.includes('systemctl restart deepseek-harness'))
+    assert.ok(script.includes('systemctl stop deepseek-harness'))
+    assert.ok(script.includes('file:/var/tmp/dsh-fish-river-v0.6.14.tgz'))
+    assert.ok(script.includes("'/usr/bin/node'"))
+    const mode = (await stat(r.script)).mode
+    assert.ok(mode & 0o111, '脚本可执行，方便排错时手跑一遍')
+  } finally {
+    await rm(base, { recursive: true, force: true })
+  }
+})
+
+test('Linux + registry 依赖同样走自动安装', async () => {
+  const { base, up, spawned } = await prepareLinux({ kind: 'registry', exe: '/no/such/node', nodeBin: '' })
+  try {
+    assert.equal(up.status().kind, 'registry')
+    assert.equal(up.status().managed, true)
+    const r = await up.install('0.6.14')
+    assert.equal(r.ok, true, r.error)
+    assert.equal(spawned[0].cmd, 'bash')
+    const script = await readFile(r.script, 'utf8')
+    assert.match(script, /^node -e /m, '没传入 node 路径时用 PATH 上的 node')
+    assert.match(script, /^pnpm add "\$SPEC"/m)
+  } finally {
+    await rm(base, { recursive: true, force: true })
+  }
+})
+
+test('Linux：node 旁边有 pnpm 时用那一个', async () => {
+  const { base, moduleUrl } = await fakeProfile('github')
+  const bin = join(base, 'bin')
+  await mkdir(bin)
+  const node = join(bin, 'node')
+  const pnpm = join(bin, 'pnpm')
+  await writeFile(node, '#!/bin/sh\n')
+  await writeFile(pnpm, '#!/bin/sh\n')
+  try {
+    const up = createSelfUpdater({
+      root: join(base, 'data'),
+      current: '0.6.13',
+      moduleUrl,
+      exe: node,
+      nodeBin: '',
+      platform: 'linux',
+      downloadImpl: async () => ({ ok: true, file: '/var/tmp/dsh-fish-river-v0.6.14.tgz', bytes: 10, source: '源' }),
+      spawnImpl: () => ({ unref() {} }),
+    })
+    await up.start('0.6.14')
+    for (let i = 0; i < 50 && up.status().phase === 'downloading'; i += 1) {
+      await new Promise((r) => setTimeout(r, 10))
+    }
+    const r = await up.install('0.6.14')
+    assert.equal(r.ok, true, r.error)
+    const script = await readFile(r.script, 'utf8')
+    assert.ok(script.includes(`'${node}' '${pnpm}'`), '用 node 旁边的 pnpm')
+  } finally {
+    await rm(base, { recursive: true, force: true })
+  }
+})
+
+test('Linux 上开发版拒绝下载，也不起安装脚本', async () => {
+  const { base, moduleUrl } = await fakeProfile('local')
+  const spawned = []
+  try {
+    const up = createSelfUpdater({
+      root: join(base, 'data'),
+      current: '0.6.13',
+      moduleUrl,
+      exe: '/usr/bin/node',
+      platform: 'linux',
+      spawnImpl: (cmd, args, opts) => {
+        spawned.push({ cmd, args, opts })
+        return { unref() {} }
+      },
+    })
+    assert.equal(up.status().kind, 'local')
+    const r = await up.start('0.6.14')
+    assert.equal(r.ok, false)
+    assert.equal(r.local, true)
+    assert.match(r.error, /开发版/)
+    assert.equal(spawned.length, 0)
+  } finally {
+    await rm(base, { recursive: true, force: true })
+  }
+})
+
+test('Linux：下好之后依赖被改回 link:，安装拒绝且不写脚本', async () => {
+  const { base, profile, up, spawned } = await prepareLinux()
+  try {
+    await writeFile(join(profile, 'package.json'), JSON.stringify({
+      dependencies: { 'dsh-fish-river': 'link:/src/plugin' },
+    }))
+    const r = await up.install('0.6.14')
+    assert.equal(r.ok, false)
+    assert.equal(r.local, true)
+    assert.match(r.error, /开发版/)
+    assert.equal(spawned.length, 0)
+    assert.equal(up.status().phase, 'prepared')
+  } finally {
+    await rm(base, { recursive: true, force: true })
+  }
+})
+
+test('Linux：不是 github/registry 的依赖不自动装', async () => {
+  const { base, profile, up, spawned } = await prepareLinux()
+  try {
+    await writeFile(join(profile, 'package.json'), JSON.stringify({
+      dependencies: { 'dsh-fish-river': 'npm:@scope/pkg@1.0.0' },
+    }))
+    const r = await up.install('0.6.14')
+    assert.equal(r.ok, false)
+    assert.match(r.error, /不归自动升级管/)
+    assert.equal(spawned.length, 0)
+    assert.equal(up.status().phase, 'prepared')
   } finally {
     await rm(base, { recursive: true, force: true })
   }
