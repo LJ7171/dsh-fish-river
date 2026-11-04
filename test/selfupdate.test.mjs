@@ -92,15 +92,15 @@ const tmp = (p) => mkdtemp(join(tmpdir(), `fish-selupdate-${p}-`))
 test('下载地址是硬编码的：直连 + 两个镜像，且都指向同一个 tag', () => {
   const list = sourcesFor('0.6.14')
   assert.equal(list.length, 3)
-  assert.ok(list[0].url.startsWith('https://codeload.github.com/ssamurias/dsh-fish/tar.gz/refs/tags/v0.6.14'))
+  assert.ok(list[0].url.startsWith('https://codeload.github.com/LJ7171/dsh-fish-river/tar.gz/refs/tags/v0.6.14'))
   for (const s of list) {
-    assert.ok(s.url.includes('/ssamurias/dsh-fish/'), `${s.name} 指错仓库`)
+    assert.ok(s.url.includes('/LJ7171/dsh-fish-river/'), `${s.name} 指错仓库`)
     assert.ok(s.url.includes('v0.6.14'), `${s.name} 的 tag 不对`)
   }
   // 镜像前缀不认 codeload 的地址（实测 403 Invalid input.），必须走 github.com/…/archive
   for (const s of list.slice(1)) {
     assert.ok(!s.url.includes('codeload.github.com'), `${s.name} 不该套 codeload 地址`)
-    assert.ok(s.url.includes('github.com/ssamurias/dsh-fish/archive/refs/tags/v0.6.14.tar.gz'), s.url)
+    assert.ok(s.url.includes('github.com/LJ7171/dsh-fish-river/archive/refs/tags/v0.6.14.tar.gz'), s.url)
   }
   // 认不出的版本不许编一个地址出来
   assert.deepEqual(sourcesFor('latest'), [])
@@ -108,8 +108,8 @@ test('下载地址是硬编码的：直连 + 两个镜像，且都指向同一�
 })
 
 test('spec 与文件名跟着版本走；多余前缀被规范掉', () => {
-  assert.equal(specFor('0.6.14'), 'github:ssamurias/dsh-fish#v0.6.14')
-  assert.equal(specFor('v0.6.14'), 'github:ssamurias/dsh-fish#v0.6.14')
+  assert.equal(specFor('0.6.14'), 'github:LJ7171/dsh-fish-river#v0.6.14')
+  assert.equal(specFor('v0.6.14'), 'github:LJ7171/dsh-fish-river#v0.6.14')
   assert.equal(fileNameFor('v0.6.14'), 'dsh-fish-river-v0.6.14.tgz')
 })
 
@@ -224,7 +224,7 @@ test('不传 sources 时用硬编码地址（这条曾经把 sources 当成本�
     })
     assert.equal(r.ok, true, r.error)
     assert.equal(urls.length, 1)
-    assert.ok(urls[0].startsWith('https://codeload.github.com/ssamurias/dsh-fish/tar.gz/refs/tags/v0.6.14'), urls[0])
+    assert.ok(urls[0].startsWith('https://codeload.github.com/LJ7171/dsh-fish-river/tar.gz/refs/tags/v0.6.14'), urls[0])
     assert.equal(r.source, 'GitHub 直连')
   } finally {
     await rm(dir, { recursive: true, force: true })
@@ -493,7 +493,7 @@ test('没有 tarball 时才退回 github: spec（老路径，仍可用但不推�
   const script = scriptFor({
     version: '0.6.14', profileDir: 'C:\\p', exe: 'C:\\App.exe', logFile: 'C:\\l.log', backupDir: 'C:\\b', hostName: 'App.exe',
   })
-  assert.ok(script.includes('github:ssamurias/dsh-fish#v0.6.14'))
+  assert.ok(script.includes('github:LJ7171/dsh-fish-river#v0.6.14'))
 })
 
 test('安装：写好脚本、起在子进程里、状态切到 installing', async () => {

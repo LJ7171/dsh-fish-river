@@ -68,11 +68,11 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ssamurias/dsh-fish.git"
+    "url": "git+https://github.com/LJ7171/dsh-fish-river.git"
   },
-  "homepage": "https://github.com/ssamurias/dsh-fish#readme",
+  "homepage": "https://github.com/LJ7171/dsh-fish-river#readme",
   "bugs": {
-    "url": "https://github.com/ssamurias/dsh-fish-river/issues"
+    "url": "https://github.com/LJ7171/dsh-fish-river/issues"
   },
   "engines": {
     "node": ">=22",
