@@ -454,7 +454,7 @@ lib/
   status.js     「现在在干什么」的旁观者视角
   log.js        插件自己的运行日志
   selfcheck.js  环境自检
-  selfupdate.js 自带升级：下载 GitHub tag 包 → 解开验包 → 关应用换包 → 自动重开
+  selfupdate.js 自带升级：下载 GitHub tag 包 → 解开验包 → 关应用换包 → 自动重开（Linux WebUI 用 systemctl restart deepseek-harness）
   update.js     检查更新（只在点按钮时出网，六条源并发取最新版本号）
   backup.js     整包备份 / 恢复
   reset.js      把她放回第一天（封存，不删）
@@ -526,7 +526,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -DryRun
 
 装完**重启 DSH**，设置 → 大肥鱼。第一次进去先看「状态」，再去「渠道」页签开渠道——**渠道全关时插件不会创建任何渠道文件，也不会连网**。
 
-**检查更新跟本仓走。** 设置页点「检查更新」会去查 [LJ7171/dsh-fish-river](https://github.com/LJ7171/dsh-fish-river) 的 releases、tags，以及 `main` 上的 `package.json`（六条源一起问，取版本号最大的那个；都连不上就说连不上，不把设置页弄崩）。下载安装用的是同一仓库的 tag 包。插件运行期不会自己去查，只有你点那一下才出网。开发版（`link:` / `file:`）仍拒绝自动换包。
+**检查更新跟本仓走。** 设置页点「检查更新」会去查 [LJ7171/dsh-fish-river](https://github.com/LJ7171/dsh-fish-river) 的 releases、tags，以及 `main` 上的 `package.json`（六条源一起问，取版本号最大的那个；都连不上就说连不上，不把设置页弄崩）。下载安装用的是同一仓库的 tag 包。插件运行期不会自己去查，只有你点那一下才出网。开发版（`link:` / `file:`）仍拒绝自动换包。Windows 桌面版装完会重开 exe；Linux WebUI（依赖是 `github:` 或 registry 版本号）写一份 bash，先停掉再 `systemctl restart deepseek-harness`——单元名目前写死，`execPath` 是 node 也可以装。
 
 ### 抖音不用单独装
 

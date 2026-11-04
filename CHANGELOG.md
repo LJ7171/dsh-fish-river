@@ -1,3 +1,10 @@
+## 0.1.60 — 2026-11-04
+
+- Linux WebUI 可以在设置页里把已经下好、验过的包装上去。平台是 `linux`、依赖是 `github:` 或 registry 版本号时，安装会在数据目录 `updates/` 写一份 bash（`install-v<版本>.sh`），`detached` 交给 `bash` 跑，HTTP 响应先回到页面。
+- 脚本先用 `systemd-run --scope` 离开服务 cgroup，再 `systemctl stop deepseek-harness`，等到 `inactive` / `failed` 才备份 `package.json`、`pnpm-lock.yaml` 和 `node_modules/dsh-fish-river`，然后 `pnpm add file:<已校验的 tarball>`。版本不对或安装失败就从备份滚回去。
+- 成功、回滚、以及 60 秒还没停下来（这种什么都不改）三条路最后都是 `systemctl restart deepseek-harness`，避免服务停在 inactive。单元名先写死。`process.execPath` 是 node 也照样装，不再要求桌面版 `.exe`。
+- `link:` / `file:` 仍拒绝自动换包。macOS 仍不装。Windows 的 `.cmd`（taskkill → 备份 → pnpm → 重开 exe）不变。
+
 ## 0.1.59 — 2026-11-04
 
 - 渠道回复默认做轻量口语化。设置页「渠道」里的「口语化标点」（`config.im.casualPunctuation`）**默认开**：
