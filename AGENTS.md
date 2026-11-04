@@ -154,16 +154,20 @@ qq_send_message, qq_get_unread_messages, qq_reply
 - **渠道全关时不建文件、不连网**：`startChannels` 必须在 `createPeople`/`createJournal` 之前短路。
   这条有测试（`test/channels*.test.mjs`），别为了「统一初始化」把它挪走。
 - **适配器永不抛**：`start/stop/send/status` 一律 `{ ok, why }`；凭据不进 `status()`、不进日志。
-- **协议不进主包**：主包只有 `dsh@qq` 的 OneBot 桥与 B 站私信；抖音这类需要真浏览器的，
-  放 `packages/dsh-fish-river-douyin/`，由 `lib/channels/sub.js` 懒加载——**代码分开，但随仓库一起分发**
+- **协议不进主包**：主包只有 QQ 的 OneBot 桥、B 站私信，和微信官方 ClawBot（iLink，HTTPS
+  长轮询、零依赖、不需要浏览器）；抖音这类需要真浏览器的，放 `packages/dsh-fish-river-douyin/`，
+  由 `lib/channels/sub.js` 懒加载——**代码分开，但随仓库一起分发**
   （2026-11-03 起：先找已安装的 `dsh-fish-river-douyin`，找不到就用仓库里那一份；只从 GitHub 装也能用抖音）。
   可选性由「渠道开不开」+「模块懒加载」体现：不开就不 `import`、不拉浏览器、不建 `douyin-profile`。
+  「协议不进主包」挡的是**逆向个人号协议 / 需要桥或浏览器的实现**，不是挡官方 HTTPS 接口。
 - **代发是主人的话，不是她的话**（2026-11-02）：`POST /channels/send` 只做三件事——发出去、
   写一行 `role:'owner'` 的流水、返回结果。**不问她、不过 gate、不过出站筛、不写事件流**。
   她的记忆里多出一句她没说过的话，比少回一条严重得多。
 - **登录态是主人的，不是她的**（2026-11-02，扫码登录）：`/bili/qr` 拿到的 cookie 只写
   `owner.json`（0600），不进日志、不进 `status()`、不回显；二维码只活在内存里，服务端不留 key。
-  适配器拿到的是「能发消息」这个能力，不是凭据本身。
+  适配器拿到的是「能发消息」这个能力，不是凭据本身。微信 ClawBot 同理（2026-11-04）：
+  扫码拿到的 token 只写 `<root>/weixin.json`（0600），`/weixin/qr` 的读接口只回账号摘要，
+  「退出登录」删文件而不是忽略。
 
 ---
 ## 10. 社会层开闸只能她自己按（2026-11-02）
