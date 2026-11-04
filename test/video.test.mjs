@@ -256,6 +256,10 @@ test('grabFrames：帧与拼图都从 stdout 拿，mp4 在本地也能跑通（�
   const client = fakeClient({
     async view() { return { ok: true, data: { cid: 1, duration: 3, title: '本地测试片' } } },
     async playurl() { return { ok: true, data: { url: src, duration: 3 } } },
+    // 字幕接线（2026-11-04）：看画面顺带读字幕；拿不到就只是少一节，不算失败。
+    async subtitle() {
+      return { ok: true, data: [{ t: 0.5, text: '这是第一句' }, { t: 1.5, text: '这是第二句' }] }
+    },
   })
 
   const r = await grabFrames({ bvid: BVID, root, client, ffmpeg: ff, frames: 9 })
@@ -278,6 +282,12 @@ test('grabFrames：帧与拼图都从 stdout 拿，mp4 在本地也能跑通（�
   // 旧实现会在 media/ 下留 tmp-* 临时帧目录；新实现不落中间文件
   const names = await readdir(dir)
   assert.equal(names.filter((x) => x.startsWith('tmp-')).length, 0, '不该再留下临时帧目录')
+
+  // 字幕跟着这次看画面一起回来了（2026-11-04）
+  assert.equal(r.subtitle?.ok, true)
+  assert.equal(r.subtitle.total, 2)
+  assert.match(r.subtitle.text, /这是第一句/)
+  assert.match(r.subtitle.text, /^\[00:00\]/)
 })
 
 test('grabFrames：给了 at 就只取那几个时刻（真跑本地片）', async (t) => {
