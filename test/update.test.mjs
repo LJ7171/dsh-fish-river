@@ -61,15 +61,15 @@ test('compareVersion：按数字比，不按字符串比', () => {
   assert.equal(compareVersion('0.3.0', ''), 0)
 })
 
-test('仓库地址只在一处定义', () => {
-  assert.equal(REPO, 'ssamurias/dsh-fish')
-  assert.equal(REPO_URL, 'https://github.com/ssamurias/dsh-fish')
+test('仓库地址只在一处定义，指向本仓', () => {
+  assert.equal(REPO, 'LJ7171/dsh-fish-river')
+  assert.equal(REPO_URL, 'https://github.com/LJ7171/dsh-fish-river')
   assert.equal(RELEASES_URL, REPO_URL + '/releases')
 })
 
 test('真有新版：hasUpdate 为 true，并把来源带出来', async () => {
   const fetchImpl = fakeFetch({
-    'api.github.com/repos/ssamurias/dsh-fish/releases/latest': () => resp({ tag_name: 'v0.4.0' }),
+    'api.github.com/repos/LJ7171/dsh-fish-river/releases/latest': () => resp({ tag_name: 'v0.4.0' }),
   })
   // 其余源全部失败（模拟国内被重置）
   const r = await checkUpdate({ enabled: true, current: '0.3.0', fetchImpl, timeoutMs: 2000 })
@@ -167,12 +167,41 @@ test('每个请求都带 user-agent（GitHub API 没有 UA 直接 403）', async
   }
 })
 
-test('合并版默认不查版本：一个请求都不发，也不出示「有新版本」', async () => {
+test('默认就会查本仓：releases、tags、package.json 六条源都打到 LJ7171/dsh-fish-river', async () => {
+  const calls = []
+  const fetchImpl = async (url) => {
+    calls.push(String(url))
+    if (String(url).includes('/releases/latest')) return resp({ tag_name: 'v0.2.0' })
+    throw new Error('这个源先不回')
+  }
+  const r = await checkUpdate({ current: '0.1.0', fetchImpl, timeoutMs: 2000 })
+  assert.equal(r.ok, true)
+  assert.equal(r.skipped, undefined)
+  assert.equal(r.hasUpdate, true)
+  assert.equal(r.latest, '0.2.0')
+  assert.equal(r.repo, 'https://github.com/LJ7171/dsh-fish-river')
+  assert.equal(r.url, 'https://github.com/LJ7171/dsh-fish-river/releases')
+  const joined = calls.join('\n')
+  for (const part of [
+    'https://api.github.com/repos/LJ7171/dsh-fish-river/releases/latest',
+    'https://api.github.com/repos/LJ7171/dsh-fish-river/tags?per_page=1',
+    'https://ghfast.top/https://raw.githubusercontent.com/LJ7171/dsh-fish-river/main/package.json',
+    'https://ghproxy.net/https://raw.githubusercontent.com/LJ7171/dsh-fish-river/main/package.json',
+    'https://cdn.jsdelivr.net/gh/LJ7171/dsh-fish-river@main/package.json',
+    'https://raw.githubusercontent.com/LJ7171/dsh-fish-river/main/package.json',
+  ]) {
+    assert.ok(joined.includes(part), part)
+  }
+  assert.equal(calls.length, 6)
+})
+
+test('显式关掉检查：一个请求都不发，也不抛', async () => {
   let called = 0
   const fetchImpl = async () => { called += 1; return resp({ tag_name: 'v9.9.9' }) }
-  const r = await checkUpdate({ current: '0.1.0', fetchImpl })
-  assert.equal(called, 0, '默认不查，连一个请求都不该发')
+  const r = await checkUpdate({ enabled: false, current: '0.1.0', fetchImpl })
+  assert.equal(called, 0)
+  assert.equal(r.ok, true)
   assert.equal(r.skipped, true)
-  assert.equal(r.hasUpdate, false, '绝不能说「有新版本」——那会把人引去装回上游')
-  assert.match(r.why, /没有上游/)
+  assert.equal(r.hasUpdate, false)
+  assert.equal(r.repo, 'https://github.com/LJ7171/dsh-fish-river')
 })

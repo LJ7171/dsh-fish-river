@@ -73,7 +73,9 @@ test('关于卡：GitHub 商标小图 + 「GitHub」文字（2026-10-25 用户�
   // 文字必须恰好是 GitHub（大小写按用户说的）
   assert.ok(/ghMark,\s*'GitHub'/.test(src), '图标后面要跟「GitHub」这几个字')
   // 链接指向仓库，新窗口打开且带 noopener
-  assert.ok(src.includes('https://github.com/ssamurias/dsh-fish'), '要指向仓库地址')
+  assert.ok(src.includes('https://github.com/LJ7171/dsh-fish-river'), '要指向本仓')
+  assert.ok(src.includes('https://github.com/LJ7171/dsh-fish-river/releases'), '手动下载回落到本仓 releases')
+  assert.ok(!src.includes('github.com/ssamurias/dsh-fish'), '关于卡不要再指向上游仓库')
   assert.ok(src.includes("rel: 'noopener noreferrer'"), '外链必须带 noopener')
 })
 

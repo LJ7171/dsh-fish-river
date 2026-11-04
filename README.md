@@ -1,6 +1,6 @@
 # dsh-fish-river · 大肥鱼（合并版）
 
-[![test](https://github.com/bychance6600/dsh-fish-river/actions/workflows/test.yml/badge.svg)](https://github.com/bychance6600/dsh-fish-river/actions/workflows/test.yml)
+[![test](https://github.com/LJ7171/dsh-fish-river/actions/workflows/test.yml/badge.svg)](https://github.com/LJ7171/dsh-fish-river/actions/workflows/test.yml)
 ![license](https://img.shields.io/badge/license-MIT-blue)
 ![node](https://img.shields.io/badge/node-%3E%3D22-brightgreen)
 ![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)
@@ -511,7 +511,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -DryRun
 3. **直接从 GitHub 装**（不用先下载）：
 
 ```
-"<DSH>/resources/runtime/cli/bin/dsh.cmd" plugin --profile <profile> add "github:bychance6600/dsh-fish-river"
+"<DSH>/resources/runtime/cli/bin/dsh.cmd" plugin --profile <profile> add "github:LJ7171/dsh-fish-river"
 ```
 
 打算改代码用 `link:` 指向自己的工作目录；只是想用，用 `github:` 这条。
@@ -524,7 +524,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -DryRun
 
 装完**重启 DSH**，设置 → 大肥鱼。第一次进去先看「状态」，再去「渠道」页签开渠道——**渠道全关时插件不会创建任何渠道文件，也不会连网**。
 
-**这个整合版不自动升级。** `lib/update.js` 里 `UPDATES_ENABLED = false`，设置页点「检查更新」只会回一句「这个合并版没有上游」，一个请求都不发。原因是上游 `ssamurias/dsh-fish` 没有渠道层，跟着它升级会把 QQ / B 站 / 抖音 整套换掉，而界面只会显示「升级成功」。想更新就 `git pull` 之后重启，或者重新装一次。
+**检查更新跟本仓走。** 设置页点「检查更新」会去查 [LJ7171/dsh-fish-river](https://github.com/LJ7171/dsh-fish-river) 的 releases、tags，以及 `main` 上的 `package.json`（六条源一起问，取版本号最大的那个；都连不上就说连不上，不把设置页弄崩）。下载安装用的是同一仓库的 tag 包。插件运行期不会自己去查，只有你点那一下才出网。开发版（`link:` / `file:`）仍拒绝自动换包。
 
 ### 抖音不用单独装
 

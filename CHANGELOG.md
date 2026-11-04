@@ -9,6 +9,7 @@
 
 ## 0.1.57 — 2026-11-04
 
+- 设置页「检查更新」改查本仓 [LJ7171/dsh-fish-river](https://github.com/LJ7171/dsh-fish-river)，并真的出网问 releases / tags / `package.json`。下载安装用同一个仓库的 tag 包。连不上时照旧说连不上，不抛。
 - 看画面顺带读字幕：`bili_watch` 抽完帧再拉一次 CC / AI 字幕，按时间轴等距抽最多
   60 行 / 1400 字交给她（`lib/subtitle.js`）。拿不到只少一节文字，不算没看成。
   字幕要 B 站登录态；内容照样过 `guard.sanitizeForeign`，想重塑她的行不递。
