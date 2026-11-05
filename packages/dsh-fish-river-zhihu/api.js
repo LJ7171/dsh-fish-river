@@ -315,6 +315,22 @@ export async function fetchAnswer({ cookie = '', id = '', maxChars = 1500, fetch
   }
 }
 
+/** 评论正文或附件里的图。纯文字评论就是空数组。 */
+function commentImageUrls(c) {
+  const fromHtml = extractImages(c?.content, 3)
+  const extra = []
+  for (const key of ['pictures', 'images', 'image_list']) {
+    const arr = c?.[key]
+    if (!Array.isArray(arr)) continue
+    for (const it of arr) {
+      const raw = typeof it === 'string' ? it : String(it?.url ?? it?.src ?? it?.original ?? '')
+      const url = raw.startsWith('//') ? `https:${raw}` : raw
+      if (/^https?:\/\//i.test(url)) extra.push(url)
+    }
+  }
+  return [...new Set([...fromHtml, ...extra])].slice(0, 3)
+}
+
 /** 评论（按分数）。target 只认 answer / article / question。 */
 export async function fetchComments({ cookie = '', target = 'answer', id = '', limit = 20, orderBy = 'score', fetchImpl = fetch } = {}) {
   const t = String(target ?? '').trim()
@@ -337,6 +353,7 @@ export async function fetchComments({ cookie = '', target = 'answer', id = '', l
       author: String(c?.author?.name ?? '').trim(),
       likes: Number(c?.like_count) || 0,
       text: trimText(htmlToText(c?.content), 300),
+      images: commentImageUrls(c),
       replies: Number(c?.child_comment_count) || 0,
     }))
     return { ok: true, comments, total: Number(r.json?.paging?.totals) || comments.length, why: '' }
