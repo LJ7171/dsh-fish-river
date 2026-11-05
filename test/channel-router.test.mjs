@@ -28,6 +28,9 @@ async function tmpRoot() {
 function fakeHost(reply) {
   const handlers = []
   const calls = []
+  const content = Array.isArray(reply.content)
+    ? reply.content
+    : [{ type: 'text', text: reply.text }]
   const sc = {
     async prompt(req) {
       calls.push(req)
@@ -37,7 +40,7 @@ function fakeHost(reply) {
           const session = { header: { id: req.sessionId } }
           h.fn(session, {
             type: 'assistant/message',
-            data: { message: { id: `m${calls.length}`, content: [{ type: 'text', text: reply.text }] } },
+            data: { message: { id: `m${calls.length}`, content } },
           })
           h.fn(session, { type: 'turn/end', data: {} })
         }
@@ -79,12 +82,12 @@ function fakeAdapter() {
   }
 }
 
-async function harness({ reply = '嗯。', stage = 3, config = {}, root, ownerIds = {}, extraAdapters = [], sleep, bubbleGapMs: gap } = {}) {
+async function harness({ reply = '嗯。', content, stage = 3, config = {}, root, ownerIds = {}, extraAdapters = [], sleep, bubbleGapMs: gap } = {}) {
   const r = root ?? (await tmpRoot())
   const journal = createJournal(r)
   const people = createPeople(r)
   const adapter = fakeAdapter()
-  const { ctx, calls } = fakeHost({ text: reply })
+  const { ctx, calls } = fakeHost({ text: reply, content })
   const router = createRouter({
     ctx,
     root: r,
@@ -656,6 +659,45 @@ test('router：口语化后没有字可发，就不发空消息', async () => {
   assert.equal(h.adapter.sent.length, 0)
   const { events } = await readEvents(h.root)
   assert.equal(events.filter((e) => e.type === 'utterance').length, 0)
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('router：她带回的本机图另发一次，不塞进文字那一条', async () => {
+  const h = await harness({
+    reply: '你看。',
+    content: [
+      { type: 'text', text: '你看。' },
+      { type: 'image', path: '/tmp/fish-shot.png' },
+      { type: 'image_file', source: { url: 'file:///tmp/fish-b.webp' } },
+    ],
+    config: baseConfig,
+  })
+  const r = await h.router.handle(groupMsg())
+  assert.equal(r.sent, true, JSON.stringify(r))
+  assert.equal(h.adapter.sent.length, 2)
+  assert.equal(h.adapter.sent[0].text, '你看')
+  assert.equal(h.adapter.sent[0].images, undefined)
+  assert.equal(h.adapter.sent[1].text, '')
+  assert.deepEqual(h.adapter.sent[1].images, ['/tmp/fish-shot.png', '/tmp/fish-b.webp'])
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('代发：带上本机图时原样交给适配器，流水仍是那句话', async () => {
+  const h = await harness({ config: baseConfig })
+  const r = await h.router.sendAs({
+    channel: 'qq',
+    kind: 'private',
+    conversationId: '42',
+    text: '这张。',
+    images: ['/tmp/fish-shot.png', '  ', 'https://example.com/a.png'],
+  })
+  assert.equal(r.ok, true)
+  assert.equal(h.adapter.sent.length, 1)
+  assert.equal(h.adapter.sent[0].text, '这张。')
+  assert.equal(h.adapter.sent[0].conversation.kind, 'private')
+  assert.deepEqual(h.adapter.sent[0].images, ['/tmp/fish-shot.png', 'https://example.com/a.png'])
+  const { events } = await readEvents(h.root)
+  assert.equal(events.length, 0)
   await fs.rm(h.root, { recursive: true, force: true })
 })
 

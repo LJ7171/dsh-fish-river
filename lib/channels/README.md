@@ -23,6 +23,7 @@ await adapter.stop()             // → void
 await adapter.send({             // → { ok, id?, why? }  永不抛
   conversation: { kind: 'dm' | 'group', id, name },
   text,
+  images,                    // 可选。本机绝对路径。目前只有 weixin 会把它们发出去
 })
 const off = adapter.onMessage(fn)  // → 注销函数
 ```
