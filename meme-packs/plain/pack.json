@@ -1,0 +1,12 @@
+{
+  "id": "plain",
+  "name": "占位",
+  "items": [
+    { "file": "heart.png", "tags": ["比心"] },
+    { "file": "blank.png", "tags": ["无语"] },
+    { "file": "sleep.png", "tags": ["睡觉"] },
+    { "file": "wave.png", "tags": ["打招呼"] },
+    { "file": "ok.png", "tags": ["点赞"] },
+    { "file": "huh.png", "tags": ["疑问"] }
+  ]
+}
