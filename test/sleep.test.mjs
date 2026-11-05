@@ -15,7 +15,7 @@ import { writeConfig } from '../lib/store.js'
 import { startScheduler } from '../lib/scheduler.js'
 import { postComment, scanIfAwake } from '../lib/comment.js'
 import {
-  advance, armRoll, blankState, consumeLook, diceOpen, dueRolls, hitRoll,
+  advance, armRoll, blankState, diceOpen, dueRolls, markAct, markBlocked, rollSegment,
   inActiveWindow, nextActiveStart, readSleep, sleepEnabled, writeSleep,
 } from '../lib/sleep.js'
 
@@ -51,7 +51,8 @@ function asleepAt(t) {
     wokeInside: false,
     looked: true,
     segmentId: 0,
-    rolls: { bili: 0, douyin: 0, zhihu: 0, reply: 0 },
+    acts: { bili: 0, douyin: 0, zhihu: 0, reply: 0 },
+    blocked: { bili: 0, douyin: 0, zhihu: 0, reply: 0 },
     nextRollAt: { bili: 0, douyin: 0, zhihu: 0, reply: 0 },
   }
 }
@@ -78,6 +79,14 @@ test('默认开着作息，时刻和间隔夹在界限里', () => {
   assert.equal(inActiveWindow(c, new Date(2026, 10, 5, 22, 59)), true)
   assert.equal(inActiveWindow(c, new Date(2026, 10, 5, 23, 0)), false)
   assert.equal(inActiveWindow(c, new Date(2026, 10, 5, 3, 0)), false)
+})
+
+test('每天配额迁到 sleep.daily：新值优先，老 perDay 只当迁移来源', () => {
+  const migrated = normalizeConfig({ browse: { perDay: 3, douyin: { perDay: 2 } }, zhihu: { perDay: 6, recommend: { perDay: 9 } }, comment: { perDay: 4, replyPerDay: 5 } })
+  assert.deepEqual(migrated.sleep.daily, { bili: 3, douyin: 2, zhihu: 6, recommend: 9, comment: 4, reply: 5 })
+  const explicit = normalizeConfig({ sleep: { daily: { bili: 1 } }, browse: { perDay: 3 } })
+  assert.equal(explicit.sleep.daily.bili, 1, '新配置优先')
+  assert.equal(explicit.sleep.daily.zhihu, 4, '缺的项回默认')
 })
 
 test('窗外微信只开会话苏醒，静默够了再睡，不掷骰', () => {
@@ -154,29 +163,66 @@ test('23:00 还醒着就结束掷骰并入睡', () => {
   assert.deepEqual(dueRolls(end.state, cfg, at(2026, 11, 5, 23, 0)), [])
 })
 
-test('每路 d=2 后停掷，渠道计数互不占用', () => {
+test('每路「真的上网」2 次后停掷；渠道互不占用', () => {
   const t = at(2026, 11, 5, 12, 0)
-  let s = consumeLook({
+  let s = {
     ...blankState(cfg, t),
     mode: 'dice_awake',
     looked: false,
     wokeInside: true,
-  }, cfg, t, () => 0)
-  assert.equal(s.rolls.bili, 1)
-  assert.equal(s.rolls.zhihu, 1)
-  assert.equal(s.rolls.reply, 1)
-  assert.equal(s.rolls.douyin, 1)
+  }
+  // 段首掷骰：只是允许去，不算一次上网
+  const rolled = rollSegment(s, cfg, t, () => 0)
+  s = rolled.state
+  assert.deepEqual(s.acts, { bili: 0, douyin: 0, zhihu: 0, reply: 0 }, '段首不再预扣')
+  assert.equal(s.looked, true)
+  assert.deepEqual(rolled.hits.sort(), ['bili', 'douyin', 'reply', 'zhihu'])
   assert.deepEqual(dueRolls(s, cfg, t + 29 * 60_000), [])
   const due = dueRolls(s, cfg, t + 30 * 60_000)
   assert.ok(due.includes('bili') && due.includes('zhihu') && due.includes('reply') && due.includes('douyin'))
-  s = hitRoll(armRoll(s, cfg, 'bili', t + 30 * 60_000, () => 0), 'bili')
-  assert.equal(s.rolls.bili, 2)
-  assert.equal(s.rolls.zhihu, 1, 'B 站满了不扣知乎')
+
+  // 真的刷了两次 B 站 → 停；知乎不受影响
+  s = markAct(s, 'bili', t + 30 * 60_000)
+  s = markAct(s, 'bili', t + 31 * 60_000)
+  assert.equal(s.acts.bili, 2)
+  assert.equal(s.acts.zhihu, 0)
   const later = dueRolls(s, cfg, t + 60 * 60_000)
   assert.equal(later.includes('bili'), false)
   assert.equal(later.includes('zhihu'), true)
-  const full = { ...s, rolls: { bili: 2, douyin: 2, zhihu: 2, reply: 2 } }
+
+  // 被挡的那一路：本段不再掷，但不算次数
+  s = markBlocked(s, 'zhihu')
+  assert.equal(s.acts.zhihu, 0)
+  assert.equal(dueRolls({ ...s, nextRollAt: { ...s.nextRollAt, zhihu: 0 } }, cfg, t + 60 * 60_000).includes('zhihu'), false)
+
+  // 全部满 2 → 没有可掷的
+  const full = { ...s, acts: { bili: 2, douyin: 2, zhihu: 2, reply: 2 } }
   assert.deepEqual(dueRolls(full, cfg, t + 120 * 60_000), [])
+})
+
+test('睡满醒来不会下一分钟又睡（lastActivityAt 跟着醒来走）', () => {
+  const t0 = at(2026, 11, 5, 7, 1)
+  const s = {
+    ...asleepAt(t0),
+    lastActivityAt: at(2026, 11, 5, 5, 0),
+    wakeDueAt: t0 - 1000,
+  }
+  const woke = advance(s, cfg, t0, { rng: () => 0.5 })
+  assert.equal(woke.reason, 'nap-done')
+  assert.equal(woke.state.mode, 'dice_awake')
+  assert.equal(woke.state.lastActivityAt, t0, '醒来这一刻就是最近活动，不该沿用睡前的')
+  const next = advance(woke.state, cfg, t0 + 60_000, { rng: () => 0.5 })
+  assert.equal(next.state.mode, 'dice_awake', '下一分钟不该被判定为 90 分钟没动')
+})
+
+test('窗外不掷骰：手动叫醒在 23:30，00:05 也不该冒出一路', () => {
+  const t = at(2026, 11, 5, 23, 30)
+  let s = advance(asleepAt(t), cfg, t, { manual: true, rng: () => 0 }).state
+  assert.equal(s.mode, 'dice_awake')
+  assert.equal(s.wokeInside, false)
+  s = rollSegment(s, cfg, t, () => 0).state
+  const later = at(2026, 11, 6, 0, 5)
+  assert.deepEqual(dueRolls(s, cfg, later), [])
 })
 
 test('睡眠时扫回复和发评论都 no-op；可掷骰才放行', async () => {

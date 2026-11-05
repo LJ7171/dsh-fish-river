@@ -69,7 +69,10 @@ test('不在上网时段时，一次 B 站接口都不发', async () => {
       now: new Date(2026, 9, 23, 15, 0, 0), // 15:00，在时段外
       events: [],
     }, () => {})
-    assert.deepEqual(out, { text: '', intro: '', picks: [] })
+    assert.equal(out.text, '')
+    assert.deepEqual(out.picks, [])
+    assert.equal(out.acted.bili ?? false, false, '没上网就不算动作')
+    assert.equal(out.blocked.bili, true, '被时段挡住要标出来（本段停手用）')
     assert.deepEqual(calls, [], '时段外不该碰任何接口')
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
