@@ -11,6 +11,7 @@ import { join } from 'node:path'
 
 import {
   sniffMime,
+  fetchableImageUrl,
   decodeBase64Image,
   parseDuration,
   detectFfmpeg,
@@ -139,4 +140,18 @@ test('sweepMedia：目录还不存在时返回全零，不抛错', async () => {
   const root = join(tmpdir(), `dsh-fish-missing-${Date.now()}`)
   const r = await sweepMedia(root)
   assert.deepEqual(r, { removed: 0, kept: 0 })
+})
+
+
+test('评论图 URL 只放 https 的公网地址：http / 本机 / 私网一律不抓', () => {
+  assert.equal(fetchableImageUrl('https://i0.hdslb.com/bfs/x.jpg'), 'https://i0.hdslb.com/bfs/x.jpg')
+  assert.equal(fetchableImageUrl('http://i0.hdslb.com/bfs/x.jpg'), '')
+  assert.equal(fetchableImageUrl('https://localhost/a.png'), '')
+  assert.equal(fetchableImageUrl('https://127.0.0.1:3080/a.png'), '')
+  assert.equal(fetchableImageUrl('https://10.0.0.5/a.png'), '')
+  assert.equal(fetchableImageUrl('https://172.20.1.1/a.png'), '')
+  assert.equal(fetchableImageUrl('https://192.168.1.2/a.png'), '')
+  assert.equal(fetchableImageUrl('https://169.254.169.254/latest/meta-data'), '')
+  assert.equal(fetchableImageUrl('file:///etc/passwd'), '')
+  assert.equal(fetchableImageUrl('nonsense'), '')
 })

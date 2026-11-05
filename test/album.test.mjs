@@ -261,3 +261,23 @@ test('工具回执不带她能接着念的句子', () => {
   assert.equal(text, '[不是图]')
   assert.doesNotMatch(tool.description, /总是|爱发|性格/)
 })
+
+
+test('同一张源图收两次：只复制一份，第二次回「已经在相册」', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-album-dup-'))
+  try {
+    const src = join(root, 'media', 'one.png')
+    await mkdir(join(root, 'media'), { recursive: true })
+    await writeFile(src, PNG)
+    const a = await keepImage(root, { path: src })
+    assert.equal(a.ok, true)
+    const b = await keepImage(root, { path: src })
+    assert.equal(b.ok, true)
+    assert.match(b.note, /已经在相册/)
+    assert.equal(a.path, b.path)
+    const db = await readAlbum(root)
+    assert.equal(db.items.length, 1, '台账里只该有一条')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})

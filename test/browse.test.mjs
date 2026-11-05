@@ -459,3 +459,15 @@ test('quotesOf 只取 HER_TYPES 且只取当天', () => {
   const q = quotesOf(events, '2026-10-22')
   assert.deepEqual(q.map((x) => x.text), ['a', 'd'])
 })
+
+
+test('素材开头那句场合跟着配置走（家门号 / 出门号不再永远默认）', () => {
+  const pack = (i) => ({
+    video: v({ bvid: `BV${i}`, title: '一条素材' }),
+    desc: '', tags: [], comments: [], danmaku: [], pubdate: null,
+  })
+  const out = renderMaterial([pack(1)], { config: { channels: { bili: { accountOf: 'home', bond: 'close' } } } })
+  assert.match(out, /家里的号/)
+  const out2 = renderMaterial([pack(1)], { config: { channels: { bili: { accountOf: 'outing', bond: 'open' } } } })
+  assert.match(out2, /出门看见/)
+})
