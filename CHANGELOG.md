@@ -1,3 +1,21 @@
+## 0.1.74 — 2026-11-05
+
+- 她可以**在醒来时主动找他**（只在她自己的醒来回合里，定时醒 / 手动叫醒）：
+  - `send_message({ text })`：发一句话给微信里的重要的人；
+  - `send_image({ path, caption? })`：醒来时发一张本机图（可配一句话），渠道轮里行为不变；
+  - 一天最多 `outreach.perDay` 次（默认 **2**）：文字、图片、图配文都只算一次；
+    被拒（没凭证 / 被闸拦 / 路径不对）不占次数；
+  - 出站过 `screenOutgoing`；发出去之后写 journal 一行 + 一条 `utterance`
+    （channel=weixin、private、origin=self、influence=constitution）——她记得自己说过。
+- **context_token 持久化**：`<root>/weixin-context.json`（0600，最近 50 个联系人），
+  启动读回、收到消息更新、发送被拒时丢掉坏 token。重启后不必先等他发一条才能主动发。
+- 新增 `lib/wakeTurn.js`（醒来回合状态，30 分钟过期）与 `lib/outreach.js`
+  （额度台账 `outreach-state.json` 0600、目标解析、过闸、发送）；
+  渠道层注册 proactive sender（`host.js`），工具只在醒来轮放行；
+  设置页放在「成长 → 成长节奏设置」，不新开卡片；身份文档只在开关打开时加一句。
+- 测试：`test/outreach.test.mjs` 7 条（醒来轮限定、额度、失败不占次数、出站闸、发图共用额度、
+  token 持久化 0600、台账 0600）。
+
 ## 0.1.72 — 2026-11-05
 
 - 表情包一轮能挑几张，改成设置项 `meme.maxPerTurn`：**默认 0 = 不限**，可设 1–5。
