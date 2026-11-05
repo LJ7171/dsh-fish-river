@@ -199,6 +199,7 @@ test('默认配置：关着、白天 08:00–20:00、推荐单独 8 次', () => 
   assert.equal(cfg.zhihu.history.enabled, true)
   assert.equal(cfg.zhihu.recommend.enabled, true)
   assert.equal(cfg.zhihu.recommend.perDay, 8)
+  assert.equal(cfg.zhihu.voices, false, '别人的评论默认不记')
 })
 
 test('配置夹紧：次数与条数超范围会被拉回', () => {
