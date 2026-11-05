@@ -86,7 +86,7 @@ test('默认开着作息，时刻和间隔夹在界限里', () => {
 
 test('每天配额：上网四项迁到 sleep.daily，评论两项留在 comment', () => {
   const migrated = normalizeConfig({ browse: { perDay: 3, douyin: { perDay: 2 } }, zhihu: { perDay: 6, recommend: { perDay: 9 } }, comment: { perDay: 4, replyPerDay: 5 } })
-  assert.deepEqual(migrated.sleep.daily, { bili: 3, douyin: 2, zhihu: 6 })
+  assert.deepEqual(migrated.sleep.daily, { bili: 3, douyin: 2, zhihu: 6, tieba: 2 })
   assert.equal(migrated.comment.perDay, 4, '评论配额仍在 comment')
   assert.equal(migrated.comment.replyPerDay, 5)
   const explicit = normalizeConfig({ sleep: { daily: { bili: 1 } }, browse: { perDay: 3 } })
@@ -183,7 +183,7 @@ test('每路「真的上网」2 次后停掷；渠道互不占用', () => {
   // 段首掷骰：只是允许去，不算一次上网
   const rolled = rollSegment(s, cfg, t, () => 0)
   s = rolled.state
-  assert.deepEqual(s.acts, { bili: 0, douyin: 0, zhihu: 0, reply: 0 }, '段首不再预扣')
+  assert.deepEqual(s.acts, { bili: 0, douyin: 0, zhihu: 0, tieba: 0, reply: 0 }, '段首不再预扣')
   assert.equal(s.looked, true)
   assert.deepEqual(rolled.hits.sort(), ['bili', 'douyin', 'reply', 'zhihu'])
   assert.deepEqual(dueRolls(s, cfg, t + 29 * 60_000), [])
@@ -316,7 +316,7 @@ test('每天已用：B 站/抖音数事件流，知乎数当天 runs，分片和
     await appendEvent({ type: 'meta', text: `dy-browse:${dk} [{"id":"a"}]` }, head, root)
     await appendEvent({ type: 'meta', text: 'browse:2000-01-01 []' }, head, root)
     await writeZhihuState(root, { dateKey: dk, runs: 3, seen: {} })
-    assert.deepEqual(await readDailySpent(root, dk), { bili: 1, douyin: 2, zhihu: 3 })
+    assert.deepEqual(await readDailySpent(root, dk), { bili: 1, douyin: 2, zhihu: 3, tieba: 0 })
     await writeZhihuState(root, { dateKey: '2000-01-01', runs: 9, seen: {} })
     assert.equal((await readDailySpent(root, dk)).zhihu, 0, '隔天的知乎次数不算今天')
   } finally {
@@ -330,6 +330,7 @@ test('作息页每天配额旁边写出当天已用', async () => {
   assert.match(cl, /extra: usedLine\(quotaUsed, 'bili', qBili\)/)
   assert.match(cl, /extra: usedLine\(quotaUsed, 'douyin', qDouyin\)/)
   assert.match(cl, /extra: usedLine\(quotaUsed, 'zhihu', qZhihu\)/)
+  assert.match(cl, /extra: usedLine\(quotaUsed, 'tieba', qTieba\)/)
   const obs = await readFile(new URL('../lib/observe.js', import.meta.url), 'utf8')
   assert.match(obs, /dailyUsed = await readDailySpent\(root\)/)
 })
