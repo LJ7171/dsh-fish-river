@@ -72,7 +72,10 @@ test('页签顺序：插件 → 原理 → 数据 → 反馈；出门排在「�
   // 出门是去干活、渠道是会说话并记住人。它同样常驻、不进自动保存页签。
   // 2026-11-02（用户 m02861）：出门不再是独立页签，并入「上网」底部；它原来的位置换成「社会」——
   // 社会层是她在外面学到的东西，跟渠道是同一类（跟外面打交道）。社会页只读，开闸只能她自己按。
-  assert.deepEqual(ids, ['now', 'grow', 'home', 'bili', 'social', 'channels', 'memory', 'env', 'principle', 'data', 'feedback'])
+  // 2026-11-05：作息页紧跟成长——它是「她的一天」里的时间，不是另一类配置。
+  assert.deepEqual(ids, ['now', 'grow', 'sleep', 'home', 'bili', 'social', 'channels', 'memory', 'env', 'principle', 'data', 'feedback'])
+  assert.ok(cl.includes("sleep: '作息："), 'TAB_HELP 必须有作息页说明')
+  assert.ok(cl.includes("showTab('sleep') ? sleepPage : null"), '作息页要挂进渲染树')
   assert.ok(cl.includes("channels: '渠道："), 'TAB_HELP 必须有渠道页说明')
   assert.ok(cl.includes("showTab('channels') ? channelsPage : null"), '渠道页要挂进渲染树')
   assert.ok(!/AUTO_SAVE_TABS = new Set\(.*channels/.test(cl), '渠道不进自动保存页签')

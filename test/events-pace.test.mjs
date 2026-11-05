@@ -129,7 +129,9 @@ test('pick 把 growthDays 与 squeeze 传给 isSpent（源码级守门）', asyn
   assert.match(src, /isSpent\(t, fired, \{ now, growthDays: model\.growthDays, squeeze: opts\.squeeze \}\)/)
   const sched = fs.readFileSync(new URL('../lib/scheduler.js', import.meta.url), 'utf8')
   assert.match(sched, /gapSqueeze\(gapSinceLastWake\(events\)\)/)
-  assert.equal((sched.match(/squeeze: gapSqueeze\(/g) || []).length, 2, '自动唤醒与手动唤醒都要补偿')
+  // 作息固定后，自动唤醒不再走 plan()（只决定要不要上网、不挑成长卡）；
+  // 只剩手动叫醒那一条还按空档补偿。
+  assert.equal((sched.match(/squeeze: gapSqueeze\(/g) || []).length, 1, '手动叫醒要补偿')
 })
 
 test('成长期设成 7 天时，一天最多该出几张卡不会变成两张撞脸', () => {

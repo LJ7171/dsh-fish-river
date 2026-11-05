@@ -39,8 +39,8 @@ test('状态卡的四个句子按用户定稿改了', async () => {
 
 test('「改完就生效」那句话只出现在真有设置项的页签', async () => {
   const src = await readFile(CLIENT, 'utf8')
-  assert.ok(src.includes("const AUTO_SAVE_TABS = new Set(['grow', 'bili', 'memory'])"),
-    '只有成长 / 上网 / 记忆三页是自动保存')
+  assert.ok(src.includes("const AUTO_SAVE_TABS = new Set(['grow', 'bili', 'memory', 'sleep'])"),
+    '成长 / 上网 / 记忆 / 作息是自动保存')
   assert.ok(src.includes("AUTO_SAVE_TABS.has(tab) ? h('p'"),
     '提示行要按当前页签判断')
   // 2026-10-29 用户：「没保存：不允许修改：bili」和「改完就生效，不需要点保存」挤在一起，
@@ -50,7 +50,7 @@ test('「改完就生效」那句话只出现在真有设置项的页签', async
   assert.ok(src.includes("h('p', { className: 'ok', style: { margin: '0 0 8px' } }, autoNote)"),
     '「已保存」回执放在页签栏上方')
   for (const t of ['now', 'home', 'env', 'data']) {
-    assert.ok(!src.includes(`AUTO_SAVE_TABS = new Set(['grow', 'bili', 'memory', '${t}'`),
+    assert.ok(!src.includes(`AUTO_SAVE_TABS = new Set(['grow', 'bili', 'memory', 'sleep', '${t}'`),
       `${t} 不该加进自动保存页签`)
   }
 })

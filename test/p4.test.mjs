@@ -87,9 +87,6 @@ test('配额上限被夹住，坏值回退默认', () => {
   assert.equal(normalizeConfig({ comment: { perDay: -3 } }).comment.perDay, 0)
   assert.equal(normalizeConfig({ comment: { replyPerDay: 50 } }).comment.replyPerDay, 10)
   assert.equal(normalizeConfig({ comment: { scanEveryMin: 1 } }).comment.scanEveryMin, 5)
-  // 时段坏了回退到 comment 自己的默认，不跟着 window 走
-  const cfg = normalizeConfig({ comment: { window: ['25:00', 'x'] } })
-  assert.deepEqual(cfg.comment.window, ['20:00', '23:00'])
 })
 
 test('两种配额各自独立计数，且能从事件流复原', async () => {

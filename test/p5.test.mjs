@@ -27,25 +27,13 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const CLIENT = join(HERE, '..', 'lib', 'client.js')
 const OBSERVE = join(HERE, '..', 'lib', 'observe.js')
 
-test('默认配置里上网时段是独立的一项', () => {
+test('上网/知乎/说话的时段已删除：固定作息接管，不再有这三段默认值', () => {
   const cfg = normalizeConfig({})
-  assert.deepEqual(cfg.browse.window, ['08:00', '23:00'])
-  assert.deepEqual(cfg.window, ['20:00', '23:00'])
-  assert.deepEqual(cfg.comment.window, ['20:00', '23:00'])
-})
-
-test('坏时段只回退自己那一项，不牵连别的时段', () => {
-  const cfg = normalizeConfig({
-    window: ['乱写', '23:00'],
-    browse: { window: ['09:00', '18:00'] },
-    comment: { window: ['09:00', '09:00'] }, // 起止相同 = 无效
-  })
-  // 醒来时段坏了 → 回默认
+  assert.equal(cfg.browse.window, undefined, 'B 站时段已删')
+  assert.equal(cfg.comment.window, undefined, '说话时段已删')
+  assert.equal(cfg.zhihu.window, undefined, '知乎时段已删')
+  // 醒来时段还在配置里（手动叫醒的时间口径用它），但不再驱动自动醒来
   assert.deepEqual(cfg.window, DEFAULTS.window)
-  // 上网时段是好的 → 必须原样保留，不能被上一条连坐
-  assert.deepEqual(cfg.browse.window, ['09:00', '18:00'])
-  // 说话时段起止相同 → 回它自己的默认，不跟 window 走
-  assert.deepEqual(cfg.comment.window, DEFAULTS.comment.window)
 })
 
 test('上网时段支持跨零点', () => {
@@ -69,7 +57,10 @@ test('不在上网时段时，一次 B 站接口都不发', async () => {
       now: new Date(2026, 9, 23, 15, 0, 0), // 15:00，在时段外
       events: [],
     }, () => {})
-    assert.deepEqual(out, { text: '', intro: '', picks: [] })
+    assert.equal(out.text, '')
+    assert.deepEqual(out.picks, [])
+    assert.equal(out.acted.bili ?? false, false, '没上网就不算动作')
+    assert.equal(out.blocked.bili, true, '被时段挡住要标出来（本段停手用）')
     assert.deepEqual(calls, [], '时段外不该碰任何接口')
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
