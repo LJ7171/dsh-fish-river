@@ -82,7 +82,7 @@ function fakeAdapter() {
   }
 }
 
-async function harness({ reply = '嗯。', content, stage = 3, config = {}, root, ownerIds = {}, extraAdapters = [], sleep, bubbleGapMs: gap } = {}) {
+async function harness({ reply = '嗯。', content, stage = 3, config = {}, root, ownerIds = {}, extraAdapters = [], sleep, bubbleGapMs: gap, schedule, cancel } = {}) {
   const r = root ?? (await tmpRoot())
   const journal = createJournal(r)
   const people = createPeople(r)
@@ -99,6 +99,8 @@ async function harness({ reply = '嗯。', content, stage = 3, config = {}, root
     getState: async () => ({ sessionId: 's1', stage }),
     sleep,
     bubbleGapMs: gap,
+    schedule,
+    cancel,
   })
   await router.start()
   return { router, adapter, journal, people, calls, root: r }
@@ -235,8 +237,9 @@ test('router：该问的时候，提示词里有处境没有台词', async () =>
   assert.match(prompt, /Lily/)
   assert.match(prompt, /在吗/)
   assert.doesNotMatch(prompt, /你是一个|请你扮演/)
-  assert.match(prompt, /少用句号/)
-  assert.equal(h.adapter.sent[0].text, '在', '口语化默认开，句末句号不发出去')
+  assert.match(prompt, /标点跟着语气/)
+  assert.doesNotMatch(prompt, /少用句号/)
+  assert.equal(h.adapter.sent[0].text, '在。', '轻整理不剥句末句号')
   assert.equal(h.adapter.sent[0].conversation.id, '111')
   // 她说的话要落成事件，且群里的可见性是 public
   const { events } = await readEvents(h.root)
@@ -479,17 +482,21 @@ test('buildPrompt：分段连发开着才提聊天窗口，而且不是人设', 
   assert.doesNotMatch(off, /能短就短/)
   assert.doesNotMatch(off, /聊天窗口/)
   assert.doesNotMatch(off, /少用句号/)
+  assert.doesNotMatch(off, /标点跟着语气/)
 })
 
-test('buildPrompt：口语化开着才提少用句号，而且不是人设', () => {
+test('buildPrompt：标点轻整理开着才提语气，而且不说少用句号', () => {
   const msg = groupMsg()
   const on = buildPrompt(msg, [], { isOwner: false, casualPunctuation: true })
-  assert.match(on, /少用句号/)
-  assert.match(on, /像微信聊天/)
+  assert.match(on, /标点跟着语气/)
+  assert.match(on, /感叹号/)
+  assert.match(on, /没有标点的电报/)
+  assert.doesNotMatch(on, /少用句号/)
   assert.doesNotMatch(on, /你是/)
   assert.doesNotMatch(on, /不可以/)
   const off = buildPrompt(msg, [], { isOwner: false, casualPunctuation: false })
   assert.doesNotMatch(off, /少用句号/)
+  assert.doesNotMatch(off, /标点跟着语气/)
 })
 
 test('router：分段连发关着时，多句仍一次发出，提示词不提聊天窗口', async () => {
@@ -509,6 +516,7 @@ test('router：分段连发关着时，多句仍一次发出，提示词不提�
   assert.deepEqual(gaps, [], '关着时泡间不该停')
   assert.doesNotMatch(h.calls[0].content[0].text, /能短就短/)
   assert.doesNotMatch(h.calls[0].content[0].text, /少用句号/)
+  assert.doesNotMatch(h.calls[0].content[0].text, /标点跟着语气/)
   const { events } = await readEvents(h.root)
   const said = events.filter((e) => e.type === 'utterance')
   assert.equal(said.length, 1)
@@ -606,7 +614,7 @@ test('代发不拆气泡，哪怕分段连发开着', async () => {
   await fs.rm(h.root, { recursive: true, force: true })
 })
 
-test('router：口语化默认开，句号去掉，数字和链接还在；流水仍是原句', async () => {
+test('router：标点轻整理默认开，句号留着，数字和链接还在；流水仍是原句', async () => {
   // 不写 https://：出站筛会把 `s://` 当成盘符路径拦下。域名本身够测「点还在」。
   const reply = '在。今天看了 v1.2，去 example.com/a?x=1.2 呢？'
   const h = await harness({ reply, config: baseConfig })
@@ -614,8 +622,9 @@ test('router：口语化默认开，句号去掉，数字和链接还在；流�
   assert.equal(r.sent, true, JSON.stringify(r))
   assert.equal(r.text, reply, '返回给调用方的仍是筛过的原文')
   assert.equal(h.adapter.sent.length, 1)
-  assert.equal(h.adapter.sent[0].text, '在 今天看了 v1.2，去 example.com/a?x=1.2 呢？')
-  assert.match(h.calls[0].content[0].text, /少用句号/)
+  assert.equal(h.adapter.sent[0].text, reply, '句末句号留着，数字和链接也不动')
+  assert.match(h.calls[0].content[0].text, /标点跟着语气/)
+  assert.doesNotMatch(h.calls[0].content[0].text, /少用句号/)
   const { events } = await readEvents(h.root)
   assert.equal(events.find((e) => e.type === 'utterance').text, reply)
   await fs.rm(h.root, { recursive: true, force: true })
@@ -631,10 +640,11 @@ test('router：口语化关掉时，发出去的字和原文一样', async () =>
   assert.equal(r.sent, true)
   assert.equal(h.adapter.sent[0].text, reply)
   assert.doesNotMatch(h.calls[0].content[0].text, /少用句号/)
+  assert.doesNotMatch(h.calls[0].content[0].text, /标点跟着语气/)
   await fs.rm(h.root, { recursive: true, force: true })
 })
 
-test('router：分段之后每一段各自去掉句号', async () => {
+test('router：分段之后每一段各自轻整理，句号还在', async () => {
   const reply = '在。\n\n刚看到你消息。今天有点忙。'
   const gaps = []
   const h = await harness({
@@ -646,7 +656,7 @@ test('router：分段之后每一段各自去掉句号', async () => {
   const r = await h.router.handle(groupMsg())
   assert.equal(r.sent, true)
   assert.equal(r.text, reply)
-  assert.deepEqual(h.adapter.sent.map((m) => m.text), ['在', '刚看到你消息', '今天有点忙'])
+  assert.deepEqual(h.adapter.sent.map((m) => m.text), ['在。', '刚看到你消息。', '今天有点忙。'])
   assert.deepEqual(gaps, [450, 450])
   assert.equal(casualPunctuationOn({ im: { bubbleSplit: true } }), true, '只开分段时口语化仍默认开')
   const { events } = await readEvents(h.root)
@@ -654,15 +664,19 @@ test('router：分段之后每一段各自去掉句号', async () => {
   await fs.rm(h.root, { recursive: true, force: true })
 })
 
-test('router：口语化后没有字可发，就不发空消息', async () => {
+test('router：单独句号照发；连续感叹号收成一个', async () => {
   const h = await harness({ reply: '。', config: baseConfig })
   const r = await h.router.handle(groupMsg())
-  assert.equal(r.sent, false)
-  assert.equal(r.why, 'silent')
-  assert.equal(h.adapter.sent.length, 0)
-  const { events } = await readEvents(h.root)
-  assert.equal(events.filter((e) => e.type === 'utterance').length, 0)
+  assert.equal(r.sent, true)
+  assert.equal(h.adapter.sent[0].text, '。')
+  const h2 = await harness({ reply: '好！！！', config: baseConfig })
+  const r2 = await h2.router.handle(groupMsg())
+  assert.equal(r2.sent, true)
+  assert.equal(h2.adapter.sent[0].text, '好！')
+  const { events } = await readEvents(h2.root)
+  assert.equal(events.find((e) => e.type === 'utterance').text, '好！！！', '流水记原文')
   await fs.rm(h.root, { recursive: true, force: true })
+  await fs.rm(h2.root, { recursive: true, force: true })
 })
 
 test('router：她带回的本机图另发一次，不塞进文字那一条', async () => {
@@ -678,7 +692,7 @@ test('router：她带回的本机图另发一次，不塞进文字那一条', as
   const r = await h.router.handle(groupMsg())
   assert.equal(r.sent, true, JSON.stringify(r))
   assert.equal(h.adapter.sent.length, 2)
-  assert.equal(h.adapter.sent[0].text, '你看')
+  assert.equal(h.adapter.sent[0].text, '你看。')
   assert.equal(h.adapter.sent[0].images, undefined)
   assert.equal(h.adapter.sent[1].text, '')
   assert.deepEqual(h.adapter.sent[1].images, ['/tmp/fish-shot.png', '/tmp/fish-b.webp'])
@@ -710,6 +724,162 @@ test('代发不口语化，哪怕开关开着', async () => {
   const r = await h.router.sendAs({ channel: 'qq', kind: 'group', conversationId: '111', text })
   assert.equal(r.ok, true)
   assert.equal(h.adapter.sent[0].text, text)
-  assert.equal(casualizePunctuation(text), '这事我来定')
+  assert.equal(casualizePunctuation(text), text, '句末句号不再剥掉')
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+function soon(ms = 40) {
+  return new Promise((r) => setTimeout(r, ms))
+}
+
+test('router：同一会话的新消息重置静默窗，到点并成一次 heard', async () => {
+  const timers = []
+  const h = await harness({
+    reply: '在。',
+    config: { channels: { qq: { enabled: true, ownerId: '10086' } } },
+    ownerIds: { qq: '10086' },
+    schedule: (fn, ms) => {
+      const t = { fn, ms, cancelled: false }
+      timers.push(t)
+      return t
+    },
+    cancel: (t) => { if (t) t.cancelled = true },
+  })
+  const dm = (text) => groupMsg({
+    kind: 'dm', conversationId: '10086', personId: 'u_10086', personName: '甲', text, mentionedSelf: false,
+  })
+  h.router.accept(dm('第一句'))
+  await soon()
+  assert.equal(h.calls.length, 0, '静默窗里还不该想')
+  assert.equal(timers.filter((t) => !t.cancelled).length, 1)
+  assert.equal(timers.find((t) => !t.cancelled).ms, 2000)
+  h.router.accept(dm('第二句'))
+  await soon()
+  const live = timers.filter((t) => !t.cancelled)
+  assert.equal(live.length, 1, '新消息把上一轮计时清掉')
+  assert.equal(timers[0].cancelled, true)
+  live[0].fn()
+  await soon(80)
+  assert.equal(h.calls.length, 1)
+  const prompt = h.calls[0].content[0].text
+  assert.match(prompt, /第一句/)
+  assert.match(prompt, /第二句/)
+  const { events } = await readEvents(h.root)
+  const heard = events.filter((e) => e.type === 'heard')
+  assert.equal(heard.length, 1)
+  assert.match(heard[0].text, /第一句/)
+  assert.match(heard[0].text, /第二句/)
+  await h.router.stop()
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('router：不同的人不共用静默窗；出门的群不等', async () => {
+  const timers = []
+  const h = await harness({
+    reply: '在。',
+    config: { channels: { weixin: { enabled: true } } },
+    schedule: (fn, ms) => {
+      const t = { fn, ms, cancelled: false }
+      timers.push(t)
+      return t
+    },
+    cancel: (t) => { if (t) t.cancelled = true },
+  })
+  const dm = (id, text) => ({
+    channel: 'weixin', kind: 'dm', conversationId: id, personId: id, personName: '甲',
+    text, images: [], mentionedSelf: false, at: 1,
+  })
+  h.router.accept(dm('a', '家里'))
+  h.router.accept(dm('b', '另一边'))
+  await soon()
+  assert.equal(timers.filter((t) => !t.cancelled).length, 2, '两个人各开一窗')
+  let scheduled = 0
+  const g = await harness({
+    config: baseConfig,
+    schedule: () => { scheduled += 1; return {} },
+  })
+  g.router.accept(groupMsg({ text: '在吗' }))
+  await soon()
+  assert.equal(scheduled, 0, '出门的群不进静默窗')
+  assert.equal(g.calls.length, 1)
+  await h.router.stop()
+  await g.router.stop()
+  await fs.rm(h.root, { recursive: true, force: true })
+  await fs.rm(g.root, { recursive: true, force: true })
+})
+
+test('router：纯确认不叫醒，仍记 heard 和流水', async () => {
+  const h = await harness({ stage: 3, config: baseConfig })
+  const r = await h.router.handle(groupMsg({ kind: 'dm', conversationId: 'u_5', personId: 'u_5', text: '嗯', mentionedSelf: false }))
+  assert.equal(r.sent, false)
+  assert.equal(r.why, 'ack')
+  assert.equal(h.calls.length, 0)
+  const { events } = await readEvents(h.root)
+  assert.equal(events.filter((e) => e.type === 'heard').length, 1)
+  const lines = await h.journal.recent({ channel: 'qq', kind: 'dm', conversationId: 'u_5' })
+  assert.equal(lines.length, 1)
+  assert.equal(lines[0].text, '嗯')
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('router：问句、新内容、点名照常回；确认静默关掉也回', async () => {
+  const h = await harness({ stage: 3, config: baseConfig, reply: '在。' })
+  assert.equal((await h.router.handle(groupMsg({ kind: 'dm', conversationId: 'a', personId: 'u_a', text: '嗯？' }))).sent, true)
+  assert.equal((await h.router.handle(groupMsg({ kind: 'dm', conversationId: 'b', personId: 'u_b', text: '好的，明天三点见' }))).sent, true)
+  const mentioned = await h.router.handle(groupMsg({ text: '嗯' }))
+  assert.equal(mentioned.sent, true, '群里点了名，哪怕只是一声确认也回')
+  const h2 = await harness({
+    stage: 3,
+    config: { ...baseConfig, im: { ackSilence: false } },
+    reply: '在。',
+  })
+  assert.equal((await h2.router.handle(groupMsg({ kind: 'dm', conversationId: 'u_5', personId: 'u_5', text: '嗯', mentionedSelf: false }))).sent, true)
+  await fs.rm(h.root, { recursive: true, force: true })
+  await fs.rm(h2.root, { recursive: true, force: true })
+})
+
+test('router：短名单改过之后，不在名单里的确认照常回', async () => {
+  const h = await harness({
+    stage: 3,
+    config: { ...baseConfig, im: { ackPhrases: ['收到'] } },
+    reply: '在。',
+  })
+  const r = await h.router.handle(groupMsg({ kind: 'dm', conversationId: 'u_5', personId: 'u_5', text: '收到', mentionedSelf: false }))
+  assert.equal(r.why, 'ack')
+  assert.equal((await h.router.handle(groupMsg({ kind: 'dm', conversationId: 'u_6', personId: 'u_6', text: '嗯', mentionedSelf: false }))).sent, true)
+  assert.equal(r.sent, false)
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('router：静默窗里的两声确认并成一段，到点仍不叫醒', async () => {
+  const timers = []
+  const h = await harness({
+    config: { channels: { qq: { enabled: true, ownerId: '10086' } } },
+    ownerIds: { qq: '10086' },
+    schedule: (fn, ms) => {
+      const t = { fn, ms, cancelled: false }
+      timers.push(t)
+      return t
+    },
+    cancel: (t) => { if (t) t.cancelled = true },
+  })
+  const dm = (text) => groupMsg({
+    kind: 'dm', conversationId: '10086', personId: 'u_10086', text, mentionedSelf: false,
+  })
+  h.router.accept(dm('嗯'))
+  await soon()
+  h.router.accept(dm('好的'))
+  await soon()
+  const live = timers.filter((t) => !t.cancelled)
+  assert.equal(live.length, 1)
+  live[0].fn()
+  await soon(80)
+  assert.equal(h.calls.length, 0)
+  const { events } = await readEvents(h.root)
+  const heard = events.filter((e) => e.type === 'heard')
+  assert.equal(heard.length, 1)
+  assert.match(heard[0].text, /嗯/)
+  assert.match(heard[0].text, /好的/)
+  await h.router.stop()
   await fs.rm(h.root, { recursive: true, force: true })
 })

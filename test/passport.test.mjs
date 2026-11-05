@@ -266,6 +266,8 @@ test('队列：家门私聊插到已经排着的出门消息前面', async () =>
       qq: { enabled: true, replyInGroup: true, groups: ['111', '222'], mentionOnly: false },
       weixin: { enabled: true },
     },
+    // 这条测的是插队顺序。静默窗另有用例；这里关掉，免得家门私聊先等 2 秒。
+    im: { inboundSilenceMs: 0 },
   }
   const router = createRouter({
     ctx: h.ctx,
