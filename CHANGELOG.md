@@ -1,3 +1,11 @@
+## 0.1.66 — 2026-11-05
+
+- 微信可以**发出本机图片**了。`send({ conversation, text, images })` 在原来的文字之外，接受本机绝对路径（PNG / JPEG / WebP / GIF）。
+  流程跟官方 iLink 一致：明文算大小和 MD5 → 随机 AES key / filekey → `getuploadurl`（`media_type: 1`，`no_need_thumb: true`）→ AES-128-ECB + PKCS7 密文 POST 到 CDN → `sendmessage` 的 `image_item`。
+- 有字又有图时**分成两条消息**，字在前、图在后。一次最多 2 张，单张 ≤ 8MB；不是图片、太大、相对路径、网上的链接，都会直接说为什么，不去上传。
+- 她回复里如果带了本机图片块（或代发时带了 `images`），渠道路由会把路径交给适配器。目前只有微信会真的把图发出去。
+- 群照旧拒绝。不抓远程 URL。凭据仍然不进 `status()`、也不进 CDN 请求头。
+
 ## 0.1.65 — 2026-11-05
 
 - 知乎里的**图现在能看了**：`zhihu_look` 读回答/问题时会把正文里的图

@@ -10,12 +10,12 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, stat, rm } from 'fs/promises'
+import { mkdtemp, readFile, stat, rm, writeFile } from 'fs/promises'
 import { tmpdir } from 'os'
 import { join } from 'path'
 import { create } from '../lib/channels/weixin.js'
-import { createCipheriv, randomBytes } from 'crypto'
-import { createQr, pollQr, saveCredential, loadCredential, credentialPath, publicCredential } from '../lib/weixinqr.js'
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto'
+import { createQr, pollQr, saveCredential, loadCredential, credentialPath, publicCredential, CDN_BASE_URL } from '../lib/weixinqr.js'
 import { canReply } from '../lib/channels/gate.js'
 
 const T0 = 1700000000000
@@ -429,6 +429,288 @@ test('图片：CDN 失败就不塞路径，消息照常交出去（不丢正文�
     assert.ok(await waitFor(() => got.length === 1))
     assert.equal(got[0].text, '你看这个')
     assert.deepEqual(got[0].images, [''])
+    await a.stop()
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+/* ---------------------------- 出站图片：加密上传再发 ---------------------------- */
+
+const TINY_PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+
+function tinyJpeg() {
+  const buf = Buffer.alloc(16, 0)
+  buf[0] = 0xff
+  buf[1] = 0xd8
+  buf[2] = 0xff
+  return buf
+}
+
+function tinyGif() {
+  const buf = Buffer.alloc(16, 0)
+  Buffer.from('GIF89a').copy(buf)
+  return buf
+}
+
+function tinyWebp() {
+  const buf = Buffer.alloc(16, 0)
+  Buffer.from('RIFF').copy(buf, 0)
+  Buffer.from('WEBP').copy(buf, 8)
+  return buf
+}
+
+/**
+ * iLink JSON 走 fakeFetch；CDN 是另一台主机上的二进制 POST，单独记下。
+ * getupdates 不给下一条时会挂住，和长轮询一样。
+ */
+function fetchWithCdn(handlers, cdnBody) {
+  const base = fakeFetch(handlers)
+  const cdnCalls = []
+  const impl = async (url, init = {}) => {
+    const u = String(url)
+    if (!u.includes('/ilink/')) {
+      cdnCalls.push({
+        url: u,
+        method: init.method ?? 'GET',
+        headers: init.headers ?? {},
+        body: init.body,
+      })
+      return {
+        ok: true,
+        status: 200,
+        headers: { get: (name) => (String(name).toLowerCase() === 'x-encrypted-param' ? cdnBody : null) },
+      }
+    }
+    return base(url, init)
+  }
+  impl.calls = base.calls
+  impl.cdnCalls = cdnCalls
+  return impl
+}
+
+async function started(root, fetchImpl) {
+  await saveCredential(root, { token: 'tok_test', accountId: 'bot_1', baseUrl: 'https://ilinkai.weixin.qq.com' })
+  const a = create({ root, config: { enabled: true }, fetchImpl, now: () => T0 })
+  assert.equal((await a.start()).ok, true)
+  return a
+}
+
+test('出站图片：文字先发，图走 getuploadurl → CDN → 单独的 image_item', async () => {
+  const root = await tempRoot()
+  const pngPath = join(root, 'shot.png')
+  try {
+    await writeFile(pngPath, TINY_PNG)
+    const inbound = {
+      message_id: 'm-out',
+      from_user_id: 'wxid_alice',
+      message_type: 1,
+      context_token: 'ctx-img',
+      item_list: [{ type: 1, text_item: { text: '发一张' } }],
+    }
+    const fetchImpl = fetchWithCdn({
+      '/ilink/bot/msg/notifystart': [{}],
+      '/ilink/bot/msg/notifystop': [{}],
+      '/ilink/bot/getupdates': [{ ret: 0, get_updates_buf: 'c1', msgs: [inbound] }],
+      '/ilink/bot/getuploadurl': [{ ret: 0, upload_full_url: 'https://cdn.example/upload?sig=1' }],
+      '/ilink/bot/sendmessage': [{ ret: 0 }, { ret: 0 }],
+    }, 'dl-param-1')
+    await saveCredential(root, { token: 'tok_test', accountId: 'bot_1', baseUrl: 'https://ilinkai.weixin.qq.com' })
+    const a = create({ root, config: { enabled: true }, fetchImpl, now: () => T0 })
+    const got = []
+    a.onMessage((m) => got.push(m))
+    assert.equal((await a.start()).ok, true)
+    assert.ok(await waitFor(() => got.length === 1))
+
+    const sent = await a.send({
+      conversation: { kind: 'dm', id: 'wxid_alice' },
+      text: '你看',
+      images: [pngPath],
+    })
+    assert.equal(sent.ok, true, sent.why)
+
+    const uploads = fetchImpl.calls.filter((c) => c.path === '/ilink/bot/getuploadurl')
+    const messages = fetchImpl.calls.filter((c) => c.path === '/ilink/bot/sendmessage')
+    assert.equal(uploads.length, 1)
+    assert.equal(messages.length, 2)
+    // 字在前，图在后：两条 sendmessage 夹着一次申请上传。
+    const textAt = fetchImpl.calls.indexOf(messages[0])
+    const uploadAt = fetchImpl.calls.indexOf(uploads[0])
+    const imageAt = fetchImpl.calls.indexOf(messages[1])
+    assert.ok(textAt < uploadAt && uploadAt < imageAt)
+
+    const ticket = uploads[0].body
+    assert.equal(ticket.media_type, 1)
+    assert.equal(ticket.no_need_thumb, true)
+    assert.equal(ticket.to_user_id, 'wxid_alice')
+    assert.equal(ticket.rawsize, TINY_PNG.length)
+    assert.equal(ticket.rawfilemd5, createHash('md5').update(TINY_PNG).digest('hex'))
+    assert.equal(ticket.filesize, Math.ceil((TINY_PNG.length + 1) / 16) * 16)
+    assert.match(ticket.filekey, /^[0-9a-f]{32}$/)
+    assert.match(ticket.aeskey, /^[0-9a-f]{32}$/)
+    assert.equal(ticket.base_info.client_version, messages[0].body.base_info.client_version)
+
+    assert.equal(fetchImpl.cdnCalls.length, 1)
+    const cdn = fetchImpl.cdnCalls[0]
+    assert.equal(cdn.url, 'https://cdn.example/upload?sig=1')
+    assert.equal(cdn.method, 'POST')
+    assert.equal(cdn.headers['Content-Type'], 'application/octet-stream')
+    assert.equal(cdn.headers.Authorization, undefined)
+    assert.equal(cdn.headers.authorization, undefined)
+    const cipher = Buffer.from(cdn.body)
+    assert.equal(cipher.length, ticket.filesize)
+    const decipher = createDecipheriv('aes-128-ecb', Buffer.from(ticket.aeskey, 'hex'), null)
+    const plain = Buffer.concat([decipher.update(cipher), decipher.final()])
+    assert.deepEqual(plain, TINY_PNG)
+
+    assert.equal(messages[0].body.msg.context_token, 'ctx-img')
+    assert.equal(messages[0].body.msg.item_list[0].type, 1)
+    assert.equal(messages[0].body.msg.item_list[0].text_item.text, '你看')
+    assert.equal(messages[0].body.msg.item_list[0].image_item, undefined)
+
+    const imageMsg = messages[1].body.msg
+    assert.equal(imageMsg.context_token, 'ctx-img')
+    assert.equal(imageMsg.to_user_id, 'wxid_alice')
+    assert.equal(imageMsg.item_list.length, 1)
+    const image = imageMsg.item_list[0]
+    assert.equal(image.type, 2)
+    assert.equal(image.text_item, undefined)
+    assert.equal(image.image_item.media.encrypt_query_param, 'dl-param-1')
+    assert.equal(image.image_item.media.encrypt_type, 1)
+    assert.equal(image.image_item.media.aes_key, Buffer.from(ticket.aeskey, 'utf8').toString('base64'))
+    assert.equal(image.image_item.mid_size, cipher.length)
+    assert.equal(JSON.stringify(messages).includes('tok_test'), false)
+    await a.stop()
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('出站图片：没有 upload_full_url 时用 upload_param 拼 CDN 地址', async () => {
+  const root = await tempRoot()
+  const pngPath = join(root, 'shot.png')
+  try {
+    await writeFile(pngPath, TINY_PNG)
+    const fetchImpl = fetchWithCdn({
+      '/ilink/bot/msg/notifystart': [{}],
+      '/ilink/bot/msg/notifystop': [{}],
+      '/ilink/bot/getupdates': [{ ret: 0, get_updates_buf: 'c1', msgs: [] }],
+      '/ilink/bot/getuploadurl': [{ ret: 0, upload_param: 'UP=1' }],
+      '/ilink/bot/sendmessage': [{ ret: 0 }],
+    }, 'dl-fallback')
+    const a = await started(root, fetchImpl)
+    const sent = await a.send({ conversation: { kind: 'dm', id: 'wxid_bob' }, images: [pngPath] })
+    assert.equal(sent.ok, true, sent.why)
+    const ticket = fetchImpl.calls.find((c) => c.path === '/ilink/bot/getuploadurl').body
+    const expectUrl = `${CDN_BASE_URL}/upload?encrypted_query_param=${encodeURIComponent('UP=1')}&filekey=${encodeURIComponent(ticket.filekey)}`
+    assert.equal(fetchImpl.cdnCalls[0].url, expectUrl)
+    const image = fetchImpl.calls.find((c) => c.path === '/ilink/bot/sendmessage').body.msg.item_list[0]
+    assert.equal(image.type, 2)
+    assert.equal(image.image_item.media.encrypt_query_param, 'dl-fallback')
+    await a.stop()
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('出站图片：JPEG / WebP / GIF 都认，纯文字不申请上传', async () => {
+  const root = await tempRoot()
+  try {
+    const files = [
+      ['a.jpg', tinyJpeg()],
+      ['b.webp', tinyWebp()],
+      ['c.gif', tinyGif()],
+    ]
+    for (const [name, buf] of files) await writeFile(join(root, name), buf)
+    const fetchImpl = fetchWithCdn({
+      '/ilink/bot/msg/notifystart': [{}],
+      '/ilink/bot/msg/notifystop': [{}],
+      '/ilink/bot/getupdates': [{ ret: 0, msgs: [] }],
+      '/ilink/bot/getuploadurl': [{ ret: 0, upload_full_url: 'https://cdn.example/u' }, { ret: 0, upload_full_url: 'https://cdn.example/u' }, { ret: 0, upload_full_url: 'https://cdn.example/u' }],
+      '/ilink/bot/sendmessage': [{ ret: 0 }, { ret: 0 }, { ret: 0 }, { ret: 0 }],
+    }, 'p')
+    const a = await started(root, fetchImpl)
+    for (const [name] of files) {
+      const r = await a.send({ conversation: { kind: 'private', id: 'wxid_fmt' }, images: [join(root, name)] })
+      assert.equal(r.ok, true, `${name} ${r.why}`)
+    }
+    const textOnly = await a.send({ conversation: { kind: 'dm', id: 'wxid_fmt' }, text: '只有字' })
+    assert.equal(textOnly.ok, true, textOnly.why)
+    assert.equal(fetchImpl.calls.filter((c) => c.path === '/ilink/bot/getuploadurl').length, 3)
+    const msgs = fetchImpl.calls.filter((c) => c.path === '/ilink/bot/sendmessage')
+    assert.equal(msgs.length, 4)
+    assert.equal(msgs[3].body.msg.item_list[0].type, 1)
+    assert.equal(msgs[3].body.msg.item_list[0].text_item.text, '只有字')
+    await a.stop()
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('出站图片：群、没登录、没连上，都不去上传', async () => {
+  const root = await tempRoot()
+  const pngPath = join(root, 'shot.png')
+  try {
+    await writeFile(pngPath, TINY_PNG)
+    const loggedOut = create({ root, config: { enabled: true }, fetchImpl: fakeFetch({}), now: () => T0 })
+    const needLogin = await loggedOut.send({ conversation: { kind: 'dm', id: 'wx' }, images: [pngPath] })
+    assert.equal(needLogin.ok, false)
+    assert.equal(needLogin.why, 'login-required')
+
+    const fetchImpl = fakeFetch({
+      '/ilink/bot/msg/notifystart': [{}],
+      '/ilink/bot/msg/notifystop': [{}],
+      '/ilink/bot/getupdates': [{ ret: 0, msgs: [] }],
+    })
+    const a = await started(root, fetchImpl)
+    const group = await a.send({ conversation: { kind: 'group', id: '123' }, text: 'hi', images: [pngPath] })
+    assert.equal(group.ok, false)
+    assert.equal(group.why, 'weixin 只有私聊')
+    await a.stop()
+    const offline = await a.send({ conversation: { kind: 'dm', id: 'wx' }, images: [pngPath] })
+    assert.equal(offline.ok, false)
+    assert.equal(offline.why, 'offline')
+    assert.equal(fetchImpl.calls.some((c) => String(c.path).includes('getuploadurl')), false)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('出站图片：不是图、太大、相对路径、网上的链接，都说清楚为什么', async () => {
+  const root = await tempRoot()
+  try {
+    const bad = join(root, 'note.txt')
+    await writeFile(bad, Buffer.from('hello world!!!!'))
+    const huge = join(root, 'huge.png')
+    const big = Buffer.alloc(8 * 1024 * 1024 + 1)
+    big[0] = 0x89
+    big[1] = 0x50
+    big[2] = 0x4e
+    big[3] = 0x47
+    await writeFile(huge, big)
+    const fetchImpl = fetchWithCdn({
+      '/ilink/bot/msg/notifystart': [{}],
+      '/ilink/bot/msg/notifystop': [{}],
+      '/ilink/bot/getupdates': [{ ret: 0, msgs: [] }],
+    }, 'nope')
+    const a = await started(root, fetchImpl)
+    const notImage = await a.send({ conversation: { kind: 'dm', id: 'wx' }, images: [bad] })
+    assert.equal(notImage.ok, false)
+    assert.match(notImage.why, /认不出这是图片/)
+    const tooBig = await a.send({ conversation: { kind: 'dm', id: 'wx' }, images: [huge] })
+    assert.equal(tooBig.ok, false)
+    assert.match(tooBig.why, /图太大了/)
+    const relative = await a.send({ conversation: { kind: 'dm', id: 'wx' }, images: ['shot.png'] })
+    assert.equal(relative.ok, false)
+    assert.match(relative.why, /绝对路径/)
+    const remote = await a.send({ conversation: { kind: 'dm', id: 'wx' }, images: ['https://example.com/a.png'] })
+    assert.equal(remote.ok, false)
+    assert.match(remote.why, /不抓网上的图/)
+    const missing = await a.send({ conversation: { kind: 'dm', id: 'wx' }, images: [join(root, 'missing.png')] })
+    assert.equal(missing.ok, false)
+    assert.match(missing.why, /读不到这张图/)
+    assert.equal(fetchImpl.cdnCalls.length, 0)
+    assert.equal(fetchImpl.calls.some((c) => c.path === '/ilink/bot/getuploadurl'), false)
     await a.stop()
   } finally {
     await rm(root, { recursive: true, force: true })
