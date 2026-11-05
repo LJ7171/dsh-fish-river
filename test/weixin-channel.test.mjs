@@ -69,6 +69,11 @@ async function waitFor(check, ms = 1500) {
   return check()
 }
 
+test('适配器声明 supportsImages：路由据此决定 send_image 能不能用', () => {
+  const a = create({ root: '/tmp/x', config: { enabled: true }, fetchImpl: async () => ({ ok: true, json: async () => ({}) }) })
+  assert.equal(a.supportsImages, true)
+})
+
 test('没有凭据时 start 返回 login-required，而不是报错', async () => {
   const root = await tempRoot()
   try {
