@@ -83,7 +83,7 @@ test('默认开着作息，时刻和间隔夹在界限里', () => {
 
 test('每天配额：上网四项迁到 sleep.daily，评论两项留在 comment', () => {
   const migrated = normalizeConfig({ browse: { perDay: 3, douyin: { perDay: 2 } }, zhihu: { perDay: 6, recommend: { perDay: 9 } }, comment: { perDay: 4, replyPerDay: 5 } })
-  assert.deepEqual(migrated.sleep.daily, { bili: 3, douyin: 2, zhihu: 6, recommend: 9 })
+  assert.deepEqual(migrated.sleep.daily, { bili: 3, douyin: 2, zhihu: 6 })
   assert.equal(migrated.comment.perDay, 4, '评论配额仍在 comment')
   assert.equal(migrated.comment.replyPerDay, 5)
   const explicit = normalizeConfig({ sleep: { daily: { bili: 1 } }, browse: { perDay: 3 } })

@@ -11,7 +11,7 @@ import { normalizeConfig } from '../lib/settings.js'
 import { chooseVoice } from '../lib/voices.js'
 import { deriveSelf, DAY_MS } from '../lib/derive.js'
 import { personaLine } from '../lib/persona.js'
-import { zhihuTick, renderMaterial, readState } from '../lib/zhihu.js'
+import { fetchZhihuMaterial, readState } from '../lib/zhihu.js'
 import { zhihuLookOnce } from '../lib/zhihuLook.js'
 import {
   recordZhihuVoice, zhihuCommentTarget, ZHIHU_VOICE_MIN_LIKE, ZHIHU_VOICE_PER_DAY,
@@ -218,7 +218,7 @@ test('zhihu_look 点开评论：关着不写，开着只留一条，回答正文
   }
 })
 
-test('白天翻列表：开着才深读一条评论；浏览历史再带链接也不读', async () => {
+test('现场抓一次：开着才深读一条评论；浏览历史再带链接也不读', async () => {
   const root = await tempRoot()
   try {
     let commentCalls = 0
@@ -240,32 +240,28 @@ test('白天翻列表：开着才深读一条评论；浏览历史再带链接�
         return { ok: true, comments: [{ text: LOUD, likes: 80 }] }
       },
     }
-    const off = normalizeConfig({ zhihu: { enabled: true, voices: false } })
     const now = new Date('2026-11-05T10:15:00')
-    const skipped = await zhihuTick({ root, cfg: off, now, rnd: () => 0, mod })
-    assert.equal(skipped.voice, 0)
+    const off = normalizeConfig({ zhihu: { enabled: true, voices: false } })
+    const skipped = await fetchZhihuMaterial({ root, cfg: off, now, mod, fetchImpl: async () => ({ ok: true }) })
     assert.equal(commentCalls, 0)
     await assert.rejects(readFile(join(root, 'events.jsonl'), 'utf8'))
+    assert.match(skipped.text, /热榜标题/)
 
     const on = normalizeConfig({ zhihu: { enabled: true, voices: true } })
     const rootOn = await tempRoot()
     try {
-      const a = await zhihuTick({ root: rootOn, cfg: on, now, rnd: () => 0, mod })
-      assert.equal(a.voice, 1)
+      const a = await fetchZhihuMaterial({ root: rootOn, cfg: on, now, mod, fetchImpl: async () => ({ ok: true }) })
       assert.equal(commentCalls, 1)
       const raw = await readFile(join(rootOn, 'events.jsonl'), 'utf8')
       assert.match(raw, /这条知乎评论说得够清楚了/)
       assert.doesNotMatch(raw, /重要的人看过的标题/)
-      const st = await readState(rootOn)
-      const material = renderMaterial(st.pending, on)
-      assert.match(material, /重要的人最近看过的/)
-      assert.match(material, /不是你经历的/)
-      assert.doesNotMatch(material, /这条知乎评论说得够清楚了/)
-      assert.match(material, /热榜标题/)
+      assert.match(a.text, /重要的人最近看过的/)
+      assert.match(a.text, /不是你经历的/)
+      assert.doesNotMatch(a.text, /这条知乎评论说得够清楚了/)
+      assert.match(a.text, /热榜标题/)
 
       const later = new Date('2026-11-05T10:16:00')
-      const b = await zhihuTick({ root: rootOn, cfg: on, now: later, rnd: () => 0, mod })
-      assert.equal(b.voice, 0)
+      await fetchZhihuMaterial({ root: rootOn, cfg: on, now: later, mod, fetchImpl: async () => ({ ok: true }) })
       assert.equal(commentCalls, 1, '同一天只深读一次')
       const lines = (await readFile(join(rootOn, 'events.jsonl'), 'utf8')).trim().split('\n')
       assert.equal(lines.length, 1)
@@ -291,13 +287,14 @@ test('只有浏览历史时不去拉评论', async () => {
       async fetchRecommend() { return { ok: true, items: [] } },
       async fetchComments() { commentCalls += 1; return { ok: true, comments: [comment(LOUD, 100)] } },
     }
-    const cfg = normalizeConfig({ zhihu: { enabled: true, voices: true } })
-    const r = await zhihuTick({ root, cfg, now: new Date('2026-11-05T11:00:00'), rnd: () => 0, mod })
-    assert.equal(r.voice, 0)
+    const cfg = normalizeConfig({
+      zhihu: { enabled: true, voices: true, hot: { enabled: false }, follow: { enabled: false }, recommend: { enabled: false }, history: { enabled: true } },
+    })
+    const r = await fetchZhihuMaterial({ root, cfg, now: new Date('2026-11-05T11:00:00'), mod, fetchImpl: async () => ({ ok: true }) })
     assert.equal(commentCalls, 0)
     await assert.rejects(readFile(join(root, 'events.jsonl'), 'utf8'))
-    const st = await readState(root)
-    assert.match(renderMaterial(st.pending, cfg), /重要的人最近看过的/)
+    assert.match(r.text, /重要的人最近看过的/)
+    assert.equal((await readState(root)).runs, 1)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

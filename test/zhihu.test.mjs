@@ -17,7 +17,7 @@ import { join } from 'node:path'
 import { fetchHot, fetchFollow } from '../packages/dsh-fish-river-zhihu/api.js'
 import {
   gatherZhihu, loadZhihu, readState, writeState, runsToday, statePath,
-  zhihuTick, takePendingMaterial, renderMaterial, inZhihuWindow,
+  fetchZhihuMaterial, renderMaterial,
 } from '../lib/zhihu.js'
 import { registerZhihuLook, zhihuLookOnce, parseTarget } from '../lib/zhihuLook.js'
 import { fetchQuestion, fetchAnswer, fetchComments, htmlToText, extractImages } from '../packages/dsh-fish-river-zhihu/api.js'
@@ -188,18 +188,17 @@ test('loadZhihu：没装就返回 null', async () => {
 
 /* ---------------------------- 配置 ---------------------------- */
 
-test('默认配置：关着、配额进作息、推荐单独 8 次', () => {
+test('默认配置：关着、配额按「次」进作息、推荐只是逛的内容之一', () => {
   const cfg = normalizeConfig({})
   assert.equal(cfg.zhihu.enabled, false)
-  assert.equal(cfg.sleep.daily.zhihu, 4, '每天翻几次现在由作息配额管')
-  assert.equal(cfg.sleep.daily.recommend, 8)
+  assert.equal(cfg.sleep.daily.zhihu, 4, '每天刷几次现在由作息配额管')
+  assert.equal(cfg.sleep.daily.recommend, undefined, '推荐不再单独占一次配额')
   assert.equal(cfg.zhihu.window, undefined, '白天时段已删除（作息接管）')
   assert.equal(cfg.zhihu.hot.topN, 8)
   assert.equal(cfg.zhihu.follow.topN, 8)
   // 2026-11-04：浏览历史改成默认开（他要求的），措辞仍是「他看的」
   assert.equal(cfg.zhihu.history.enabled, true)
-  assert.equal(cfg.zhihu.recommend.enabled, true)
-  assert.equal(cfg.zhihu.recommend.perDay, 8)
+  assert.equal(cfg.zhihu.recommend.enabled, true, '推荐仍是「一次逛什么」里的一项')
   assert.equal(cfg.zhihu.voices, false, '别人的评论默认不记')
 })
 
@@ -211,98 +210,99 @@ test('配置夹紧：次数与条数超范围会被拉回', () => {
 })
 
 
-/* ---------------------------- 定时翻 + 攒素材 ---------------------------- */
+/* ---------------------------- 现场抓一次（和刷 B 站同一种动作） ---------------------------- */
 
-function tickMod({ hot = [], rec = [] } = {}) {
+function fetchMod({ hot = [], follow = [], rec = [], hist = [] } = {}) {
+  const calls = { hot: 0, follow: 0, recommend: 0, history: 0, comments: 0 }
   return {
+    calls,
     async readAuth() { return { cookie: 'z_c0=x' } },
-    async fetchHot() { return { ok: true, items: hot } },
-    async fetchFollow() { return { ok: true, items: [] } },
-    async fetchHistory() { return { ok: true, items: [] } },
-    async fetchRecommend() { return { ok: true, items: rec } },
+    async fetchHot() { calls.hot += 1; return { ok: true, items: hot } },
+    async fetchFollow() { calls.follow += 1; return { ok: true, items: follow } },
+    async fetchRecommend() { calls.recommend += 1; return { ok: true, items: rec } },
+    async fetchHistory() { calls.history += 1; return { ok: true, items: hist } },
+    async fetchComments() { calls.comments += 1; return { ok: true, comments: [{ text: '这条评论挺长的一句话', likes: 99 }] } },
   }
 }
 
-test('zhihuTick：窗口外一次都不翻（默认 08:00–20:00）', async () => {
+test('现场抓一次：勾选哪几路就抓哪几路，素材当次返回、runs +1', async () => {
   const root = await tempRoot()
   try {
-    const mod = tickMod({ hot: [{ id: 'hot:1', title: '一' }] })
+    const mod = fetchMod({ hot: [{ id: 'hot:1', title: '热榜一' }], rec: [{ id: 'rec:1', title: '推荐一' }] })
     const cfg = normalizeConfig({ zhihu: { enabled: true } })
-    const night = new Date('2026-11-04T21:30:00')
-    assert.equal(inZhihuWindow(cfg, night), false)
-    const r = await zhihuTick({ root, cfg, now: night, rnd: () => 0, mod })
-    assert.equal(r.ran, false)
-    assert.equal(r.why, 'out-of-window')
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-})
-
-test('zhihuTick：同一分钟只掷一次骰子；命中就把新的攒进 pending', async () => {
-  const root = await tempRoot()
-  try {
-    const mod = tickMod({ hot: [{ id: 'hot:1', title: '热榜一' }], rec: [{ id: 'rec:1', title: '推荐一' }] })
-    const cfg = normalizeConfig({ zhihu: { enabled: true } })
-    const now = new Date('2026-11-04T10:15:00')
-    const a = await zhihuTick({ root, cfg, now, rnd: () => 0, mod })
-    assert.equal(a.ran, true)
-    assert.ok(a.items >= 2)
-    const st = await readState(root)
-    assert.equal(st.runs, 1)
-    assert.equal(st.recRuns, 1)
-    assert.ok(st.pending.length >= 2)
-
-    // 同一分钟再来一次：lastMinute 挡住，不重复翻
-    const b = await zhihuTick({ root, cfg, now, rnd: () => 0, mod })
-    assert.equal(b.ran, false)
-    assert.equal(b.why, 'same-minute')
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-})
-
-test('zhihuTick：骰子没中就不发请求（概率纪律）', async () => {
-  const root = await tempRoot()
-  try {
-    let calls = 0
-    const mod = {
-      async readAuth() { return { cookie: 'z_c0=x' } },
-      async fetchHot() { calls += 1; return { ok: true, items: [] } },
-      async fetchFollow() { return { ok: true, items: [] } },
-      async fetchHistory() { return { ok: true, items: [] } },
-      async fetchRecommend() { calls += 1; return { ok: true, items: [] } },
-    }
-    const cfg = normalizeConfig({ zhihu: { enabled: true } })
-    const r = await zhihuTick({ root, cfg, now: new Date('2026-11-04T10:15:00'), rnd: () => 0.999, mod })
-    assert.equal(r.ran, false)
-    assert.equal(calls, 0)
-  } finally {
-    await rm(root, { recursive: true, force: true })
-  }
-})
-
-test('takePendingMaterial：拼成素材并清空 pending（seen 留着）', async () => {
-  const root = await tempRoot()
-  try {
-    await writeState(root, {
-      dateKey: '2026-11-04', runs: 1, recRuns: 1,
-      seen: { 'hot:1': Date.now(), 'rec:1': Date.now(), 'hist:1': Date.now() },
-      pending: [
-        { kind: 'hot', id: 'hot:1', title: '热榜一', heat: '百万' },
-        { kind: 'recommend', id: 'rec:1', title: '推荐一', author: '某人' },
-        { kind: 'history', id: 'hist:1', title: '他看过的题' },
-      ],
-    })
-    const r = await takePendingMaterial(root)
+    const r = await fetchZhihuMaterial({ root, cfg, mod, now: new Date('2026-11-04T10:15:00'), fetchImpl: async () => ({ ok: true }) })
+    assert.equal(r.ok, true)
     assert.match(r.text, /热榜一/)
-    assert.match(r.text, /首页推给你的/)
-    assert.match(r.text, /重要的人最近看过的/)
-    assert.match(r.text, /这是重要的人知乎账号上刷到的/)
-    assert.doesNotMatch(r.text, /主人/)
-    assert.match(r.text, /不是她经历的|不是你经历的/)
+    assert.match(r.text, /推荐一/)
+    assert.equal(mod.calls.hot, 1)
+    assert.equal(mod.calls.recommend, 1)
+    assert.equal(mod.calls.follow, 1)
+    assert.equal(mod.calls.history, 1)
     const st = await readState(root)
-    assert.equal(st.pending.length, 0)
-    assert.ok(st.seen['hot:1'], 'seen 要留着，避免同一批再递一次')
+    assert.equal(st.runs, 1, '抓一次算一次上网')
+    assert.ok(st.seen['hot:1'])
+
+    // 同样的内容再抓：没有新 id，不重复给
+    const again = await fetchZhihuMaterial({ root, cfg, mod, now: new Date('2026-11-04T10:16:00'), fetchImpl: async () => ({ ok: true }) })
+    assert.equal(again.ok, false)
+    assert.equal(again.acted, true, '请求确实发了')
+    assert.equal((await readState(root)).runs, 2)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('配额用完：直接 blocked，一次请求都不发', async () => {
+  const root = await tempRoot()
+  try {
+    const mod = fetchMod({ hot: [{ id: 'hot:9', title: '九' }] })
+    const cfg = normalizeConfig({ zhihu: { enabled: true } })
+    await writeState(root, { dateKey: '2026-11-04', runs: 4, seen: {} })
+    const r = await fetchZhihuMaterial({ root, cfg, mod, now: new Date('2026-11-04T10:15:00') })
+    assert.equal(r.ok, false)
+    assert.equal(r.blocked, true)
+    assert.equal(r.why, 'quota')
+    assert.equal(mod.calls.hot + mod.calls.follow + mod.calls.recommend + mod.calls.history, 0)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('没登录 / 关着 / 全不勾：都只降级，不抛', async () => {
+  const root = await tempRoot()
+  try {
+    const mod = fetchMod({})
+    const noAuth = { ...mod, readAuth: async () => null }
+    const r1 = await fetchZhihuMaterial({ root, cfg: normalizeConfig({ zhihu: { enabled: true } }), mod: noAuth })
+    assert.equal(r1.ok, false)
+    assert.equal(r1.why, 'login-required')
+
+    const r2 = await fetchZhihuMaterial({ root, cfg: normalizeConfig({}), mod })
+    assert.equal(r2.ok, false)
+    assert.equal(r2.why, 'disabled')
+
+    const none = normalizeConfig({ zhihu: { enabled: true, hot: { enabled: false }, follow: { enabled: false }, recommend: { enabled: false }, history: { enabled: false } } })
+    const r3 = await fetchZhihuMaterial({ root, cfg: none, mod })
+    assert.equal(r3.ok, false)
+    assert.equal(r3.why, 'nothing-selected')
+    assert.equal(mod.calls.hot, 0)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('别人的评论：开着且今天没留过时，从当次素材里留 1 条 voice', async () => {
+  const root = await tempRoot()
+  try {
+    const mod = fetchMod({ hot: [{ id: 'hot:5', title: '带评论的题', url: 'https://www.zhihu.com/question/123' }] })
+    const cfg = normalizeConfig({ zhihu: { enabled: true, voices: true } })
+    const r = await fetchZhihuMaterial({ root, cfg, mod, now: new Date('2026-11-04T10:15:00'), fetchImpl: async () => ({ ok: true }) })
+    assert.equal(r.ok, true)
+    assert.equal(mod.calls.comments, 1)
+    const { events } = await (await import('../lib/store.js')).readEvents(root)
+    const voice = events.find((e) => e.type === 'voice' && e.channel === 'zhihu')
+    assert.ok(voice, '应留一条 voice')
+    assert.equal(voice.influence, 'social')
   } finally {
     await rm(root, { recursive: true, force: true })
   }
