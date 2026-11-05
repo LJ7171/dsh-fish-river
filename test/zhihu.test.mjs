@@ -19,7 +19,8 @@ import {
   gatherZhihu, loadZhihu, readState, writeState, runsToday, statePath,
   zhihuTick, takePendingMaterial, renderMaterial, inZhihuWindow,
 } from '../lib/zhihu.js'
-import { registerZhihuLook, zhihuLookOnce } from '../lib/zhihuLook.js'
+import { registerZhihuLook, zhihuLookOnce, parseTarget } from '../lib/zhihuLook.js'
+import { fetchQuestion, fetchAnswer, fetchComments, htmlToText } from '../packages/dsh-fish-river-zhihu/api.js'
 import { normalizeConfig } from '../lib/settings.js'
 
 function fakeResponse(body, status = 200) {
@@ -315,4 +316,131 @@ test('zhihu_look 工具：注册成功，参数是合法 JSON Schema；关着时
   const off = await zhihuLookOnce({ root: '/tmp/x', cfg: normalizeConfig({}), kind: 'hot' })
   assert.equal(off.ok, false)
   assert.match(off.note, /看不了/)
+})
+
+
+/* ---------------------------- 点进去：问题 / 回答 / 评论 ---------------------------- */
+
+test('parseTarget：链接与裸 id 都能认', () => {
+  assert.deepEqual(parseTarget('https://www.zhihu.com/question/36867384/answer/2101466029390151931'), {
+    questionId: '36867384', answerId: '2101466029390151931',
+  })
+  assert.deepEqual(parseTarget('https://zhuanlan.zhihu.com/p/2091558033625179773'), { articleId: '2091558033625179773' })
+  assert.deepEqual(parseTarget('123456'), { raw: '123456' })
+  assert.deepEqual(parseTarget(''), {})
+})
+
+test('htmlToText：去标签、留段落', () => {
+  const t = htmlToText('<p>第一段</p><p>第二段 &amp; 更多<br>换行</p>')
+  assert.match(t, /第一段/)
+  assert.match(t, /第二段 & 更多/)
+  assert.doesNotMatch(t, /<p>/)
+})
+
+test('fetchQuestion：标题来自回答里的 question，正文转纯文本', async () => {
+  const body = {
+    paging: { totals: 2016 },
+    data: [{
+      id: 111,
+      voteup_count: 1904,
+      comment_count: 222,
+      author: { name: '谭少' },
+      question: { id: 36867384, title: '哪些游戏玩物不丧志' },
+      content: '<p>刺客信条</p><p>我从来没去过威尼斯</p>',
+    }],
+  }
+  const r = await fetchQuestion({ cookie: 'x', id: '36867384', limit: 1, fetchImpl: async () => fakeResponse(body) })
+  assert.equal(r.ok, true)
+  assert.equal(r.question.title, '哪些游戏玩物不丧志')
+  assert.equal(r.question.answerCount, 2016)
+  assert.match(r.answers[0].text, /威尼斯/)
+  assert.doesNotMatch(r.answers[0].text, /<p>/)
+})
+
+test('fetchAnswer：正文截断、带作者与赞同数', async () => {
+  const body = {
+    id: 2101466029390151931,
+    voteup_count: 9,
+    comment_count: 2,
+    author: { name: 'Asher' },
+    question: { id: 36867384, title: '哪些游戏玩物不丧志' },
+    content: `<p>${'长'.repeat(2000)}</p>`,
+  }
+  const r = await fetchAnswer({ cookie: 'x', id: '2101466029390151931', maxChars: 300, fetchImpl: async () => fakeResponse(body) })
+  assert.equal(r.ok, true)
+  assert.equal(r.answer.author, 'Asher')
+  assert.ok(r.answer.text.length <= 320, `应截断，实际 ${r.answer.text.length}`)
+  assert.match(r.answer.text, /……$/)
+})
+
+test('fetchComments：answer/article/question 三种 target 的路径都对', async () => {
+  const body = { paging: { totals: 7 }, data: [{ id: 1, like_count: 3, author: { name: '一条江' }, content: '<p>不错</p>', child_comment_count: 2 }] }
+  const seen = []
+  const fake = async (url) => { seen.push(String(url)); return fakeResponse(body) }
+  for (const target of ['answer', 'article', 'question']) {
+    const r = await fetchComments({ cookie: 'x', target, id: '42', limit: 3, fetchImpl: fake })
+    assert.equal(r.ok, true)
+    assert.equal(r.comments[0].author, '一条江')
+    assert.equal(r.comments[0].likes, 3)
+  }
+  assert.match(seen[0], /comment_v5\/answers\/42\/root_comment/)
+  assert.match(seen[1], /comment_v5\/articles\/42\/root_comment/)
+  assert.match(seen[2], /comment_v5\/questions\/42\/root_comment/)
+  const bad = await fetchComments({ cookie: 'x', target: 'dm', id: '42' })
+  assert.equal(bad.ok, false)
+})
+
+function detailMod() {
+  return {
+    async readAuth() { return { cookie: 'z_c0=x' } },
+    async fetchHot() { return { ok: true, items: [] } },
+    async fetchRecommend() { return { ok: true, items: [] } },
+    async fetchFollow() { return { ok: true, items: [] } },
+    async fetchHistory() { return { ok: true, items: [] } },
+    async fetchQuestion() {
+      return { ok: true, question: { id: '36867384', title: '哪些游戏玩物不丧志', answerCount: 2016 }, answers: [{ id: '1', author: '谭少', votes: 1904, comments: 222, text: '刺客信条', url: 'https://www.zhihu.com/answer/1' }] }
+    },
+    async fetchAnswer() {
+      return { ok: true, answer: { id: '2101466029390151931', question: { title: '哪些游戏玩物不丧志' }, author: 'Asher', votes: 9, comments: 2, text: '正文', url: 'https://www.zhihu.com/answer/2101466029390151931' } }
+    },
+    async fetchComments() {
+      return { ok: true, total: 2, comments: [{ id: 'c1', author: '谢钊', likes: 0, text: '[赞同]', replies: 0 }] }
+    },
+  }
+}
+
+test('zhihuLookOnce：question / answer / comments 三种都能点进去', async () => {
+  const root = await tempRoot()
+  try {
+    const cfg = normalizeConfig({ zhihu: { enabled: true } })
+    const mod = detailMod()
+    const q = await zhihuLookOnce({ root, cfg, kind: 'question', id: '36867384', mod })
+    assert.equal(q.ok, true)
+    assert.match(q.text, /问题：哪些游戏玩物不丧志/)
+    assert.match(q.text, /谭少/)
+
+    const a = await zhihuLookOnce({ root, cfg, kind: 'answer', id: 'https://www.zhihu.com/question/36867384/answer/2101466029390151931', mod })
+    assert.equal(a.ok, true)
+    assert.match(a.text, /Asher/)
+    assert.match(a.text, /正文/)
+
+    const c = await zhihuLookOnce({ root, cfg, kind: 'comments', id: 'https://www.zhihu.com/question/36867384/answer/2101466029390151931', topN: 3, mod })
+    assert.equal(c.ok, true)
+    assert.match(c.text, /评论/)
+    assert.match(c.text, /谢钊/)
+
+    const dirty = await zhihuLookOnce({ root, cfg, kind: 'answer', id: '', mod })
+    assert.equal(dirty.ok, false)
+    assert.match(dirty.note, /回答号|链接/)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('zhihu_look 的参数里包含 question / answer / comments', () => {
+  const ctx = { tools: { register: (t) => t } }
+  const tool = registerZhihuLook(ctx, { root: '/tmp/x' })
+  for (const k of ['question', 'answer', 'comments']) assert.ok(tool.parameters.properties.kind.enum.includes(k))
+  assert.ok(tool.parameters.properties.id)
+  assert.deepEqual(tool.parameters.properties.target.enum, ['answer', 'article', 'question'])
 })

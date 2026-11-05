@@ -1,3 +1,18 @@
+## 0.1.64 — 2026-11-05
+
+- 知乎可以「点进去」了：`zhihu_look` 新增三种详情——
+  `question`（一个问题下最靠前的回答，标题从回答里的 `question.title` 取，因为单查问题详情要签名）、
+  `answer`（一条回答全文，HTML 转纯文本、截 1500 字）、
+  `comments`（按分数取评论，answer/article/question 三种 target）。
+- `id` 既可以是号，也可以直接贴链接；`parseTarget` 会从
+  `zhihu.com/question/{qid}/answer/{aid}`、`zhuanlan.zhihu.com/p/{id}` 里认出该看哪一页。
+- 素材和列表现在**带链接**：她看到一条想细看，直接把链接丢回 `zhihu_look` 就行，
+  不用先记住 id。
+- 评论接口用 `api/v4/comment_v5/{answers|articles|questions}/{id}/root_comment`；
+  知乎正文按 HTML 去标签转纯文本，第三方文本照旧过 `guard.sanitizeForeign`。
+- 真机验证：问题 36867384、回答 2101466029390151931、zhu 文章评论都读通。
+- 测试：zhihu 24 条（新增链接解析、HTML 转文本、三种评论 target、详情 tool 调用）。
+
 ## 0.1.63 — 2026-11-04
 
 - 知乎改成「白天随机翻、醒来再递」：热榜 / 关注 / 历史在 **08:00–20:00** 里按概率随机翻，

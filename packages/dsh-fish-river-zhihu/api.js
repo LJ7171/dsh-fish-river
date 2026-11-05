@@ -69,7 +69,8 @@ export async function fetchHot({ cookie = '', limit = 8, fetchImpl = fetch } = {
         id: `hot:${id}`,
         title,
         heat: String(x?.detail_text ?? '').trim(),
-        url: String(x?.target?.link?.url ?? x?.target?.url ?? '').trim(),
+        url: String(x?.target?.link?.url ?? x?.target?.url ?? '').trim()
+          || (String(x?.target?.type ?? '') === 'question' && x?.target?.id ? `https://www.zhihu.com/question/${x.target.id}` : ''),
       })
     }
     return { ok: items.length > 0, items, why: items.length ? '' : '热榜是空的' }
@@ -103,7 +104,11 @@ export async function fetchFollow({ cookie = '', limit = 8, fetchImpl = fetch } 
       const title = String(tgt?.title ?? tgt?.question?.title ?? src?.title ?? m?.title ?? '').trim()
       if (!title) continue
       const kind = String(tgt?.type ?? src?.type ?? m?.type ?? '').trim()
+      const tid = String(tgt?.id ?? tgt?.question?.id ?? '').trim()
       const url = String(tgt?.url ?? tgt?.question?.url ?? src?.url ?? m?.url ?? '').trim()
+        || (tid && kind === 'answer' ? `https://www.zhihu.com/answer/${tid}` : '')
+        || (tid && kind === 'question' ? `https://www.zhihu.com/question/${tid}` : '')
+        || (tid && kind === 'article' ? `https://zhuanlan.zhihu.com/p/${tid}` : '')
       items.push({
         id: `feed:${String(m?.id ?? m?.feed_id ?? url ?? title)}`,
         kind,
@@ -198,6 +203,122 @@ export async function fetchRecommend({ cookie = '', limit = 6, pages = 1, fetchI
   }
 }
 
+/** 知乎正文是 HTML：去掉标签、解几个实体，留下人能读的段落。 */
+export function htmlToText(html) {
+  const s = String(html ?? '')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(p|div|li|h[1-6]|blockquote)>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
+  return s
+}
+
+function trimText(value, max) {
+  const s = String(value ?? '')
+  return s.length > max ? `${s.slice(0, max)}……` : s
+}
+
+/**
+ * 一个问题 + 它下面点赞靠前的回答（列表页）。
+ * 问题标题藏在每条回答的 `question.title` 里——单独查问题详情要签名（403/10003）。
+ */
+export async function fetchQuestion({ cookie = '', id = '', limit = 5, fetchImpl = fetch } = {}) {
+  try {
+    const qid = String(id ?? '').trim()
+    if (!qid) return { ok: false, why: '缺问题 id', question: null, answers: [] }
+    const n = clamp(limit, 1, 10)
+    const r = await getJson({
+      fetchImpl,
+      url: `${WEB}/api/v4/questions/${encodeURIComponent(qid)}/answers?limit=${n}&include=content,voteup_count,comment_count,author,question`,
+      cookie,
+      referer: `${WEB}/question/${qid}`,
+    })
+    const list = Array.isArray(r.json?.data) ? r.json.data : []
+    if (!list.length) return { ok: false, why: `没读到这个问题（HTTP ${r.status}）`, question: null, answers: [] }
+    const title = String(list[0]?.question?.title ?? '').trim()
+    const answers = list.map((it) => ({
+      id: String(it?.id ?? ''),
+      author: String(it?.author?.name ?? '').trim(),
+      votes: Number(it?.voteup_count) || 0,
+      comments: Number(it?.comment_count) || 0,
+      text: trimText(htmlToText(it?.content), 400),
+      url: `https://www.zhihu.com/answer/${it?.id ?? ''}`,
+    }))
+    return { ok: true, question: { id: qid, title, answerCount: Number(r.json?.paging?.totals) || answers.length }, answers, why: '' }
+  } catch (error) {
+    return { ok: false, why: `读问题失败：${errorText(error)}`, question: null, answers: [] }
+  }
+}
+
+/** 一条回答的正文（截到 maxChars 字，剩下的不硬塞）。 */
+export async function fetchAnswer({ cookie = '', id = '', maxChars = 1500, fetchImpl = fetch } = {}) {
+  try {
+    const aid = String(id ?? '').trim()
+    if (!aid) return { ok: false, why: '缺回答 id', answer: null }
+    const r = await getJson({
+      fetchImpl,
+      url: `${WEB}/api/v4/answers/${encodeURIComponent(aid)}?include=content,voteup_count,comment_count,author,question`,
+      cookie,
+      referer: `${WEB}/answer/${aid}`,
+    })
+    const d = r.json
+    if (!d?.content) return { ok: false, why: `没读到这条回答（HTTP ${r.status}）`, answer: null }
+    return {
+      ok: true,
+      answer: {
+        id: String(d.id ?? aid),
+        question: { id: String(d.question?.id ?? ''), title: String(d.question?.title ?? '').trim() },
+        author: String(d.author?.name ?? '').trim(),
+        votes: Number(d.voteup_count) || 0,
+        comments: Number(d.comment_count) || 0,
+        text: trimText(htmlToText(d.content), Math.max(200, Math.min(4000, Number(maxChars) || 1500))),
+        url: `https://www.zhihu.com/answer/${aid}`,
+      },
+      why: '',
+    }
+  } catch (error) {
+    return { ok: false, why: `读回答失败：${errorText(error)}`, answer: null }
+  }
+}
+
+/** 评论（按分数）。target 只认 answer / article / question。 */
+export async function fetchComments({ cookie = '', target = 'answer', id = '', limit = 20, orderBy = 'score', fetchImpl = fetch } = {}) {
+  const t = String(target ?? '').trim()
+  if (!['answer', 'article', 'question'].includes(t)) return { ok: false, why: '不认识这类评论', comments: [] }
+  try {
+    const rid = String(id ?? '').trim()
+    if (!rid) return { ok: false, why: '缺 id', comments: [] }
+    const n = clamp(limit, 1, 20)
+    const plural = t === 'answer' ? 'answers' : t === 'article' ? 'articles' : 'questions'
+    const r = await getJson({
+      fetchImpl,
+      url: `${WEB}/api/v4/comment_v5/${plural}/${encodeURIComponent(rid)}/root_comment?order_by=${encodeURIComponent(orderBy)}&limit=${n}&offset=`,
+      cookie,
+      referer: `${WEB}/`,
+    })
+    const list = Array.isArray(r.json?.data) ? r.json.data : []
+    if (!list.length) return { ok: false, why: `没读到评论（HTTP ${r.status}）`, comments: [] }
+    const comments = list.map((c) => ({
+      id: String(c?.id ?? ''),
+      author: String(c?.author?.name ?? '').trim(),
+      likes: Number(c?.like_count) || 0,
+      text: trimText(htmlToText(c?.content), 300),
+      replies: Number(c?.child_comment_count) || 0,
+    }))
+    return { ok: true, comments, total: Number(r.json?.paging?.totals) || comments.length, why: '' }
+  } catch (error) {
+    return { ok: false, why: `读评论失败：${errorText(error)}`, comments: [] }
+  }
+}
+
 /** 认一下这份 cookie 是谁（登录后校验 / 设置页显示用）。 */
 export async function probe({ cookie = '', fetchImpl = fetch } = {}) {
   try {
@@ -217,4 +338,4 @@ export async function probe({ cookie = '', fetchImpl = fetch } = {}) {
 }
 
 export const ENDPOINTS = { WEB, MOBILE }
-export default { fetchHot, fetchFollow, fetchHistory, fetchRecommend, probe, ENDPOINTS }
+export default { fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestion, fetchAnswer, fetchComments, htmlToText, probe, ENDPOINTS }
