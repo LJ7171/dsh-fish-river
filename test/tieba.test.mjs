@@ -199,3 +199,30 @@ test('扫码：轮询成功只落本机档，返回值不含 cookie', async () =
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('刷贴吧只抓推荐：一次出门只有一个请求，清单带链接；进帖/进吧不自动做', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-tieba-one-'))
+  try {
+    await savePastedCookie(root, 'BDUSS=abc123456789', async () => ({ ok: true, status: 200, text: async () => '{"error_code":0,"data":{"user":{}}}', headers: { getSetCookie: () => [] } }))
+    const cfg = normalizeConfig({ tieba: { enabled: true, thread: { enabled: true, topN: 5 }, forum: { enabled: true, topN: 5, names: ['a'] } }, sleep: { daily: { tieba: 2 } } })
+    assert.equal(cfg.tieba.thread, undefined, '不再有「自动进帖」配置')
+    assert.equal(cfg.tieba.forum, undefined, '不再有「自动进吧」配置')
+    let calls = 0
+    const r = await fetchTiebaMaterial({
+      root,
+      cfg,
+      fetchImpl: async (url) => {
+        calls += 1
+        assert.match(String(url), /personalized_pc/, '只允许首页推荐这一个请求')
+        return { ok: true, status: 200, text: async () => JSON.stringify({ error_code: 0, ...FEED }), headers: { getSetCookie: () => [] } }
+      },
+    })
+    assert.equal(calls, 1)
+    assert.equal(r.acted, true)
+    assert.equal(r.picks.length, 1)
+    assert.match(r.picks[0].url, /^https:\/\/tieba\.baidu\.com\/p\/\d+/)
+    assert.match(r.text, /大学生该不该分期买耳机/)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
