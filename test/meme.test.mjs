@@ -101,16 +101,16 @@ test('相册里 why 对得上的图也能挑到', async () => {
   }
 })
 
-test('渠道轮里一轮只挑一张', async () => {
+test('设了上限才拦：maxPerTurn=1 时同一轮只挑一张', async () => {
   const root = await tempRoot()
   resetMemePickForTests()
   resetChannelTurnForTests()
   try {
     setChannelTurn({ channel: 'weixin', conversationId: 'c1', kind: 'dm' })
-    const a = await pickMeme(root, { tag: '比心', enabled: true, packs: ['plain'] })
+    const a = await pickMeme(root, { tag: '比心', enabled: true, packs: ['plain'], maxPerTurn: 1 })
     assert.equal(a.ok, true)
-    const b = await pickMeme(root, { tag: '无语', enabled: true, packs: ['plain'] })
-    assert.equal(b.note, '[这轮已经挑过]')
+    const b = await pickMeme(root, { tag: '无语', enabled: true, packs: ['plain'], maxPerTurn: 1 })
+    assert.match(b.note, /这轮已经挑过 1 张/)
   } finally {
     resetMemePickForTests()
     resetChannelTurnForTests()
@@ -142,4 +142,52 @@ test('工具回执是机器状态；身份文档默认不提它', async () => {
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+
+test('一轮能挑几张：默认不限，设了上限才拦', async () => {
+  const root = await tempRoot()
+  try {
+    await mkdir(join(root, 'meme-packs', 'plain'), { recursive: true })
+    // 用自带的 plain 包：复制两张占位图过去
+    const src = join(bundledMemeDir(), 'plain')
+    for (const f of ['heart.png', 'ok.png']) {
+      await writeFile(join(root, 'meme-packs', 'plain', f), await readFile(join(src, f)))
+    }
+    await writeFile(join(root, 'meme-packs', 'plain', 'pack.json'), JSON.stringify({
+      id: 'plain',
+      items: [
+        { file: 'heart.png', tags: ['比心'] },
+        { file: 'ok.png', tags: ['点赞'] },
+      ],
+    }))
+
+    setChannelTurn({ channel: 'weixin', kind: 'dm', conversationId: 'wxid_a' })
+    resetMemePickForTests()
+    // 默认 maxPerTurn = 0：不限，第二轮也能挑
+    const a1 = await pickMeme(root, { tag: '比心', packs: ['plain'], enabled: true })
+    const a2 = await pickMeme(root, { tag: '点赞', packs: ['plain'], enabled: true })
+    assert.equal(a1.ok, true)
+    assert.equal(a2.ok, true)
+
+    // 设成 1：同一轮第二次被拦，回执报数量
+    resetMemePickForTests()
+    const b1 = await pickMeme(root, { tag: '比心', packs: ['plain'], enabled: true, maxPerTurn: 1 })
+    const b2 = await pickMeme(root, { tag: '点赞', packs: ['plain'], enabled: true, maxPerTurn: 1 })
+    assert.equal(b1.ok, true)
+    assert.equal(b2.ok, false)
+    assert.match(b2.note, /这轮已经挑过 1 张/)
+  } finally {
+    resetChannelTurnForTests()
+    resetMemePickForTests()
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('配置：meme.maxPerTurn 默认 0（不限），夹在 0–5', () => {
+  const cfg = normalizeConfig({})
+  assert.equal(cfg.meme.maxPerTurn, 0)
+  assert.equal(normalizeConfig({ meme: { maxPerTurn: 9 } }).meme.maxPerTurn, 5)
+  assert.equal(normalizeConfig({ meme: { maxPerTurn: -2 } }).meme.maxPerTurn, 0)
+  assert.equal(normalizeConfig({ meme: { maxPerTurn: 'x' } }).meme.maxPerTurn, 0)
 })
