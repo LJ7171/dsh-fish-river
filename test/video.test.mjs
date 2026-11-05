@@ -256,6 +256,10 @@ test('grabFrames：帧与拼图都从 stdout 拿，mp4 在本地也能跑通（�
   const client = fakeClient({
     async view() { return { ok: true, data: { cid: 1, duration: 3, title: '本地测试片' } } },
     async playurl() { return { ok: true, data: { url: src, duration: 3 } } },
+    // 字幕接线（2026-11-04）：看画面顺带读字幕；拿不到就只是少一节，不算失败。
+    async subtitle() {
+      return { ok: true, data: [{ t: 0.5, text: '这是第一句' }, { t: 1.5, text: '这是第二句' }] }
+    },
   })
 
   const r = await grabFrames({ bvid: BVID, root, client, ffmpeg: ff, frames: 9 })
@@ -267,14 +271,23 @@ test('grabFrames：帧与拼图都从 stdout 拿，mp4 在本地也能跑通（�
   assert.doesNotMatch(r.path, /\\/)
   assert.match(r.path, /^.+media\/sheet-BV1ph4y1g75E-.+\.png$/)
 
-  const st = await stat(r.path.replace(/\//g, '\\'))
+  // 用正斜杠路径直接读：Windows 的 Node 也认正斜杠，反斜杠反而是「只有 Windows 能用」。
+  // （2026-11-04：本机装上 ffmpeg 之后这条用例第一次在 Linux 上真跑，原先那句
+  //  `replace(/\//g, '\\')` 会把 /tmp/... 变成 \tmp\... 然后 stat 不到。）
+  const st = await stat(r.path)
   assert.ok(st.size > 1024, `拼图应该不是空的，实际 ${st.size} 字节`)
-  const buf = await readFile(r.path.replace(/\//g, '\\'))
+  const buf = await readFile(r.path)
   assert.equal(buf.subarray(0, 8).toString('hex'), PNG_MAGIC.toString('hex'))
 
   // 旧实现会在 media/ 下留 tmp-* 临时帧目录；新实现不落中间文件
   const names = await readdir(dir)
   assert.equal(names.filter((x) => x.startsWith('tmp-')).length, 0, '不该再留下临时帧目录')
+
+  // 字幕跟着这次看画面一起回来了（2026-11-04）
+  assert.equal(r.subtitle?.ok, true)
+  assert.equal(r.subtitle.total, 2)
+  assert.match(r.subtitle.text, /这是第一句/)
+  assert.match(r.subtitle.text, /^\[00:00\]/)
 })
 
 test('grabFrames：给了 at 就只取那几个时刻（真跑本地片）', async (t) => {

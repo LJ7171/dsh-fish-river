@@ -1,0 +1,38 @@
+{
+  "name": "dsh-fish-river-zhihu",
+  "version": "0.1.0",
+  "description": "知乎只读素材源（热榜 / 关注动态）—— dsh-fish-river 的可选子包",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "api.js",
+    "auth.js",
+    "README.md"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "zhihu"
+  ],
+  "dependencies": {},
+  "peerDependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "node": ">=22"
+  },
+  "license": "MIT",
+  "private": true,
+  "dsh": {
+    "source": "zhihu",
+    "kind": "read-only materials",
+    "requires": [
+      "a logged-in Zhihu account (QR scan)"
+    ]
+  }
+}

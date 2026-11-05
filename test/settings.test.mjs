@@ -137,3 +137,43 @@ test('白名单校验：拼错的名字与不存在的工具都不许过，拿�
   // 空输入永远合法（留空 = 不额外给）
   assert.equal(validateToolNames('', known).ok, true)
 })
+
+test('渠道分段连发默认关，只有显式打开才开', () => {
+  assert.equal(normalizeConfig({}).im.bubbleSplit, false)
+  assert.equal(DEFAULTS.im.bubbleSplit, false)
+  assert.equal(normalizeConfig({ im: { bubbleSplit: true } }).im.bubbleSplit, true)
+  assert.equal(normalizeConfig({ im: { bubbleSplit: false } }).im.bubbleSplit, false)
+  assert.equal(normalizeConfig({ im: { bubbleSplit: 'true' } }).im.bubbleSplit, false, '字符串不算打开')
+  assert.equal(normalizeConfig({ im: 'bubble' }).im.bubbleSplit, false, '形状坏了就当关')
+})
+
+test('口语化标点默认开，只有显式关掉才关', () => {
+  assert.equal(normalizeConfig({}).im.casualPunctuation, true)
+  assert.equal(DEFAULTS.im.casualPunctuation, true)
+  assert.equal(normalizeConfig({ im: { casualPunctuation: false } }).im.casualPunctuation, false)
+  assert.equal(normalizeConfig({ im: { casualPunctuation: true } }).im.casualPunctuation, true)
+  assert.equal(normalizeConfig({ im: { casualPunctuation: 'false' } }).im.casualPunctuation, true, '字符串不算关掉')
+  assert.equal(normalizeConfig({ im: 'casual' }).im.casualPunctuation, true, '形状坏了就当开')
+  // 只改分段时，口语化仍是默认开，不会被一起关掉
+  assert.equal(normalizeConfig({ im: { bubbleSplit: true } }).im.casualPunctuation, true)
+  assert.equal(normalizeConfig({ im: { bubbleSplit: true } }).im.bubbleSplit, true)
+  assert.equal(normalizeConfig({ im: { casualPunctuation: false } }).im.bubbleSplit, false)
+})
+
+test('分段连发的开关在设置页，并且能被 /config 白名单收下', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const client = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+  const observe = await readFile(new URL('../lib/observe.js', import.meta.url), 'utf8')
+  assert.ok(client.includes('渠道回复分段连发'), '设置页要有这个开关')
+  assert.ok(client.includes('默认关着'), '文案要说清默认关、关掉与以前一样')
+  assert.ok(client.includes('口语化标点'), '设置页要有口语化开关')
+  assert.ok(client.includes('默认开着'), '文案要说清口语化默认开')
+  assert.ok(client.includes('{ im: patch }'), '开关要单独提交 im，不跟渠道人格键混在一起')
+  const m = client.match(/const buildConfig = \(\) => \(\{([\s\S]*?)\n {6}\}\)/)
+  assert.ok(m, '要能定位 buildConfig')
+  assert.ok(!m[1].includes('bubbleSplit'), '不进整表保存，免得自动保存用旧值把它关掉')
+  assert.ok(!m[1].includes('casualPunctuation'), '口语化同样不进整表保存')
+  const allowed = observe.match(/const allowed = \[([^\]]+)\]/)
+  assert.ok(allowed, '要能定位 /config 白名单')
+  assert.ok(allowed[1].includes("'im'"), '漏登记的话设置页一点就 400')
+})

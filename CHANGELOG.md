@@ -1,3 +1,106 @@
+## 0.1.64 — 2026-11-05
+
+- 知乎可以「点进去」了：`zhihu_look` 新增三种详情——
+  `question`（一个问题下最靠前的回答，标题从回答里的 `question.title` 取，因为单查问题详情要签名）、
+  `answer`（一条回答全文，HTML 转纯文本、截 1500 字）、
+  `comments`（按分数取评论，answer/article/question 三种 target）。
+- `id` 既可以是号，也可以直接贴链接；`parseTarget` 会从
+  `zhihu.com/question/{qid}/answer/{aid}`、`zhuanlan.zhihu.com/p/{id}` 里认出该看哪一页。
+- 素材和列表现在**带链接**：她看到一条想细看，直接把链接丢回 `zhihu_look` 就行，
+  不用先记住 id。
+- 评论接口用 `api/v4/comment_v5/{answers|articles|questions}/{id}/root_comment`；
+  知乎正文按 HTML 去标签转纯文本，第三方文本照旧过 `guard.sanitizeForeign`。
+- 真机验证：问题 36867384、回答 2101466029390151931、zhu 文章评论都读通。
+- 测试：zhihu 24 条（新增链接解析、HTML 转文本、三种评论 target、详情 tool 调用）。
+
+## 0.1.63 — 2026-11-04
+
+- 知乎改成「白天随机翻、醒来再递」：热榜 / 关注 / 历史在 **08:00–20:00** 里按概率随机翻，
+  一天合计 `perDay` 次（默认 4），翻到的新内容攒进 `zhihu-state.json` 的 `pending`，
+  她醒来时一次性递给她——她的作息不必落在白天，也不会漏掉白天的事。
+- **首页推荐单独一条线**：`zhihu.recommend`（默认开、一天 8 次、每次 6 条），
+  走 `feed/topstory/recommend`，不需要 session_token。
+- **浏览历史默认开**（`zhihu.history`），递给她时写成「他最近看过的」并注明「不是你经历的」。
+- 新增工具 **`zhihu_look`**（只读，kind = all/hot/recommend/follow/history）——
+  她可以自己决定要不要再看一眼，而不是只能等定时投喂。
+- 设置页「上网 → 知乎」加了时间段、推荐开关与次数、翻次数的说明；状态行显示
+  「今天翻过 N 次 · 推荐 M 次 · 攒着 K 条」。
+- `zhihuTick` 用概率而不是排时刻表：每分钟以 `配额/窗口分钟数` 掷一次，
+  期望等于配额、落点天然随机；同一分钟只掷一次；配额按天归零。
+- 测试：`test/zhihu.test.mjs` 17 条（含窗口外、同一分钟、骰子没中、pending 递送、工具注册）。
+
+## 0.1.62 — 2026-11-04
+
+- 微信渠道：**图片现在会落盘给她看**。iLink 的图是 AES 加密的 CDN 资源，适配器会下载、
+  解密（aeskey 十六进制 / media.aes_key base64 两种写法都认）、按 magic bytes 认格式，
+  存到 `<root>/weixin-media/<消息id>-N.<ext>`（0600，3 天 TTL、最多留 50 张）。
+- 提示词里多一句「（他发了一张图，存在 <path>，用 read_image 看图。）」——看不看由她自己决定，
+  `read_image` 是宿主的图片工具，会把图变成模型能收的像素（她的模型 deepseek-flash 声明支持 image）。
+- 下载失败/格式认不出时，图片位置留空占位、消息照常交出去（她至少知道「有人发了张图」），
+  不会因为 CDN 挂了整条消息消失。
+- 只对**本地路径**加那句提示；QQ / B 站私信的图片还是 http 地址，read_image 读不了，不加。
+- 测试：weixin 12 条（含密文解密、落盘 0600、失败降级）+ router 2 条（本地路径 / 外链）。
+
+## 0.1.61 — 2026-11-04
+
+- 新增**知乎素材源（只读）**：当日热榜 + 关注动态，可选子包 `packages/dsh-fish-river-zhihu/`。
+  和刷 B 站同一个位置——醒来前拉一次，素材进提示词，**不写事件流**；配额记在
+  `zhihu-state.json`（0600），不占她的记忆。
+- 扫码登录（纯接口，不用浏览器）：`POST /api/v3/account/api/login/qrcode` → 轮询 `scan_info`；
+  cookie 只写 `<root>/zhihu-auth.json`（0600）。
+- 关键发现写进子包 README：网页端要 `x-zse-96` 签名（403 / code 10003），
+  移动端 `api.zhihu.com` 不校验签名，所以关注动态走移动端。
+- 设置页「上网」加一块知乎（开关 / 扫码 / 每天几次 / 热榜几条 / 关注几条 / 浏览历史开关——
+  历史这一版只留开关，内容下一版接）；`/config` 白名单登记 `zhihu`。
+- 去重：同一批内容只递一次（300 个 id、7 天过期）；两路都失败就不打扰她。
+- `test/zhihu.test.mjs` 11 条。
+
+## 0.1.60 — 2026-11-04
+
+- Linux WebUI 可以在设置页里把已经下好、验过的包装上去。平台是 `linux`、依赖是 `github:` 或 registry 版本号时，安装会在数据目录 `updates/` 写一份 bash（`install-v<版本>.sh`），`detached` 交给 `bash` 跑，HTTP 响应先回到页面。
+- 脚本先用 `systemd-run --scope` 离开服务 cgroup，再 `systemctl stop deepseek-harness`，等到 `inactive` / `failed` 才备份 `package.json`、`pnpm-lock.yaml` 和 `node_modules/dsh-fish-river`，然后 `pnpm add file:<已校验的 tarball>`。版本不对或安装失败就从备份滚回去。
+- 成功、回滚、以及 60 秒还没停下来（这种什么都不改）三条路最后都是 `systemctl restart deepseek-harness`，避免服务停在 inactive。单元名先写死。`process.execPath` 是 node 也照样装，不再要求桌面版 `.exe`。
+- `link:` / `file:` 仍拒绝自动换包。macOS 仍不装。Windows 的 `.cmd`（taskkill → 备份 → pnpm → 重开 exe）不变。
+
+## 0.1.59 — 2026-11-04
+
+- 渠道回复默认做轻量口语化。设置页「渠道」里的「口语化标点」（`config.im.casualPunctuation`）**默认开**：
+  发出去的每条文本去掉句末 `。` / `.`。问号、感叹号、省略号、表情、@、小数、版本号、域名、链接、代码块和行内代码留着。
+  已经分段的，每一段各自处理；没分段的，整段处理。发生在分段之后、真正 `send` 之前。
+- **关掉**之后发出去的字与后处理出现之前一样，提示词里也不多那句。代发不改：那是主人的原话。
+- 流水和 `utterance` 仍记筛过的原文，不记剥过句号的那一版。剥完没有字（空串、纯句号、只剩空白）就不发，也不记成她说过。
+- 提示词里多一句「少用句号，短句像微信聊天」。正则才是主路径。逗号变空格这一档这次不做。
+
+## 0.1.58 — 2026-11-04
+
+- 渠道回复可以分段连发。设置页「渠道」里的「渠道回复分段连发」（`config.im.bubbleSplit`）**默认关**：
+  关掉时仍是一次 `send`，提示词也不多字。打开之后，出站筛完的正文按空行、换行和句末（。！？）
+  拆成最多 4 条，泡与泡之间停 300–800ms 再发；提示词里多一句聊天窗口的处境（能短就短、可以分几句），
+  不写人设。
+- 流水和 `utterance` 仍记合并后的全文一条，不按气泡各写一条成长事件。代发不拆。
+- 默认关是跟评论、桌面提醒同一惯例：往外多发几条会改对方看到的节奏，由使用者自己打开。
+
+## 0.1.57 — 2026-11-04
+
+- 设置页「检查更新」改查本仓 [LJ7171/dsh-fish-river](https://github.com/LJ7171/dsh-fish-river)，并真的出网问 releases / tags / `package.json`。下载安装用同一个仓库的 tag 包。连不上时照旧说连不上，不抛。
+- 看画面顺带读字幕：`bili_watch` 抽完帧再拉一次 CC / AI 字幕，按时间轴等距抽最多
+  60 行 / 1400 字交给她（`lib/subtitle.js`）。拿不到只少一节文字，不算没看成。
+  字幕要 B 站登录态；内容照样过 `guard.sanitizeForeign`，想重塑她的行不递。
+- 修 `subtitle_url` 是协议相对地址（`//aisubtitle.hdslb.com/...`）导致每条字幕都被跳过、
+  统一报「字幕拉取失败」的问题——这个接口从写下来那天起就没成功过。
+- `bili_watch` 的说明改成「画面 + 字幕」；日志多一行「看画面：字幕 N/M」。
+
+## 0.1.56 — 2026-11-04
+
+- 新增第四条渠道：**微信 ClawBot**（腾讯官方 iLink 协议）。设置页扫码登录，只有私聊，
+  没有群——所以微信那一行不显示「在群里说话 / 只被 @ 时说话 / 群白名单」。
+- 凭据写 `<数据目录>/weixin.json`（0600，原子写），**不进 `config.json`、不进日志、
+  `status()` 里也没有 token**；「退出登录」删的是凭据本身。
+- 没登录时渠道层照常起来（`login-required` 只记一条 note），扫码成功后同一条适配器
+  直接上线，不用重启 DSH。
+- 进站文本过 `guard.sanitizeForeign`；回消息带同一会话最近的 `context_token`。
+- 图片保留媒体引用（`images`），解密 / 落盘留给以后——她本来也看不见图。
+
 ## 0.1.55 — 2026-11-04
 
 - 群里除了不交代自己，也别借题讲一段道理：提示词加「只回答问的那件事」。
@@ -174,7 +277,8 @@
 ### 修
 
 - **渠道对话也会结账轮数了。** 以前只有 GUI 那条会话会在回完一句后 umpTurns，渠道消息（QQ / B 站 / 抖音）进进出出从不结账，于是 chat.rotateAfter 对渠道等于不存在——她那条会话可以一直长下去，直到把本地模型的上下文撑爆（真机：47k token 撞 32k）。
-  现在 lib/channels/router.js 每发出去一句就 	urnOver()：计数、到点换一间会话、写一条 otate: meta、重写身份文档。换会话失败只记一行，不影响这句话本身。
+  现在 lib/channels/router.js 每发出去一句就 	urnOver()：计数、到点换一间会话、写一条 
+otate: meta、重写身份文档。换会话失败只记一行，不影响这句话本身。
 - package.json / lib/index.js 版本 0.1.28。
 
 ### 测试
