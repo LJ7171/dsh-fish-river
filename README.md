@@ -545,6 +545,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -DryRun
 - 她也可以自己看，还能**点进去**：`zhihu_look` 的 kind 除了列表（all/hot/recommend/follow/history），
   还有 `question`（一个问题下的回答）、`answer`（一条回答全文）、`comments`（一条回答/文章/问题下的评论）。
   给 id 或直接贴链接都行（如 `https://www.zhihu.com/question/123/answer/456`）。只读，不发评论不私信。
+  回答里的图会下载到 `<数据目录>/zhihu-media/`（0600，7 天过期），并告诉她路径——想看就自己 `read_image`。
 - **白天随机翻，08:00–20:00**（可调）：热榜/关注/历史合计一天 4 次、**首页推荐单独一条线、默认 8 次**；
   翻到的新东西先攒着，等她醒来一起递，所以她的作息不必落在白天。
 - 失败只降级，不影响她说话。

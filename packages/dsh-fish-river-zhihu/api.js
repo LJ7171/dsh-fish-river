@@ -221,6 +221,30 @@ export function htmlToText(html) {
   return s
 }
 
+/** 正文里的图：只认 http(s)，data: 占位图跳过；最多 n 张。 */
+export function extractImages(html, max = 3) {
+  const out = []
+  const seen = new Set()
+  for (const m of String(html ?? '').matchAll(/<img\b[^>]*>/gi)) {
+    const tag = m[0]
+    const attr = (name) => {
+      const r = new RegExp(`${name}\\s*=\\s*["']([^"']+)["']`, 'i').exec(tag)
+      return r ? r[1] : ''
+    }
+    const raw = attr('data-original') || attr('src')
+    const url = raw.startsWith('//') ? `https:${raw}` : raw
+    if (!/^https?:\/\//i.test(url)) continue
+    // 同一张图在正文里常同时出现「缩略图」和「原图」两种地址：按去掉尺寸后缀的键去重，
+    // 否则一次阅读会把同一张图存两遍。
+    const key = url.replace(/\?.*$/, '').replace(/_(?:[0-9]+w|r|is|hd|xl|qhd|fhd)\.(?:jpe?g|png|webp|gif)$/i, '')
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(url)
+    if (out.length >= Math.max(1, Math.min(6, Number(max) || 3))) break
+  }
+  return out
+}
+
 function trimText(value, max) {
   const s = String(value ?? '')
   return s.length > max ? `${s.slice(0, max)}……` : s
@@ -250,6 +274,7 @@ export async function fetchQuestion({ cookie = '', id = '', limit = 5, fetchImpl
       votes: Number(it?.voteup_count) || 0,
       comments: Number(it?.comment_count) || 0,
       text: trimText(htmlToText(it?.content), 400),
+      images: extractImages(it?.content, 2),
       url: `https://www.zhihu.com/answer/${it?.id ?? ''}`,
     }))
     return { ok: true, question: { id: qid, title, answerCount: Number(r.json?.paging?.totals) || answers.length }, answers, why: '' }
@@ -280,6 +305,7 @@ export async function fetchAnswer({ cookie = '', id = '', maxChars = 1500, fetch
         votes: Number(d.voteup_count) || 0,
         comments: Number(d.comment_count) || 0,
         text: trimText(htmlToText(d.content), Math.max(200, Math.min(4000, Number(maxChars) || 1500))),
+        images: extractImages(d.content, 3),
         url: `https://www.zhihu.com/answer/${aid}`,
       },
       why: '',
@@ -338,4 +364,4 @@ export async function probe({ cookie = '', fetchImpl = fetch } = {}) {
 }
 
 export const ENDPOINTS = { WEB, MOBILE }
-export default { fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestion, fetchAnswer, fetchComments, htmlToText, probe, ENDPOINTS }
+export default { fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestion, fetchAnswer, fetchComments, htmlToText, extractImages, probe, ENDPOINTS }
