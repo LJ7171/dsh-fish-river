@@ -26,7 +26,7 @@ async function tempRoot() {
 test('默认关着；包名会洗干净', () => {
   const cfg = normalizeConfig({})
   assert.equal(cfg.meme.enabled, false)
-  assert.deepEqual(cfg.meme.packs, ['plain'])
+  assert.deepEqual(cfg.meme.packs, ['dafeiyu-001', 'plain'])
   const washed = normalizeConfig({ meme: { enabled: true, packs: ['plain', 'plain', '../x', 'mine'] } })
   assert.equal(washed.meme.enabled, true)
   assert.deepEqual(washed.meme.packs, ['plain', 'mine'])
