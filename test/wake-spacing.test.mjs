@@ -72,6 +72,7 @@ async function withRoot(fn) {
   globalThis.setTimeout = (f, ms, ...a) => realST(f, [2000, 30_000, 90_000].includes(ms) ? 5 : ms, ...a)
   try {
     await writeConfig(normalizeConfig({
+      sleep: { enabled: false },
       window: ['00:00', '23:59'],
       daily: { events: 2 },
       wakesPerDay: 4,

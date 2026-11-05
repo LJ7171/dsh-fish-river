@@ -354,7 +354,10 @@ test('scheduler.tick 在时间窗外不唤醒', async () => {
     // 窗口设成一个必然不含"现在"的区间（当前分钟往后推 3 小时开，1 分钟后关）
     const now = new Date()
     const h1 = (now.getHours() + 3) % 24
-    await writeConfig(normalizeConfig({ window: [`${String(h1).padStart(2, '0')}:00`, `${String((h1 + 1) % 24).padStart(2, '0')}:00`] }), root)
+    await writeConfig(normalizeConfig({
+      sleep: { enabled: false },
+      window: [`${String(h1).padStart(2, '0')}:00`, `${String((h1 + 1) % 24).padStart(2, '0')}:00`],
+    }), root)
 
     const { ctx, prompts } = fakeCtx()
     const s = startScheduler(ctx, { root, log: () => {} })
