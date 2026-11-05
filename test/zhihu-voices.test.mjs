@@ -8,6 +8,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { normalizeConfig } from '../lib/settings.js'
+import { chooseVoice } from '../lib/voices.js'
 import { deriveSelf, DAY_MS } from '../lib/derive.js'
 import { personaLine } from '../lib/persona.js'
 import { zhihuTick, renderMaterial, readState } from '../lib/zhihu.js'
@@ -307,4 +308,21 @@ test('设置页有知乎评论开关，文案不把历史说成评论', async ()
   assert.match(src, /把知乎评论区的话也给她读/)
   assert.match(src, /zhihuVoices/)
   assert.match(src, /重要的人最近看过的/)
+})
+
+
+test('知乎那条路不吃「跨来源重复」：复读句式不会绕过赞数门槛', () => {
+  const comments = [
+    { text: '蹲一个后续蹲一个后续', like: 0, bvid: 'zh:answer:1' },
+    { text: '蹲一个后续蹲一个后续', like: 0, bvid: 'zh:answer:2' },
+  ]
+  // B 站那条路：跨两个来源的复读会直接入选（原有行为）
+  const bili = chooseVoice(comments, { minLike: 30, rng: () => 0.99 })
+  assert.equal(bili?.why, 'repeated')
+  // 知乎这条：关掉 repeated 分支，0 赞又抽不到随机（rng 不出顺子），就什么都不写
+  const zhihu = chooseVoice(comments, { minLike: 30, rng: () => 0.99, allowRepeated: false })
+  assert.equal(zhihu, null)
+  // 够赞的短句仍然能选上
+  const liked = chooseVoice([{ text: '这就是我想说的意思', like: 99, bvid: 'zh:answer:3' }], { minLike: 30, allowRepeated: false })
+  assert.equal(liked?.why, 'liked')
 })
