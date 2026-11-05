@@ -174,7 +174,8 @@ test('router：填了主人的账号，同一个人在私信里就是「他」�
   const h = await harness({ stage: 1, config: cfg, ownerIds: { qq: '10086' } })
   const r = await h.router.handle(groupMsg({ kind: 'dm', conversationId: '10086', personId: 'u_10086', text: '在吗' }))
   assert.equal(r.sent, true)
-  assert.match(h.calls[0].content[0].text, /是他本人/)
+  assert.match(h.calls[0].content[0].text, /重要的人/)
+  assert.doesNotMatch(h.calls[0].content[0].text, /主人/)
   // 主人私聊说的话算「本宪」，不是外面的人
   const { events } = await readEvents(h.root)
   const said = events.find((e) => e.type === 'utterance')
@@ -202,7 +203,8 @@ test('router：主人 uid 是每条现读的，填完立刻生效（2026-11-02 �
   owners = { qq: '10001' }
   const r2 = await h.router.handle(msg())
   assert.equal(r2.sent, true, JSON.stringify(r2))
-  assert.match(h.calls[0].content[0].text, /是他本人/)
+  assert.match(h.calls[0].content[0].text, /重要的人/)
+  assert.doesNotMatch(h.calls[0].content[0].text, /主人/)
   await fs.rm(h.root, { recursive: true, force: true })
 })
 
@@ -215,7 +217,8 @@ test('router：主人有两个号时，两个都算本人（2026-11-03）', asyn
     h.calls.length = 0
     const r = await h.router.handle(from(uid))
     assert.equal(r.sent, true, `${uid}: ${JSON.stringify(r)}`)
-    assert.match(h.calls[0].content[0].text, /是他本人/)
+    assert.match(h.calls[0].content[0].text, /重要的人/)
+    assert.doesNotMatch(h.calls[0].content[0].text, /主人/)
   }
   // 没填在列表里的号仍然是陌生人
   assert.equal((await h.router.handle(from('999999'))).why, 'stage-too-early')

@@ -69,7 +69,7 @@
 node --test
 ```
 
-当前基线 **1383 个**，独立进程跑 `node --test` 应全绿。任何一条红都不许提交——包括看起来"不是我弄的"那条。
+当前基线 **1438 个**，独立进程跑 `node --test` 应全绿。任何一条红都不许提交——包括看起来"不是我弄的"那条。
 
 按环境挑跑法：
 
@@ -136,8 +136,11 @@ qq_send_message, qq_get_unread_messages, qq_reply
 硬边界：
 
 - **渠道配置里不许出现人格键**。`config.channels.<name>` 只允许 `enabled / wsUrl / accessToken /
-  replyInGroup / groups / mentionOnly / browserPath / bridgePath / ownerId / intervalMs` 这些「在哪、开不开、多久一次」。
-  加一个 `persona` 或 `tone` 键就是绕开第 2 节。
+ replyInGroup / groups / mentionOnly / browserPath / bridgePath / ownerId / intervalMs /
+ accountOf / bond / closeIds` 这些「在哪、开不开、多久一次、号是家门还是出门号、这场近不近」。
+ `accountOf` 只收 `home` / `outing`，`bond` 只收 `close` / `open`，`closeIds` 是可选近人的号。
+ 这三格是场合，不是性格：近人的话仍是 social，只有对上重要的人（`ownerId`）才进 constitution。
+ 加一个 `persona` 或 `tone` 键就是绕开第 2 节。
 - **进站必过 `guard.sanitizeForeign`，出站必过 `screenOutgoing` + `looksLikePrivateLeak`**。
   适配器自己不做判断：`send()` 只负责发，判断在上层 `router.js`。
 - **可见性按会话判**：群聊 `visibility:'public'`，私聊 `visibility:'private'`。私聊事件只对该
@@ -256,7 +259,7 @@ qq_send_message, qq_get_unread_messages, qq_reply
 - [ ] 三个依赖字段还是 `{}`
 - [ ] 没有新增人格设置入口
 - [ ] 新输入口都过了 `guard.js`
-- [ ] `node --test` 1383 全绿
+- [ ] `node --test` 1438 全绿
 - [ ] 界面文案没有「他」「四道门」「三道门」「好感度」
 - [ ] 改了 `EVENT_SCHEMA_VERSION` 的话，`CHANGELOG.md` 里写了迁移说明
 

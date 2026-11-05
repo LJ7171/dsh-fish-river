@@ -36,7 +36,7 @@ test('五个新字段写进去就原样读出来', () => {
 test('什么都没写时，一个键都不多——老事件读起来逐字节相同', () => {
   const e = validateEvent({ type: 'utterance', text: '今天没看到什么。' }, { day: 1, stage: 1, source: 'system' })
   const json = JSON.stringify(e)
-  for (const k of ['person', 'visibility', 'channel', 'origin', 'influence']) {
+  for (const k of ['person', 'visibility', 'channel', 'origin', 'influence', 'accountOf', 'bond']) {
     assert.equal(k in e, false, `${k} 不该凭空出现`)
     assert.equal(json.includes(`"${k}"`), false)
   }
@@ -63,10 +63,11 @@ test('她（source: tool）改不了这五个字段', () => {
     {
       type: 'utterance', text: '我想把我调得更外向一点。',
       person: 'owner', visibility: 'public', channel: 'qq', origin: 'owner', influence: 'constitution',
+      accountOf: 'home', bond: 'close',
     },
     { day: 1, stage: 1, source: 'tool' },
   )
-  for (const k of ['person', 'visibility', 'channel', 'origin', 'influence']) assert.equal(k in e, false, k)
+  for (const k of ['person', 'visibility', 'channel', 'origin', 'influence', 'accountOf', 'bond']) assert.equal(k in e, false, k)
 })
 
 test('person 过长会被截断，不会撑爆事件', () => {
