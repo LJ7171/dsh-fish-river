@@ -10,7 +10,7 @@
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, readdir, rm, readFile } from 'node:fs/promises'
+import { mkdtemp, readdir, rm, readFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -20,7 +20,8 @@ import {
   zhihuTick, takePendingMaterial, renderMaterial, inZhihuWindow,
 } from '../lib/zhihu.js'
 import { registerZhihuLook, zhihuLookOnce, parseTarget } from '../lib/zhihuLook.js'
-import { fetchQuestion, fetchAnswer, fetchComments, htmlToText } from '../packages/dsh-fish-river-zhihu/api.js'
+import { fetchQuestion, fetchAnswer, fetchComments, htmlToText, extractImages } from '../packages/dsh-fish-river-zhihu/api.js'
+import { saveImages } from '../lib/zhihuLook.js'
 import { normalizeConfig } from '../lib/settings.js'
 
 function fakeResponse(body, status = 200) {
@@ -443,4 +444,66 @@ test('zhihu_look 的参数里包含 question / answer / comments', () => {
   for (const k of ['question', 'answer', 'comments']) assert.ok(tool.parameters.properties.kind.enum.includes(k))
   assert.ok(tool.parameters.properties.id)
   assert.deepEqual(tool.parameters.properties.target.enum, ['answer', 'article', 'question'])
+})
+
+
+/* ---------------------------- 知乎图片：落盘给 read_image ---------------------------- */
+
+test('extractImages：只认 http(s)，跳过 data: 占位图，去重', () => {
+  const html = `
+    <p>x</p>
+    <img src="https://pic1.zhimg.com/a_720w.jpg" data-original="https://pic1.zhimg.com/a_r.jpg">
+    <img src="data:image/svg+xml;utf8,<svg/>">
+    <img src="//picx.zhimg.com/b.jpg">
+    <img src="https://pic1.zhimg.com/a_720w.jpg">
+  `
+  const got = extractImages(html, 3)
+  assert.deepEqual(got, ['https://pic1.zhimg.com/a_r.jpg', 'https://picx.zhimg.com/b.jpg'])
+})
+
+test('saveImages：下载成功的落盘（0600），data: 与坏图跳过', async () => {
+  const root = await tempRoot()
+  try {
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    const fetchImpl = async (url) => {
+      if (String(url).includes('bad')) return { ok: false, status: 500, arrayBuffer: async () => Buffer.alloc(0) }
+      return { ok: true, status: 200, arrayBuffer: async () => jpeg }
+    }
+    const paths = await saveImages({ root, urls: ['https://pic1.zhimg.com/ok.jpg', 'https://pic1.zhimg.com/bad.jpg'], tag: 'a-1', fetchImpl })
+    assert.equal(paths.length, 1)
+    assert.match(paths[0], /zhihu-media\/a-1-0\.jpg$/)
+    const st = await stat(paths[0])
+    assert.equal(st.mode & 0o777, 0o600)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('zhihuLookOnce：回答里的图会下载，并把路径写进结果', async () => {
+  const root = await tempRoot()
+  try {
+    const cfg = normalizeConfig({ zhihu: { enabled: true } })
+    const mod = detailMod()
+    mod.fetchAnswer = async () => ({
+      ok: true,
+      answer: {
+        id: '2101466029390151931',
+        question: { title: '哪些游戏玩物不丧志' },
+        author: 'Asher',
+        votes: 9,
+        comments: 2,
+        text: '正文',
+        images: ['https://pic1.zhimg.com/ok.jpg'],
+        url: 'https://www.zhihu.com/answer/2101466029390151931',
+      },
+    })
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    const fetchImpl = async () => ({ ok: true, status: 200, arrayBuffer: async () => jpeg })
+    const r = await zhihuLookOnce({ root, cfg, kind: 'answer', id: '2101466029390151931', mod, fetchImpl })
+    assert.equal(r.ok, true)
+    assert.match(r.text, /read_image/)
+    assert.match(r.text, /zhihu-media\/a-2101466029390151931-0\.jpg/)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })
