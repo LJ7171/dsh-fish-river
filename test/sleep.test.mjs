@@ -16,8 +16,11 @@ import { startScheduler } from '../lib/scheduler.js'
 import { postComment, scanIfAwake } from '../lib/comment.js'
 import {
   advance, armRoll, blankState, diceOpen, dueRolls, markAct, markBlocked, rollSegment,
-  inActiveWindow, nextActiveStart, readSleep, sleepEnabled, writeSleep,
+  inActiveWindow, nextActiveStart, readDailySpent, readSleep, sleepEnabled, writeSleep,
 } from '../lib/sleep.js'
+import { appendEvent } from '../lib/store.js'
+import { dateKey } from '../lib/settings.js'
+import { writeState as writeZhihuState } from '../lib/zhihu.js'
 
 const at = (y, mo, d, h, mi = 0) => new Date(y, mo - 1, d, h, mi, 0, 0).getTime()
 const cfg = normalizeConfig({
@@ -300,4 +303,33 @@ test('活跃窗外调度器不主动叫醒', async () => {
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+test('每天已用：B 站/抖音数事件流，知乎数当天 runs，分片和隔天不算', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-spent-'))
+  const dk = dateKey()
+  const head = { day: 1, stage: 1, source: 'system' }
+  try {
+    await appendEvent({ type: 'meta', text: `browse:${dk} []` }, head, root)
+    await appendEvent({ type: 'meta', text: `browse-more:${dk} []` }, head, root)
+    await appendEvent({ type: 'meta', text: `dy-browse:${dk} []` }, head, root)
+    await appendEvent({ type: 'meta', text: `dy-browse:${dk} [{"id":"a"}]` }, head, root)
+    await appendEvent({ type: 'meta', text: 'browse:2000-01-01 []' }, head, root)
+    await writeZhihuState(root, { dateKey: dk, runs: 3, seen: {} })
+    assert.deepEqual(await readDailySpent(root, dk), { bili: 1, douyin: 2, zhihu: 3 })
+    await writeZhihuState(root, { dateKey: '2000-01-01', runs: 9, seen: {} })
+    assert.equal((await readDailySpent(root, dk)).zhihu, 0, '隔天的知乎次数不算今天')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('作息页每天配额旁边写出当天已用', async () => {
+  const cl = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
+  assert.match(cl, /已用 \$\{n\} \/ 配额 \$\{capText\}/)
+  assert.match(cl, /extra: usedLine\(quotaUsed, 'bili', qBili\)/)
+  assert.match(cl, /extra: usedLine\(quotaUsed, 'douyin', qDouyin\)/)
+  assert.match(cl, /extra: usedLine\(quotaUsed, 'zhihu', qZhihu\)/)
+  const obs = await readFile(new URL('../lib/observe.js', import.meta.url), 'utf8')
+  assert.match(obs, /dailyUsed = await readDailySpent\(root\)/)
 })
