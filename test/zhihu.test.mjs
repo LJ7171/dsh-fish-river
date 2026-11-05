@@ -188,11 +188,12 @@ test('loadZhihu：没装就返回 null', async () => {
 
 /* ---------------------------- 配置 ---------------------------- */
 
-test('默认配置：关着、白天 08:00–20:00、推荐单独 8 次', () => {
+test('默认配置：关着、配额进作息、推荐单独 8 次', () => {
   const cfg = normalizeConfig({})
   assert.equal(cfg.zhihu.enabled, false)
-  assert.equal(cfg.zhihu.perDay, 4)
-  assert.deepEqual(cfg.zhihu.window, ['08:00', '20:00'])
+  assert.equal(cfg.sleep.daily.zhihu, 4, '每天翻几次现在由作息配额管')
+  assert.equal(cfg.sleep.daily.recommend, 8)
+  assert.equal(cfg.zhihu.window, undefined, '白天时段已删除（作息接管）')
   assert.equal(cfg.zhihu.hot.topN, 8)
   assert.equal(cfg.zhihu.follow.topN, 8)
   // 2026-11-04：浏览历史改成默认开（他要求的），措辞仍是「他看的」

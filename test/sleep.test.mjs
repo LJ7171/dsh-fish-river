@@ -59,7 +59,7 @@ function asleepAt(t) {
 
 test('默认开着作息，时刻和间隔夹在界限里', () => {
   const c = normalizeConfig({})
-  assert.equal(c.sleep.enabled, true)
+  assert.equal('enabled' in c.sleep, false, '作息固定生效，没有开关')
   assert.equal(c.sleep.active_start, '07:00')
   assert.equal(c.sleep.active_end, '23:00')
   assert.equal(c.sleep.idle_to_sleep_min, 90)
@@ -81,12 +81,18 @@ test('默认开着作息，时刻和间隔夹在界限里', () => {
   assert.equal(inActiveWindow(c, new Date(2026, 10, 5, 3, 0)), false)
 })
 
-test('每天配额迁到 sleep.daily：新值优先，老 perDay 只当迁移来源', () => {
+test('每天配额：上网四项迁到 sleep.daily，评论两项留在 comment', () => {
   const migrated = normalizeConfig({ browse: { perDay: 3, douyin: { perDay: 2 } }, zhihu: { perDay: 6, recommend: { perDay: 9 } }, comment: { perDay: 4, replyPerDay: 5 } })
-  assert.deepEqual(migrated.sleep.daily, { bili: 3, douyin: 2, zhihu: 6, recommend: 9, comment: 4, reply: 5 })
+  assert.deepEqual(migrated.sleep.daily, { bili: 3, douyin: 2, zhihu: 6, recommend: 9 })
+  assert.equal(migrated.comment.perDay, 4, '评论配额仍在 comment')
+  assert.equal(migrated.comment.replyPerDay, 5)
   const explicit = normalizeConfig({ sleep: { daily: { bili: 1 } }, browse: { perDay: 3 } })
   assert.equal(explicit.sleep.daily.bili, 1, '新配置优先')
   assert.equal(explicit.sleep.daily.zhihu, 4, '缺的项回默认')
+  // 旧 sleep.daily.comment/reply 只做一次迁移
+  const legacy = normalizeConfig({ sleep: { daily: { comment: 3, reply: 4 } } })
+  assert.equal(legacy.comment.perDay, 3)
+  assert.equal(legacy.comment.replyPerDay, 4)
 })
 
 test('窗外微信只开会话苏醒，静默够了再睡，不掷骰', () => {
@@ -250,13 +256,12 @@ test('睡眠时扫回复和发评论都 no-op；可掷骰才放行', async () =>
   }
 })
 
-test('sleep.enabled=false 时旧时段照旧，台账不接管', () => {
-  const off = normalizeConfig({ sleep: { enabled: false }, comment: { window: ['00:00', '23:59'] } })
-  assert.equal(sleepEnabled(off), false)
-  const gate = diceOpen(off, { mode: 'asleep' })
-  assert.equal(gate.governed, false)
-  assert.equal(gate.open, true)
-  assert.equal(diceOpen(cfg, null).governed, false, '还没有台账时不打断旧时段')
+test('作息固定生效：没有开关；台账还没建立前不接管', () => {
+  assert.equal(sleepEnabled({}), true, '固定 true')
+  const st = blankState(cfg, at(2026, 11, 5, 10, 0))
+  assert.equal(diceOpen(cfg, st).governed, true)
+  assert.equal(diceOpen(cfg, null).governed, false, '还没有台账时按老时段走，避免第一次启动被掐')
+  assert.equal(normalizeConfig({ sleep: { enabled: false } }).sleep.enabled, undefined)
 })
 
 test('活跃窗外调度器不主动叫醒', async () => {

@@ -211,7 +211,7 @@ test('组件在"有数据"时把关键信息渲染出来', async () => {
   assert.ok(!/\[\s*'all'\s*,/.test(srcAll), '源码里不该再留 all 页签')
   assert.ok(src.includes('让我看日记'), '日记可见性开关必须在')
   assert.ok(src.includes('黑名单（逗号分隔'), '黑名单可追加必须在')
-  assert.ok(src.includes('允许她上网（B 站）'), '上网总开关必须在')
+  assert.ok(src.includes('允许她刷 B 站'), 'B 站开关必须在')
   delete globalThis.fetch
 })
 
@@ -254,7 +254,7 @@ test('组件里没有任何"改她性格"的控件（B §8 红线）', async () 
   const m = src.match(/const buildConfig = \(\) => \(\{([\s\S]*?)\n {6}\}\)/)
   assert.ok(m, '必须能定位到 buildConfig 的字段表')
   const body = m[1]
-  for (const key of ['absenceAfterDays', 'wakesPerDay', 'daily', 'diary', 'avoid', 'browse']) {
+  for (const key of ['absenceAfterDays', 'daily', 'diary', 'avoid', 'browse', 'sleep', 'comment', 'outreach']) {
     assert.ok(body.includes(key), `保存体里应有 ${key}`)
   }
   for (const key of ['personality', 'persona', 'traits', 'mood', 'love']) {

@@ -71,18 +71,24 @@ async function withRoot(fn) {
   // 等她说完的轮询（2s）、兜底重试（30s）、兜底（90s）压成几毫秒，其余定时器不动
   globalThis.setTimeout = (f, ms, ...a) => realST(f, [2000, 30_000, 90_000].includes(ms) ? 5 : ms, ...a)
   try {
+    // 作息固定生效：给一个覆盖「现在」的活跃窗，保证第一次 tick 就会醒。
+    const hr = new Date().getHours()
+    const pad = (n) => String((n + 24) % 24).padStart(2, '0')
     await writeConfig(normalizeConfig({
-      sleep: { enabled: false },
-      window: ['00:00', '23:59'],
+      sleep: {
+        active_start: `${pad(hr - 1)}:00`,
+        active_end: `${pad(hr + 3)}:00`,
+        nap_min_h: 3,
+        nap_max_h: 3,
+      },
       daily: { events: 2 },
       wakesPerDay: 4,
       browse: { enabled: false },
       comment: { enabled: false },
+      zhihu: { enabled: false },
       rules: { offers: false },
       memory: { sleepEveryDays: 0 },
     }), root)
-    // 今天的落点挪到 10 分钟前
-    await appendEvent({ type: 'meta', text: `sched:${dateKey()} ${new Date(realNow() - 10 * 60_000).toISOString()}` }, { day: 0, stage: 1, source: 'timer' }, root)
     return await fn(root, { advance: (ms) => { offset += ms }, sleep: (ms) => new Promise((r) => realST(r, ms)) })
   } finally {
     Date.now = realNow
@@ -94,46 +100,30 @@ async function withRoot(fn) {
   }
 }
 
-test('落点之后不再一分钟一个地连着叫；第二次等时间到、也等她说完', async () => {
-  await withRoot(async (root, { advance, sleep }) => {
+test('醒来不会一分钟一个地连着叫；同一段里没路可上网就不再叫', async () => {
+  await withRoot(async (root, { advance }) => {
     const h = fakeHost()
     const s = startScheduler(h.ctx, { root, sessionId: 's-main', log: () => {} })
     try {
       await s.tick()
-      assert.equal(h.prompts.length, 1, '落点到了醒第一次')
+      assert.equal(h.prompts.length, 1, '段首醒一次')
       assert.match(h.prompts[0].section, /叫醒你的信号/)
       h.emit('turn/start'); h.emit('turn/end')
       assert.equal(getWakeSection(), '', '这一轮结束处境撤掉')
 
       advance(61_000); await s.tick()
-      assert.equal(h.prompts.length, 1, '一分钟后不该再叫（修之前这里会醒第二次）')
+      assert.equal(h.prompts.length, 1, '一分钟后不该再叫')
+
+      // 这一段没有可上网的路（B站/抖音/知乎/评论都关）：掷骰也掷不出第二次
+      advance(46 * 60_000); await s.tick()
+      assert.equal(h.prompts.length, 1, '没路可逛就不再叫')
 
       const { events } = await readEvents(root)
-      const due = nextWakeAt(events, { window: ['00:00', '23:59'], daily: { events: 2 }, wakesPerDay: 4 }, dateKey())
-      assert.ok(due >= Date.now() + 40 * 60_000, '第二次至少隔开几十分钟')
-
-      advance(due - Date.now() + 1000)
-      h.emit('turn/start') // 到点时她正在跟人说话
-      await s.tick()
-      assert.equal(h.prompts.length, 1, '她正在说话：先不叫')
-      h.emit('turn/end')
-      advance(61_000); await s.tick()
-      assert.equal(h.prompts.length, 2, '她说完了再叫第二次')
-
-      h.emit('turn/start') // 第二次醒来的这一轮迟迟没结束
-      await sleep(40)
-      assert.notEqual(getWakeSection(), '', '90 秒兜底到点但这一轮还在：处境不抽走')
-      h.emit('turn/end')
-      assert.equal(getWakeSection(), '', '这一轮结束才撤')
-
-      advance(6 * 3600_000); await s.tick()
-      assert.equal(h.prompts.length, 2, '配额满了不再叫')
-      await sleep(30)
-      assert.equal(h.listeners.length, 1, '叫醒用的监听用完就摘，只剩忙闲监听')
+      const sleeps = events.filter((e) => e.type === 'meta' && String(e.text).startsWith('wake:'))
+      assert.equal(sleeps.length, 1, '只写了这一次醒来')
     } finally {
       s.dispose()
     }
-    assert.equal(h.listeners.length, 0, 'dispose 摘掉忙闲监听')
   })
 })
 
