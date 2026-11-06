@@ -262,6 +262,13 @@ test('组件里没有任何"改她性格"的控件（B §8 红线）', async () 
   }
 })
 
+test('设置页不再引用已删除的评论开关；B 站说话只保留一份', async () => {
+  const src = await readFile(CLIENT, 'utf8')
+  assert.doesNotMatch(src, /setBrowseVoices/, '已删的 voices 开关不能再被初始化引用')
+  assert.equal((src.match(/group\('在 B 站说话'/g) || []).length, 0, '评论设置已经并进「刷 B 站」，不能再单独一块')
+  assert.match(src, /允许在评论区说话/, '评论开关还在「刷 B 站」里')
+})
+
 test('quality 是宿主那套 {score} 结构体时也要能渲染（2026-10-23 设置页空白的根因）', async () => {
   // 现场事实：宿主 /state 返回的 quality 不是数字，是带样本量的结构体：
   //   { stability:{score,sample,worst}, consistency:{score,pairs}, novelty:{score,recent,older} }
