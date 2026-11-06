@@ -62,11 +62,6 @@ test('daily.events 用满 → skip', () => {
   assert.equal(plan(model(), cfg, today({ sent: 1 }), []).action, 'skip')
 })
 
-test('wakesPerDay 用满 → skip（唤醒次数唯一旋钮）', () => {
-  const cfg = normalizeConfig({ daily: { events: 3 }, wakesPerDay: 1 })
-  assert.equal(plan(model(), cfg, today({ proactive: 1 }), []).action, 'skip')
-})
-
 test('cold 落中 absence_probe 抢到优先权', () => {
   const cfg = normalizeConfig({ daily: { questions: 3 } })
   const m = model({ stage: 2, absenceDays: 4, beliefCount: 2, beliefs: [{ id: 'a', text: 'x', since: new Date().toISOString() }] })

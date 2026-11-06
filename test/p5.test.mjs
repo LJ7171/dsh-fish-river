@@ -118,7 +118,6 @@ test('/config 白名单收下观测台提交的全部环境键（含 chat 与 me
     // 这是观测台 save() 实际提交的形状
     const patch = {
       absenceAfterDays: 3,
-      wakesPerDay: 1,
       daily: { events: 1, questions: 1 },
       diary: { visible: true, enabled: true },
       avoid: { keywords: ['恐怖'] },
@@ -317,12 +316,12 @@ test('config 里留着一个早就不存在的工具名，不该让整页设置�
     // 整表提交（buildConfig 的形状），白名单里混一个这台机器上没有的名字 + 改一个无关设置
     const { status, out } = await post({
       tools: { restrict: true, allow: ['delete', 'read_image'] },
-      wakesPerDay: 3,
+      daily: { events: 3 },
     })
     assert.equal(status, 200, `不该整表拒掉：${JSON.stringify(out)}`)
     assert.deepEqual(out.config.tools.allow, ['read_image'], '坏名字丢掉，好的留下')
     assert.deepEqual(out.droppedTools, ['delete'], '丢掉了哪些要原样告诉界面')
-    assert.equal(out.config.wakesPerDay, 3, '同一张表里别的设置必须照常存进去')
+    assert.equal(out.config.daily.events, 3, '同一张表里别的设置必须照常存进去')
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
   }

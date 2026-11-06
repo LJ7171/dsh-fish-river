@@ -8,11 +8,10 @@ import { join } from 'node:path'
 test('空配置得到完整默认值（含用户新加的 three 配额项）', () => {
   const c = normalizeConfig({})
   assert.equal(c.growthDays, 30)
-  assert.equal(c.daily.events, 4, '2026-11-02 默认 2→4（配合 wakesPerDay 2，有效 2 次/天）')
+  assert.equal(c.daily.events, 4, '每天最多推几张成长卡')
   assert.equal(c.daily.questions, 1)
-  // daily.proactive 已并入 wakesPerDay（两个旋钮管同一件事，必有一个是死键）
   assert.equal(c.daily.proactive, undefined, 'proactive 不应再存在')
-  assert.equal(c.wakesPerDay, 2, '唤醒次数唯一旋钮')
+  assert.equal(c.wakesPerDay, undefined, 'wakesPerDay 已退役')
   assert.equal(c.diary.enabled, true)
   assert.equal(c.diary.visible, false, '日记默认不给看')
   assert.ok(Array.isArray(c.avoid.keywords) && c.avoid.keywords.includes('恐怖'))
@@ -45,9 +44,8 @@ test('未知键不会被丢弃（向前兼容：以后加的配置项老版本�
 })
 
 test('越界值被夹到合法区间', () => {
-  const c = normalizeConfig({ growthDays: 9999, wakesPerDay: -5, daily: { events: 99 } })
+  const c = normalizeConfig({ growthDays: 9999, daily: { events: 99 } })
   assert.equal(c.growthDays, 180)
-  assert.equal(c.wakesPerDay, 0)
   assert.equal(c.daily.events, 6)
 })
 

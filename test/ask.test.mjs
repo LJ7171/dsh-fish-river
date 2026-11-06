@@ -93,13 +93,12 @@ test('同意时间请求：真的改配置，并留一条 ask-time 记账', asyn
   const ask = seedAsk(root, {
     kind: 'time',
     text: '我想把醒着的时间挪到晚上九点以后。',
-    value: { wakesPerDay: 2, window: ['21:00', '22:30'] },
+    value: { window: ['21:00', '22:30'] },
   })
   const r = await settleAsk(root, { askId: ask.id, verdict: 'approve' })
   assert.equal(r.ok, true, r.why)
 
   const cfg = await readConfig(root)
-  assert.equal(cfg.wakesPerDay, 2)
   assert.deepEqual(cfg.window, ['21:00', '22:30'])
 
   const { events } = await readEvents(root)
@@ -123,13 +122,12 @@ test('驳回：只记 ask-no，什么都别改', async () => withRoot(async (roo
   const ask = seedAsk(root, {
     kind: 'time',
     text: '我想改一下作息。',
-    value: { wakesPerDay: 3, window: ['01:00', '02:00'] },
+    value: { window: ['01:00', '02:00'] },
   })
   const before = (await loadConfig(root)).config
   const r = await settleAsk(root, { askId: ask.id, verdict: 'reject', reason: '这个点不合适。' })
   assert.equal(r.ok, true, r.why)
   const after = (await loadConfig(root)).config
-  assert.equal(after.wakesPerDay, before.wakesPerDay)
   assert.deepEqual(after.window, before.window)
 
   const { events } = await readEvents(root)

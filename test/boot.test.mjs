@@ -206,13 +206,11 @@ test('config POST 白名单挡住指向她本人的键', async () => {
     const env = fakeRes()
     await route.handler(reqWithBody('POST', JSON.stringify({
       absenceAfterDays: 4,
-      wakesPerDay: 2,
       diary: { visible: true, enabled: true },
       avoid: { keywords: ['恐怖', '血腥', '新的一个'] },
     })), env)
     assert.equal(env.code, 200, `环境配置必须能保存：${env.body}`)
     assert.equal(env.json.config.absenceAfterDays, 4)
-    assert.equal(env.json.config.wakesPerDay, 2)
     assert.equal(env.json.config.diary.visible, true)
     assert.deepEqual(env.json.config.avoid.keywords, ['恐怖', '血腥', '新的一个'])
 

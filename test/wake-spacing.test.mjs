@@ -14,7 +14,7 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { startScheduler, nextWakeAt } from '../lib/scheduler.js'
+import { startScheduler } from '../lib/scheduler.js'
 import { appendEvent, readEvents, writeConfig } from '../lib/store.js'
 import { normalizeConfig, dateKey } from '../lib/settings.js'
 import { getWakeSection, clearWakeSection } from '../lib/identity.js'
@@ -23,22 +23,6 @@ import { inWake } from '../lib/wakewin.js'
 
 const at = (h, m, day = 29) => new Date(2026, 9, day, h, m).getTime()
 const wakeEv = (t, dk = '2026-10-29') => ({ type: 'meta', text: `wake:${dk} x`, ts: new Date(t).toISOString() })
-const cfgA = { window: ['10:00', '03:00'], daily: { events: 2 }, wakesPerDay: 4 }
-
-test('nextWakeAt：今天还没醒过不拦；醒过之后把剩下的摊到时段结束前', () => {
-  assert.equal(nextWakeAt([], cfgA, '2026-10-29'), 0)
-  // 跨零点的时段在 21:39 醒过：摊到当天午夜前（过了零点日期一换，计数从头算）
-  assert.equal(nextWakeAt([wakeEv(at(21, 39))], cfgA, '2026-10-29'), at(21, 39) + (at(24, 0) - at(21, 39)) / 2)
-  // 不跨零点：摊到时段结束前
-  assert.equal(nextWakeAt([wakeEv(at(14, 0))], { ...cfgA, window: ['08:00', '23:00'] }, '2026-10-29'), at(18, 30))
-  // 跨零点而这次是零点后醒的：时段在今天之内结束
-  assert.equal(nextWakeAt([wakeEv(at(1, 0))], cfgA, '2026-10-29'), at(2, 0))
-  // 太晚了也至少隔 45 分钟
-  assert.equal(nextWakeAt([wakeEv(at(23, 40))], cfgA, '2026-10-29'), at(23, 40) + 45 * 60_000)
-  // 配额满了交给 plan()；昨天的叫醒不算
-  assert.equal(nextWakeAt([wakeEv(at(12, 0)), wakeEv(at(18, 0))], cfgA, '2026-10-29'), 0)
-  assert.equal(nextWakeAt([wakeEv(at(12, 0), '2026-10-28')], cfgA, '2026-10-29'), 0)
-})
 
 // ---- 真的跑 tick：假宿主 + 临时状态库，时间用 Date.now 偏移推进 ----
 
@@ -82,7 +66,6 @@ async function withRoot(fn) {
         nap_max_h: 3,
       },
       daily: { events: 2 },
-      wakesPerDay: 4,
       browse: { enabled: false },
       comment: { enabled: false },
       zhihu: { enabled: false },
