@@ -15,7 +15,7 @@ import { join } from 'node:path'
 import { WAKE_TRIGGER, OUTING_TRIGGER, wakeTriggerFor } from '../lib/wakeconst.js'
 import { registerChooseOuting, setOutingExecutor, resetOutingForTests } from '../lib/outingChoice.js'
 import { setWakeTurn, resetWakeTurnForTests } from '../lib/wakeTurn.js'
-import { startScheduler } from '../lib/scheduler.js'
+import { startScheduler, wakeNow } from '../lib/scheduler.js'
 import { normalizeConfig } from '../lib/settings.js'
 import { writeConfig, readEvents } from '../lib/store.js'
 import { writeSleep, readSleep, blankState } from '../lib/sleep.js'
@@ -115,6 +115,41 @@ test('掷骰叫醒不预抓：只发唤醒语，素材等她选', async () => {
     } finally {
       s.dispose()
     }
+  } finally {
+    resetWakeTurnForTests()
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('手动叫醒也只问不抓：叫醒后等她选，不先抓素材', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-manual-'))
+  const prompts = []
+  const ctx = {
+    on: () => () => {},
+    sessionController: {
+      create: async () => {},
+      prompt: async (req) => { prompts.push(req) },
+    },
+  }
+  try {
+    await writeConfig(normalizeConfig({
+      sleep: { active_start: start, active_end: end },
+      browse: { enabled: true },
+      comment: { enabled: false },
+      zhihu: { enabled: false },
+      tieba: { enabled: false },
+      rules: { offers: false },
+      memory: { sleepEveryDays: 0 },
+    }), root)
+    const r = await wakeNow(ctx, { root })
+    assert.equal(r.ok, true, JSON.stringify(r))
+    assert.equal(prompts.length, 1)
+    assert.equal(prompts[0].content[0].text, WAKE_TRIGGER, '还没有台账：先醒一醒')
+    const { events } = await readEvents(root)
+    assert.equal(events.filter((e) => e.type === 'meta' && String(e.text).startsWith('browse:')).length, 0, '手动叫醒也不该先抓')
+    const st = await readSleep(root)
+    assert.equal(st.mode, 'dice_awake')
+    assert.equal(st.acts.bili, 0, '她没选就不占次数')
   } finally {
     resetWakeTurnForTests()
     await rm(root, { recursive: true, force: true })
