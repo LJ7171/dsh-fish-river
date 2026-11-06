@@ -199,7 +199,8 @@ test('默认配置：关着、配额按「次」进作息、推荐只是逛的�
   // 2026-11-04：浏览历史改成默认开（他要求的），措辞仍是「他看的」
   assert.equal(cfg.zhihu.history.enabled, true)
   assert.equal(cfg.zhihu.recommend.enabled, true, '推荐仍是「一次逛什么」里的一项')
-  assert.equal(cfg.zhihu.voices, false, '别人的评论默认不记')
+  assert.equal(cfg.zhihu.voices, undefined, '读评论设置已撤（功能之后统一到社会层）')
+  assert.deepEqual(cfg.zhihu.comment, { enabled: false, perDay: 1, replyPerDay: 1 })
 })
 
 test('配置夹紧：次数与条数超范围会被拉回', () => {
@@ -291,18 +292,16 @@ test('没登录 / 关着 / 全不勾：都只降级，不抛', async () => {
   }
 })
 
-test('别人的评论：开着且今天没留过时，从当次素材里留 1 条 voice', async () => {
+test('读评论暂停：配置写 voices:true 也不再拉评论、不写 voice', async () => {
   const root = await tempRoot()
   try {
     const mod = fetchMod({ hot: [{ id: 'hot:5', title: '带评论的题', url: 'https://www.zhihu.com/question/123' }] })
     const cfg = normalizeConfig({ zhihu: { enabled: true, voices: true } })
     const r = await fetchZhihuMaterial({ root, cfg, mod, now: new Date('2026-11-04T10:15:00'), fetchImpl: async () => ({ ok: true }) })
     assert.equal(r.ok, true)
-    assert.equal(mod.calls.comments, 1)
+    assert.equal(mod.calls.comments, 0)
     const { events } = await (await import('../lib/store.js')).readEvents(root)
-    const voice = events.find((e) => e.type === 'voice' && e.channel === 'zhihu')
-    assert.ok(voice, '应留一条 voice')
-    assert.equal(voice.influence, 'social')
+    assert.equal(events.filter((e) => e.type === 'voice' && e.channel === 'zhihu').length, 0)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

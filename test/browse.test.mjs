@@ -461,13 +461,13 @@ test('quotesOf 只取 HER_TYPES 且只取当天', () => {
 })
 
 
-test('素材开头那句场合跟着配置走（家门号 / 出门号不再永远默认）', () => {
+test('素材开头按「这个号是谁的」说（不再用旧的家门号 / 出门号）', () => {
   const pack = (i) => ({
     video: v({ bvid: `BV${i}`, title: '一条素材' }),
     desc: '', tags: [], comments: [], danmaku: [], pubdate: null,
   })
-  const out = renderMaterial([pack(1)], { config: { channels: { bili: { accountOf: 'home', bond: 'close' } } } })
-  assert.match(out, /家里的号/)
-  const out2 = renderMaterial([pack(1)], { config: { channels: { bili: { accountOf: 'outing', bond: 'open' } } } })
-  assert.match(out2, /出门看见/)
+  const out = renderMaterial([pack(1)], { config: { bili: { owner: 'her' } } })
+  assert.match(out, /这是用她自己的B 站号看到的/)
+  const out2 = renderMaterial([pack(1)], { config: { bili: { owner: 'owner' } } })
+  assert.match(out2, /这是用那个重要的人的B 站号看到的，不是你经历的/)
 })

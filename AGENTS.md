@@ -69,7 +69,7 @@
 node --test
 ```
 
-当前基线 **1510 个**，独立进程跑 `node --test` 应全绿。任何一条红都不许提交——包括看起来"不是我弄的"那条。
+当前基线 **1509 个**，独立进程跑 `node --test` 应全绿。任何一条红都不许提交——包括看起来"不是我弄的"那条。
 
 按环境挑跑法：
 
@@ -200,7 +200,7 @@ qq_send_message, qq_get_unread_messages, qq_reply
   开闸的唯一入口是 `social_open` 工具（§10）。页面上出现任何写 `social-open:` 的路径都算违规。
 - **「出门」不占页签**：它是「上网」之后的一段行动，渲染在 `showTab('bili')` 里（`h('div', null, biliPage, outingPage)`）。
   再有人要加页签前先问：这件事是不是「她的一段时间」？是就并进去。
-- **同一件事只留一个入口**：B 站登录只在渠道页（扫码为主，贴 cookie 收进 `<details>`）。
+- **同一件事只留一个入口**：B 站登录在「上网 → 刷 B 站」里（扫码 + 贴 cookie 收进 `<details>`）；「渠道」页 B 站那一行只留状态与指路，不再重复一套登录。
   「上网」页里那一段只留一句指路 + 一个 `setTab('channels')`。
 - **设置项必须能显式保存**：`commitInput` 现在有「保存」按钮、回车也提交——
   只有 `onBlur` 时，填完直接重启就会丢（用户 m02861 亲历）。
@@ -259,7 +259,7 @@ qq_send_message, qq_get_unread_messages, qq_reply
 - [ ] 三个依赖字段还是 `{}`
 - [ ] 没有新增人格设置入口
 - [ ] 新输入口都过了 `guard.js`
-- [ ] `node --test` 1510 全绿
+- [ ] `node --test` 1509 全绿
 - [ ] 界面文案没有「他」「四道门」「三道门」「好感度」
 - [ ] 改了 `EVENT_SCHEMA_VERSION` 的话，`CHANGELOG.md` 里写了迁移说明
 

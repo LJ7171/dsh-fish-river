@@ -35,8 +35,8 @@ test('默认护照：微信家门近场合，知乎家门，B 站 / QQ / 抖音�
   assert.equal(passportOf(cfg, 'qq').accountOf, 'outing')
   assert.equal(passportOf(cfg, 'douyin').accountOf, 'outing')
   assert.equal(cfg.channels.weixin.accountOf, PASSPORT_DEFAULTS.weixin.accountOf)
-  assert.equal(cfg.zhihu.accountOf, 'home')
-  assert.equal(cfg.zhihu.bond, 'close')
+  assert.equal(cfg.zhihu.owner, 'owner', '知乎默认用重要的人的号看')
+  assert.equal(cfg.bili.owner, 'her', 'B 站默认用她自己的号看')
 })
 
 test('号主和档可以改；写错的值回落默认，不当成性格', () => {
@@ -52,8 +52,9 @@ test('号主和档可以改；写错的值回落默认，不当成性格', () =>
   assert.equal(cfg.channels.qq.closeIds, '7, 8')
   assert.equal(cfg.channels.bili.accountOf, 'outing')
   assert.equal(cfg.channels.bili.bond, 'open')
-  assert.equal(cfg.zhihu.accountOf, 'outing')
-  assert.equal(cfg.zhihu.bond, 'close')
+  // 知乎的 accountOf/bond 已退役；老的 outing 迁成 owner=owner
+  assert.equal(cfg.zhihu.accountOf, undefined)
+  assert.equal(cfg.zhihu.owner, 'owner')
 })
 
 test('场合句：微信、出门听见、知乎素材、知乎评论', () => {
@@ -137,15 +138,14 @@ test('提示词用「重要的人」，家门近聊多带几句', () => {
   assert.doesNotMatch(qq, /主人/)
 })
 
-test('素材场合句：知乎家门、B 站和抖音是出门看见的', () => {
+test('素材措辞按「这个号是谁的」走；知乎/贴吧/B 站不再用旧场合句', () => {
   const zh = renderZhihu([{ kind: 'hot', title: '热榜一' }])
-  assert.match(zh, /^这是重要的人知乎账号上刷到的/)
-  assert.doesNotMatch(zh, /主人/)
+  assert.match(zh, /^（这是用那个重要的人的知乎号看到的，不是你经历的。）/)
   const bili = renderBili([{
     video: { bvid: 'BV1', title: '一条', owner: { name: '甲' }, duration: 60, tname: 'x' },
     desc: '', tags: [], comments: [], danmaku: [], pubdate: null,
   }])
-  assert.match(bili, /这是她在 B站 上出门看见的/)
+  assert.match(bili, /这是用她自己的B 站号看到的/)
   const dy = renderDouyin([{ id: '1', title: '一条', author: '甲', like: '1' }])
   assert.match(dy, /这是她在 抖音 上出门看见的/)
 })
