@@ -476,7 +476,7 @@ test('saveImages：下载成功的落盘（0600），data: 与坏图跳过', asy
     assert.equal(paths.length, 1)
     assert.match(paths[0], /zhihu-media\/a-1-0\.jpg$/)
     const st = await stat(paths[0])
-    assert.equal(st.mode & 0o777, 0o600)
+    if (process.platform !== 'win32') assert.equal(st.mode & 0o777, 0o600)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
@@ -506,6 +506,57 @@ test('zhihuLookOnce：回答里的图会下载，并把路径写进结果', asyn
     assert.equal(r.ok, true)
     assert.match(r.text, /read_image/)
     assert.match(r.text, /zhihu-media\/a-2101466029390151931-0\.jpg/)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('zhihuLookOnce：看图关掉不落盘；max 截断张数', async () => {
+  const root = await tempRoot()
+  try {
+    const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+    const fetchImpl = async () => ({ ok: true, status: 200, arrayBuffer: async () => jpeg })
+    const mod = detailMod()
+    mod.fetchAnswer = async () => ({
+      ok: true,
+      answer: {
+        id: '1',
+        question: { title: '题' },
+        author: '甲',
+        votes: 1,
+        comments: 0,
+        text: '正文',
+        images: [
+          'https://pic1.zhimg.com/a.jpg',
+          'https://pic1.zhimg.com/b.jpg',
+          'https://pic1.zhimg.com/c.jpg',
+        ],
+        url: 'https://www.zhihu.com/answer/1',
+      },
+    })
+    const off = await zhihuLookOnce({
+      root,
+      cfg: normalizeConfig({ zhihu: { enabled: true, images: { enabled: false } } }),
+      kind: 'answer',
+      id: '1',
+      mod,
+      fetchImpl,
+    })
+    assert.equal(off.ok, true)
+    assert.match(off.text, /正文/)
+    assert.doesNotMatch(off.text, /read_image|zhihu-media/)
+
+    const capped = await zhihuLookOnce({
+      root,
+      cfg: normalizeConfig({ zhihu: { enabled: true, images: { enabled: true, max: 2 } } }),
+      kind: 'answer',
+      id: '1',
+      mod,
+      fetchImpl,
+    })
+    assert.equal(capped.ok, true)
+    const hits = capped.text.match(/zhihu-media[/\\]a-1-\d+\.jpg/g) || []
+    assert.equal(hits.length, 2)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

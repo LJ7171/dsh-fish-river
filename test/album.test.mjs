@@ -17,7 +17,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { readFileSync } from 'node:fs'
 
-import { keepImage, registerKeepImage, readAlbum, ALBUM_MAX_BYTES_DEFAULT } from '../lib/album.js'
+import { keepImage, registerKeepImage, readAlbum, browseImageKeepAllowed, ALBUM_MAX_BYTES_DEFAULT } from '../lib/album.js'
 import { sweepMedia } from '../lib/media.js'
 import { normalizeConfig, updateConfig } from '../lib/settings.js'
 import { readEvents } from '../lib/store.js'
@@ -50,7 +50,7 @@ test('keep_image 把本机图抄进相册，回执只有机器状态，不写事
     assert.match(r.note, /^\[收进相册\] /)
     assert.match(r.path, /\/album\/\d{4}-\d{2}-\d{2}\/[0-9a-f]+\.png$/)
     const st = await stat(r.path)
-    assert.equal(st.mode & 0o777, 0o600)
+    if (process.platform !== 'win32') assert.equal(st.mode & 0o777, 0o600)
     const db = await readAlbum(root)
     assert.equal(db.items.length, 1)
     assert.equal(db.items[0].why, '想留着')
@@ -262,6 +262,44 @@ test('工具回执不带她能接着念的句子', () => {
   assert.doesNotMatch(tool.description, /总是|爱发|性格/)
 })
 
+
+test('上网看图关掉时：本平台缓存不能 keep_image', async () => {
+  const root = await tempRoot()
+  try {
+    const zhDir = join(root, 'zhihu-media')
+    const media = join(root, 'media')
+    await mkdir(zhDir, { recursive: true })
+    await mkdir(media, { recursive: true })
+    const zh = join(zhDir, 'a-1-0.jpg')
+    const tb = join(media, 'tieba-0.jpg')
+    const bili = join(media, 'bili-cmt-1.png')
+    const wx = join(root, 'weixin-media', 'm.png')
+    await mkdir(join(root, 'weixin-media'), { recursive: true })
+    await writeFile(zh, PNG)
+    await writeFile(tb, PNG)
+    await writeFile(bili, PNG)
+    await writeFile(wx, PNG)
+
+    const offAll = normalizeConfig({
+      zhihu: { images: { enabled: false } },
+      tieba: { images: { enabled: false } },
+      browse: { images: { enabled: false } },
+    })
+    assert.equal(browseImageKeepAllowed(offAll, zh), false)
+    assert.equal(browseImageKeepAllowed(offAll, tb), false)
+    assert.equal(browseImageKeepAllowed(offAll, bili), false)
+    assert.equal(browseImageKeepAllowed(offAll, wx), true, '微信不拦')
+
+    assert.equal((await keepImage(root, { path: zh, config: offAll })).note, '[没开]')
+    assert.equal((await keepImage(root, { path: tb, config: offAll })).note, '[没开]')
+    assert.equal((await keepImage(root, { path: bili, config: offAll })).note, '[没开]')
+    const kept = await keepImage(root, { path: wx, config: offAll })
+    assert.equal(kept.ok, true)
+    assert.match(kept.note, /^\[收进相册\] /)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
 
 test('同一张源图收两次：只复制一份，第二次回「已经在相册」', async () => {
   const root = await mkdtemp(join(tmpdir(), 'fish-album-dup-'))

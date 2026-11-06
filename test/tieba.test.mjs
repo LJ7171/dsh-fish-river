@@ -12,7 +12,7 @@ import { normalizeConfig } from '../lib/settings.js'
 import { readEvents } from '../lib/store.js'
 import {
   SIGN_SECRET, bdussFromBody, cookieFromSetCookie, parseJsonp, pickCookie, postsFrom,
-  renderMaterial, signParams, threadsFrom, fetchTiebaMaterial, createQr, pollQr, readAuth,
+  extractPostImages, renderMaterial, signParams, threadsFrom, fetchTiebaMaterial, createQr, pollQr, readAuth,
   savePastedCookie, tiebaStatus,
 } from '../lib/tieba.js'
 import { registerTiebaLook, tiebaLookOnce, parseThreadId } from '../lib/tiebaLook.js'
@@ -66,6 +66,97 @@ test('推荐卡片和帖子页能抽出标题，楼中楼不进正文', () => {
   assert.doesNotMatch(renderMaterial({ threads: [page] }), /楼中楼/)
 })
 
+test('帖子楼层：抽出 type 3/20 图；纯图楼也保留', () => {
+  const urls = extractPostImages([
+    { type: 0, text: '字' },
+    { type: 3, origin_src: 'https://tiebapic.baidu.com/a.jpg', src: 'https://tiebapic.baidu.com/a_s.jpg' },
+    { type: 20, big_src: 'https://tiebapic.baidu.com/b.gif' },
+    { type: 3, src: 'http://insecure.example/x.jpg' },
+  ], 3)
+  assert.deepEqual(urls, [
+    'https://tiebapic.baidu.com/a.jpg',
+    'https://tiebapic.baidu.com/b.gif',
+  ])
+  const page = postsFrom({
+    thread: { id: '9', title: '图帖' },
+    forum: { name: '测试' },
+    post_list: [{
+      floor: 1,
+      author_id: 1,
+      content: [{ type: 3, origin_src: 'https://tiebapic.baidu.com/only.jpg' }],
+    }],
+    user_list: [{ id: 1, name_show: '甲' }],
+  }, 3)
+  assert.equal(page.posts.length, 1)
+  assert.equal(page.posts[0].text, '')
+  assert.deepEqual(page.posts[0].images, ['https://tiebapic.baidu.com/only.jpg'])
+})
+
+test('tieba_look 进帖：开着看图就落盘；关着只有文字', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-tieba-img-'))
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+  try {
+    await savePastedCookie(root, 'BDUSS=abc123456789', async () => ({
+      ok: true, status: 200, text: async () => '{"error_code":0,"data":{"user":{}}}', headers: { getSetCookie: () => [] },
+    }))
+    const tid = '11157099999'
+    const threadJson = {
+      error_code: 0,
+      thread: { id: tid, title: '有图帖' },
+      forum: { name: '测试' },
+      post_list: [{
+        floor: 1,
+        author_id: 1,
+        content: [
+          { type: 0, text: '看看图' },
+          { type: 3, origin_src: 'https://tiebapic.baidu.com/one.jpg' },
+          { type: 3, origin_src: 'https://tiebapic.baidu.com/two.jpg' },
+          { type: 3, origin_src: 'https://tiebapic.baidu.com/three.jpg' },
+        ],
+      }],
+      user_list: [{ id: 1, name_show: '甲' }],
+    }
+    const fetchImpl = async (url) => {
+      const u = String(url)
+      if (u.includes('tiebapic.baidu.com')) {
+        return { ok: true, status: 200, arrayBuffer: async () => jpeg }
+      }
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify(u.includes('page_pc') ? threadJson : { error_code: 0, data: { anti: { tbs: 't' }, user: {} } }),
+        headers: { getSetCookie: () => [] },
+      }
+    }
+    const on = await tiebaLookOnce({
+      root,
+      cfg: normalizeConfig({ tieba: { enabled: true, images: { enabled: true, max: 2 } } }),
+      kind: 'thread',
+      id: tid,
+      fetchImpl,
+    })
+    assert.equal(on.ok, true, on.note)
+    assert.match(on.text, /看看图/)
+    assert.match(on.text, /read_image/)
+    assert.match(on.text, /media[/\\]tieba-/)
+    const pathHits = on.text.match(/media[/\\]tieba-[^\s）]+/g) || []
+    assert.equal(pathHits.length, 2, 'max=2 只下两张')
+
+    const off = await tiebaLookOnce({
+      root,
+      cfg: normalizeConfig({ tieba: { enabled: true, images: { enabled: false } } }),
+      kind: 'thread',
+      id: tid,
+      fetchImpl,
+    })
+    assert.equal(off.ok, true, off.note)
+    assert.match(off.text, /看看图/)
+    assert.doesNotMatch(off.text, /read_image|有图存在/)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
 test('未登录或推荐为空：blocked，不计次数，不写事件', async () => {
   const root = await mkdtemp(join(tmpdir(), 'fish-tieba-'))
   try {
@@ -78,8 +169,10 @@ test('未登录或推荐为空：blocked，不计次数，不写事件', async (
     const auth = await readAuth(root)
     assert.match(auth.cookie, /^BDUSS=/)
     assert.doesNotMatch(auth.cookie, /OTHER|junk/)
-    const mode = (await stat(join(root, 'tieba.json'))).mode & 0o777
-    assert.equal(mode, 0o600)
+    if (process.platform !== 'win32') {
+      const mode = (await stat(join(root, 'tieba.json'))).mode & 0o777
+      assert.equal(mode, 0o600)
+    }
     const empty = await fetchTiebaMaterial({
       root,
       cfg,

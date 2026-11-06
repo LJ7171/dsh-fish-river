@@ -16,6 +16,19 @@ test('空配置得到完整默认值（含用户新加的 three 配额项）', (
   assert.equal(c.diary.enabled, true)
   assert.equal(c.diary.visible, false, '日记默认不给看')
   assert.ok(Array.isArray(c.avoid.keywords) && c.avoid.keywords.includes('恐怖'))
+  assert.equal(c.browse.images.enabled, true)
+  assert.equal(c.browse.images.max, 2)
+  assert.equal(c.zhihu.images.enabled, true)
+  assert.equal(c.zhihu.images.max, 2)
+  assert.equal(c.tieba.images.enabled, true)
+  assert.equal(c.tieba.images.max, 2)
+})
+
+test('上网看图：enabled / max 归一化', () => {
+  assert.equal(normalizeConfig({ browse: { images: { enabled: false, max: 99 } } }).browse.images.max, 6)
+  assert.equal(normalizeConfig({ zhihu: { images: { max: 0 } } }).zhihu.images.max, 1)
+  assert.equal(normalizeConfig({ tieba: { images: { enabled: false } } }).tieba.images.enabled, false)
+  assert.equal(normalizeConfig({ tieba: { images: { enabled: 'yes' } } }).tieba.images.enabled, true, '非 false 当开')
 })
 
 test('部分配置自动补全其余键（可扩展性的核心）', () => {
