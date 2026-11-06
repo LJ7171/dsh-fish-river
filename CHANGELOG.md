@@ -1,3 +1,13 @@
+## 0.1.92 — 2026-11-06
+
+- 修 B 站评论区图片从来下不到：
+  - B 站接口给的是 `http://` / `//host`，下载器只收 https；`commentImageUrls` 统一升级成 https。
+  - 她通过 `choose_outing` 选 B 站时走 `browse.gather`，原来只拼评论文字；现在在拼素材前
+    按 `browse.images`（开关 + 每次最多几张）下载评论图，路径随素材一起给她。
+  - `bili_look` / `bili_watch` 说明里补一句：评论区图会下到本机，用 read_image 看。
+- 测试：B 站评论图 http/协议相对升级；gather 开关控制下图（注入 fetch，不打真网）。
+- `node --test` 1516 全绿。
+
 ## 0.1.91 — 2026-11-06
 
 - **渠道页删掉「号主」「默认场合」两项配置**（B 案）：渠道只认 `ownerId`（谁是重要的人）和

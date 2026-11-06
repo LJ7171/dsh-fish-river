@@ -194,9 +194,10 @@ test('B 站评论图：点开才下载；深读本身不落盘', async () => {
   }
 })
 
-test('定时刷站的源码不下载评论图', () => {
+test('她选中的 B 站浏览会下评论图（看图开关控制）', () => {
   const browse = readFileSync(new URL('../lib/browse.js', import.meta.url), 'utf8')
-  assert.doesNotMatch(browse, /landCommentImages|saveFetchedImages/)
+  assert.match(browse, /landCommentImages/)
+  assert.ok(browse.includes('browse?.images?.enabled'), '下载受 browse.images 控制')
 })
 
 test('知乎评论图会抽出来并在点开评论时落盘', async () => {
@@ -318,6 +319,20 @@ test('同一张源图收两次：只复制一份，第二次回「已经在相�
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+test('B 站评论图 http / 协议相对地址会升级成 https', () => {
+  const urls = commentImageUrls({ pictures: [
+    { img_src: 'http://i0.hdslb.com/bfs/a.png' },
+    { img_src: '//i0.hdslb.com/bfs/b.png' },
+    { img_src: 'https://i0.hdslb.com/bfs/c.png' },
+    { img_src: 'ftp://nope' },
+  ] })
+  assert.deepEqual(urls, [
+    'https://i0.hdslb.com/bfs/a.png',
+    'https://i0.hdslb.com/bfs/b.png',
+    'https://i0.hdslb.com/bfs/c.png',
+  ])
 })
 
 test('相册拦截只看插件自己的媒体目录：别处的 /media/ 不误伤', async () => {

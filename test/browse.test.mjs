@@ -471,3 +471,27 @@ test('素材开头按「这个号是谁的」说（不再用旧的家门号 / �
   const out2 = renderMaterial([pack(1)], { config: { bili: { owner: 'owner' } } })
   assert.match(out2, /这是用那个重要的人的B 站号看到的，不是你经历的/)
 })
+
+test('她选中的 B 站浏览也会下评论图；关掉看图就不下', async () => {
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0, 0, 0, 0, 0])
+  await withRoot(async (root) => {
+    const client = () => fakeClient({
+      replies: async () => ({
+        ok: true,
+        data: [{ text: '带图的评论', like: 9, images: ['https://i0.hdslb.com/bfs/c.png'] }],
+      }),
+    })
+    let calls = 0
+    const fetchImpl = async () => { calls += 1; return { ok: true, arrayBuffer: async () => png } }
+    const cfgOn = normalizeConfig({ browse: { images: { enabled: true, max: 2 } } })
+    const on = await gather(client(), { day: 1, stage: 2 }, cfgOn, { root, dk: '2026-11-06', fetchImpl })
+    assert.ok(calls >= 1)
+    assert.match(on.text, /有图存在 .*media\/bili-cmt-/)
+
+    calls = 0
+    const cfgOff = normalizeConfig({ browse: { images: { enabled: false, max: 2 } } })
+    const off = await gather(client(), { day: 1, stage: 2 }, cfgOff, { root, dk: '2026-11-06', fetchImpl })
+    assert.equal(calls, 0, '关掉看图就不打图床')
+    assert.doesNotMatch(off.text, /有图存在/)
+  })
+})
