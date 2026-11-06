@@ -777,7 +777,8 @@ test('router：不同的人不共用静默窗；出门的群不等', async () =>
   const timers = []
   const h = await harness({
     reply: '在。',
-    config: { channels: { weixin: { enabled: true } } },
+    config: { channels: { weixin: { enabled: true, closeIds: 'b' } } },
+    ownerIds: { weixin: 'a' },
     schedule: (fn, ms) => {
       const t = { fn, ms, cancelled: false }
       timers.push(t)

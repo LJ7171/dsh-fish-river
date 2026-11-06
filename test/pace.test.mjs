@@ -35,7 +35,7 @@ const homeClose = resolveOccasion({
   kind: 'dm',
   personId: 'u_w',
   isOwner: false,
-  config: {},
+  config: { channels: { weixin: { closeIds: 'w' } } },
 })
 
 const outingGroup = resolveOccasion({
@@ -54,14 +54,15 @@ const outingDm = resolveOccasion({
   config: {},
 })
 
-test('静默窗：重要的人和家门近聊约 2 秒，群和出门路人不等', () => {
+test('静默窗：重要的人和近人的私聊约 2 秒，群和陌生人不等', () => {
   assert.equal(silenceMsFor(ownerClose, {}), HOME_CLOSE_SILENCE_MS)
   assert.equal(silenceMsFor(homeClose, {}), HOME_CLOSE_SILENCE_MS)
-  assert.equal(homeClose.accountOf, 'home')
+  assert.equal(homeClose.scene, 'close-dm')
   assert.equal(homeClose.bond, 'close')
   assert.equal(silenceMsFor(outingGroup, {}), 0)
   assert.equal(silenceMsFor(outingDm, {}), 0)
-  assert.equal(outingGroup.accountOf, 'outing')
+  assert.equal(outingGroup.scene, 'group')
+  assert.equal(outingDm.scene, 'stranger-dm')
 })
 
 test('静默窗：显式毫秒盖过场合，0 是关，缺键才按场合', () => {

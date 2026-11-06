@@ -1,3 +1,19 @@
+## 0.1.91 — 2026-11-06
+
+- **渠道页删掉「号主」「默认场合」两项配置**（B 案）：渠道只认 `ownerId`（谁是重要的人）和
+  `closeIds`（还有谁算近人）；场合由代码算，不再写进配置。老配置里的 `accountOf/bond` 归一化时丢弃。
+- `passport.js` 重写：`resolveOccasion` 只返回 `owner-dm / close-dm / stranger-dm / group / comment`；
+  私聊场景句**先判重要的人**，再判近人，最后才是陌生人：
+  - 微信：「这是微信，只有你们俩。说话的是重要的人。」
+  - B 站 / QQ / 抖音：「这是…上，跟重要的人单独说话。」
+  - 近人：「这是…上，是离她近的人。」 陌生人：「这是…上的陌生人私聊。」
+- 上下文条数、进站静默窗、队列插队都改看 `isOwner/isClose`，不再看 `accountOf`；
+  路由写事件只保留 `bond`，不再写 `accountOf`（老事件仍可读，schema 不变）。
+- 素材措辞：抖音素材也改用 `owner` 字段（默认主人）；知乎列表预览同样走 ownerLine。
+- 渠道页「近人的号」保留，收进同一处（不再和号主/场合并排）。
+- 测试：passport 用例重写为 owner/近人/陌生人/群/评论；pace/router 静默窗用例改成按 owner/closeIds；
+  `node --test` 1514 全绿。
+
 ## 0.1.90 — 2026-11-06
 
 - 修 `browseImageKeepAllowed` 的路径判断：只看插件自己的 `media/`、`zhihu-media/`，
