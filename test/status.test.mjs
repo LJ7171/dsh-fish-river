@@ -190,3 +190,48 @@ test('折叠按天算，不同日期的 quiet 各留一条', () => {
   // 昨天那条不在 today 里，本来就进不了时间线；今天两条折叠成一条
   assert.equal(st.timeline.filter((t) => t.text.includes('没有该问的事')).length, 1)
 })
+
+// ---- 2026-11-06：状态页要看作息台账，不能只看事件流 ----
+
+test('台账说在睡：今天醒过、有过动作，也必须显示睡着', () => {
+  const events = [
+    meta(3 * 60 * MIN, `wake:${DK} sleep-segment`),
+    say(2 * 60 * MIN, '早上好'),
+    meta(90 * MIN, `browse:${DK} []`),
+  ]
+  const due = NOW.getTime() + 90 * MIN
+  const st = deriveStatus({
+    events,
+    config: cfg,
+    now: NOW,
+    sleepState: { mode: 'asleep', sleptAt: NOW.getTime() - 30 * MIN, wakeDueAt: due, since: NOW.getTime() - 30 * MIN },
+  })
+  assert.equal(st.phase, 'asleep')
+  assert.equal(st.label, '沉在水底')
+  assert.equal(st.awake, false)
+  assert.match(st.detail, /会睡醒/)
+  assert.equal(st.nextWakeAt, new Date(due).toISOString())
+})
+
+test('台账说醒着：哪怕今天还没动作，也不能显示成睡着', () => {
+  const st = deriveStatus({
+    events: [],
+    config: cfg,
+    now: NOW,
+    sleepState: { mode: 'dice_awake', since: NOW.getTime() - 10 * MIN, wakeDueAt: 0 },
+  })
+  assert.equal(st.awake, true)
+  assert.equal(st.phase, 'awake-idle')
+  assert.equal(st.plannedWakeAt, null, '醒着时不显示“约几点会睡醒”')
+})
+
+test('台账说会话苏醒：同样算醒着', () => {
+  const st = deriveStatus({
+    events: [],
+    config: cfg,
+    now: NOW,
+    sleepState: { mode: 'session_awake', since: NOW.getTime() - 5 * MIN },
+  })
+  assert.equal(st.awake, true)
+  assert.equal(st.phase, 'awake-idle')
+})
