@@ -183,12 +183,12 @@ test('每路「真的上网」2 次后停掷；渠道互不占用', () => {
   // 段首掷骰：只是允许去，不算一次上网
   const rolled = rollSegment(s, cfg, t, () => 0)
   s = rolled.state
-  assert.deepEqual(s.acts, { bili: 0, douyin: 0, zhihu: 0, tieba: 0, reply: 0 }, '段首不再预扣')
+  assert.deepEqual(s.acts, { bili: 0, douyin: 0, zhihu: 0, tieba: 0 }, '段首不再预扣')
   assert.equal(s.looked, true)
-  assert.deepEqual(rolled.hits.sort(), ['bili', 'douyin', 'reply', 'zhihu'])
+  assert.deepEqual(rolled.hits.sort(), ['bili', 'douyin', 'zhihu'])
   assert.deepEqual(dueRolls(s, cfg, t + 29 * 60_000), [])
   const due = dueRolls(s, cfg, t + 30 * 60_000)
-  assert.ok(due.includes('bili') && due.includes('zhihu') && due.includes('reply') && due.includes('douyin'))
+  assert.ok(due.includes('bili') && due.includes('zhihu') && due.includes('douyin'))
 
   // 真的刷了两次 B 站 → 停；知乎不受影响
   s = markAct(s, 'bili', t + 30 * 60_000)

@@ -39,7 +39,7 @@ test('choose_outing：空选不调执行器；选了才把路交给执行器', a
   const ctx = { tools: { register: (s) => s } }
   const tool = registerChooseOuting(ctx, { root: '/tmp/nope' })
   assert.equal(tool.name, 'choose_outing')
-  assert.deepEqual(tool.parameters.properties.channels.items.enum, ['bili', 'zhihu', 'tieba', 'reply'])
+  assert.deepEqual(tool.parameters.properties.channels.items.enum, ['bili', 'zhihu', 'tieba'])
   assert.doesNotMatch(tool.description, /配额|阶段/)
 
   const calls = []
