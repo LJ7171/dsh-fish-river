@@ -1,3 +1,15 @@
+## 0.1.90 — 2026-11-06
+
+- 修 `browseImageKeepAllowed` 的路径判断：只看插件自己的 `media/`、`zhihu-media/`，
+  别处路径里带 `/media/` 不再被当成上网缓存误拦。
+- 回复里的图改成“递给她时”才下载：独立扫描只存 URL，醒来 `takeReplies` 后再
+  `landCommentImages`；她没醒时不下载，省带宽/磁盘。
+- 图片下载统一走共用「请求节奏」：`saveFetchedImages` / `saveImages` 在没有注入 fetch 时
+  用 `pacedFetch()`；tiebaLook 不再回落到裸 `fetch`。
+- `saveImage` 落盘加 `0600`（和知乎图、其余媒体一致）。
+- 贴吧「允许看图」提示说明：作息只刷首页推荐，不自动下图；只有她自己进帖时才下。
+- 测试：新增“插件目录外的 /media/ 不误伤”；`node --test` 1518 全绿。
+
 ## 0.1.89 — 2026-11-06
 
 - 贴吧：去掉「改贴 cookie」折叠区（界面不再提供；服务端入口保留，不影响已登录状态）。

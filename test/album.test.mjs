@@ -285,10 +285,10 @@ test('上网看图关掉时：本平台缓存不能 keep_image', async () => {
       tieba: { images: { enabled: false } },
       browse: { images: { enabled: false } },
     })
-    assert.equal(browseImageKeepAllowed(offAll, zh), false)
-    assert.equal(browseImageKeepAllowed(offAll, tb), false)
-    assert.equal(browseImageKeepAllowed(offAll, bili), false)
-    assert.equal(browseImageKeepAllowed(offAll, wx), true, '微信不拦')
+    assert.equal(browseImageKeepAllowed(offAll, zh, root), false)
+    assert.equal(browseImageKeepAllowed(offAll, tb, root), false)
+    assert.equal(browseImageKeepAllowed(offAll, bili, root), false)
+    assert.equal(browseImageKeepAllowed(offAll, wx, root), true, '微信不拦')
 
     assert.equal((await keepImage(root, { path: zh, config: offAll })).note, '[没开]')
     assert.equal((await keepImage(root, { path: tb, config: offAll })).note, '[没开]')
@@ -315,6 +315,21 @@ test('同一张源图收两次：只复制一份，第二次回「已经在相�
     assert.equal(a.path, b.path)
     const db = await readAlbum(root)
     assert.equal(db.items.length, 1, '台账里只该有一条')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('相册拦截只看插件自己的媒体目录：别处的 /media/ 不误伤', async () => {
+  const root = await tempRoot()
+  try {
+    const foreign = join(root, 'someone-else', 'media', 'tieba-photo.jpg')
+    await mkdir(join(root, 'someone-else', 'media'), { recursive: true })
+    await writeFile(foreign, PNG)
+    const off = normalizeConfig({ browse: { images: { enabled: false } }, tieba: { images: { enabled: false } } })
+    assert.equal(browseImageKeepAllowed(off, foreign, root), true, '不在插件媒体目录里就不拦')
+    const kept = await keepImage(root, { path: foreign, config: off })
+    assert.equal(kept.ok, true, '外部图片仍可收进相册')
   } finally {
     await rm(root, { recursive: true, force: true })
   }
