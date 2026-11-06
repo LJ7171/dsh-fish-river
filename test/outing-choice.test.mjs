@@ -25,12 +25,14 @@ const now = new Date()
 const start = `${pad(now.getHours() - 1)}:00`
 const end = `${pad(now.getHours() + 3)}:00`
 
-test('叫醒语：掷骰/手动醒着用「出去逛逛」，睡醒/段首用「醒一醒」', () => {
+test('叫醒语：会递出门邀请就用「出去逛逛」，纯叫醒才用「醒一醒」', () => {
   assert.equal(OUTING_TRIGGER, '（出去逛逛）')
-  assert.equal(wakeTriggerFor({ ledger: 'roll' }), OUTING_TRIGGER)
-  assert.equal(wakeTriggerFor({ ledger: 'segment' }), WAKE_TRIGGER)
-  assert.equal(wakeTriggerFor({ manual: true, asleep: false }), OUTING_TRIGGER)
-  assert.equal(wakeTriggerFor({ manual: true, asleep: true }), WAKE_TRIGGER)
+  assert.equal(wakeTriggerFor({ ledger: 'roll', choice: true }), OUTING_TRIGGER)
+  assert.equal(wakeTriggerFor({ ledger: 'segment', choice: true }), OUTING_TRIGGER, '段首醒也问去不去逛')
+  assert.equal(wakeTriggerFor({ manual: true, asleep: false, choice: true }), OUTING_TRIGGER)
+  assert.equal(wakeTriggerFor({ manual: true, asleep: true, choice: true }), OUTING_TRIGGER, '手动叫醒也给出门邀请')
+  assert.equal(wakeTriggerFor({ manual: true, asleep: true, choice: false }), WAKE_TRIGGER)
+  assert.equal(wakeTriggerFor({ ledger: 'segment' }), WAKE_TRIGGER, '不带 choice 的旧调用保持原样')
   assert.equal(wakeTriggerFor({ manual: true, asleep: null }), WAKE_TRIGGER, '第一次还没有台账：先醒一醒')
   assert.equal(wakeTriggerFor({}), WAKE_TRIGGER)
 })
@@ -144,7 +146,7 @@ test('手动叫醒也只问不抓：叫醒后等她选，不先抓素材', async
     const r = await wakeNow(ctx, { root })
     assert.equal(r.ok, true, JSON.stringify(r))
     assert.equal(prompts.length, 1)
-    assert.equal(prompts[0].content[0].text, WAKE_TRIGGER, '还没有台账：先醒一醒')
+    assert.equal(prompts[0].content[0].text, OUTING_TRIGGER, '手动叫醒也属于出门邀请')
     const { events } = await readEvents(root)
     assert.equal(events.filter((e) => e.type === 'meta' && String(e.text).startsWith('browse:')).length, 0, '手动叫醒也不该先抓')
     const st = await readSleep(root)

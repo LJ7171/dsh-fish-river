@@ -13,7 +13,7 @@ import { rememberKnownTools } from '../lib/restrict.js'
 import { dateKey } from '../lib/settings.js'
 import { writeSelfDoc } from '../lib/selfdoc.js'
 import { clearWakeSection, getWakeSection } from '../lib/identity.js'
-import { WAKE_TRIGGER } from '../lib/wakeconst.js'
+import { WAKE_TRIGGER, OUTING_TRIGGER } from '../lib/wakeconst.js'
 import { logFile, logLine } from '../lib/log.js'
 
 async function withRoot(fn) {
@@ -381,7 +381,7 @@ test('唤醒消息只剩一句触发语，处境走 system prompt 段不进对�
     const text = prompts[0].content[0].text
 
     // 对话里只剩一句：不许再出现处境、身份、禁令、工具手册
-    assert.equal(text, WAKE_TRIGGER, `对话里只该剩触发语，现在是：${text.slice(0, 80)}`)
+    assert.equal(text, OUTING_TRIGGER, `对话里只该剩触发语，现在是：${text.slice(0, 80)}`)
     // 2026-10-26（用户 m00507）：原来是「……」，她当成用户发来的一句话去猜，
     // 侧栏标题还被生成成「Error」。现在触发语是括号旁白，且必须**不是**省略号。
     assert.ok(!text.includes('……'), '不能再拿省略号当触发语')
