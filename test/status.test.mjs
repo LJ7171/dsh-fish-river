@@ -235,3 +235,16 @@ test('台账说会话苏醒：同样算醒着', () => {
   assert.equal(st.awake, true)
   assert.equal(st.phase, 'awake-idle')
 })
+
+test('状态页：知乎/贴吧也显示刷了什么', () => {
+  const kg = (n) => n * 60_000
+  const events = [
+    meta(kg(30), `wake:${DK} sleep-segment`),
+    meta(kg(29), `zhihu:${DK} [{"title":"热榜一条"},{"title":"推荐一条"}]`),
+    meta(kg(28), `tieba:${DK} [{"forum":"meme吧","title":"无人分享meme"}]`),
+  ]
+  const st = deriveStatus({ events, config: cfg, now: NOW })
+  const lines = st.timeline.map((x) => x.text)
+  assert.ok(lines.some((t) => t.includes('刷了知乎 2 条：热榜一条 / 推荐一条')), lines.join('\n'))
+  assert.ok(lines.some((t) => t.includes('刷了贴吧 1 条：meme吧-无人分享meme')), lines.join('\n'))
+})
