@@ -41,7 +41,7 @@ test('段首醒：有配额就要递出门邀请，不能说“没什么特别�
     try {
       await s.tick()
       assert.equal(prompts.length, 1)
-      assert.match(prompts[0], /想出门逛逛吗/)
+      assert.match(prompts[0], /想出去走走吗/)
       assert.match(prompts[0], /B 站/)
       assert.doesNotMatch(prompts[0], /没什么特别要做的/)
     } finally { s.dispose() }

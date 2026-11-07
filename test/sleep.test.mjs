@@ -334,3 +334,15 @@ test('作息页每天配额旁边写出当天已用', async () => {
   const obs = await readFile(new URL('../lib/observe.js', import.meta.url), 'utf8')
   assert.match(obs, /dailyUsed = await readDailySpent\(root\)/)
 })
+
+test('全局出门：开着的平台共用一个 nextRollAt，不再各自计时', () => {
+  const cfg = normalizeConfig({ browse: { enabled: true }, zhihu: { enabled: true }, tieba: { enabled: true } })
+  const t = at(2026, 11, 7, 9, 0)
+  const s = rollSegment(blankState(cfg, t), cfg, t, () => 0.5).state
+  const times = ['bili', 'zhihu', 'tieba'].map((ch) => s.nextRollAt[ch])
+  assert.equal(new Set(times).size, 1, '三路必须同一时间')
+  assert.ok(times[0] > t)
+  assert.equal(dueRolls(s, cfg, times[0] - 1).length, 0)
+  const due = dueRolls(s, cfg, times[0])
+  assert.deepEqual(due.sort(), ['bili', 'tieba', 'zhihu'])
+})
