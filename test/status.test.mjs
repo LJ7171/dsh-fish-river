@@ -76,7 +76,7 @@ test('刚刷完视频 → 在上网刷视频，并带上刷到了什么', () => 
   })
   assert.equal(st.phase, 'browsing')
   assert.equal(st.label, '在看别人的视频')
-  assert.ok(st.detail.includes('刷了 2 条'), st.detail)
+  assert.ok(st.detail.includes('刷了 B 站 2 条'), st.detail)
   assert.ok(st.detail.includes('第一个'), '要说出来刷到了什么')
   assert.equal(st.today.browsed, 2)
 })
@@ -110,7 +110,7 @@ test('醒了但一条都没看成：刷站失败也留在时间线上', () => {
     now: NOW,
   })
   const all = st.timeline.map((t) => t.text).join(' | ')
-  assert.ok(all.includes('去刷了，但一条也没看成'), all)
+  assert.ok(all.includes('去刷了 B 站，但一条也没看成'), all)
 })
 
 test('醒来但没成功要如实记，且这一块算"什么也没做"', () => {
