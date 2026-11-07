@@ -206,3 +206,11 @@ test('额度台账是 0600 的 outreach-state.json', async () => {
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('主动消息工具名必须避开宿主内置的 send_message', async () => {
+  const { HER_TOOLS } = await import('../lib/restrict.js')
+  assert.ok(HER_TOOLS.includes('send_to_owner'), '白名单要有 send_to_owner')
+  assert.ok(!HER_TOOLS.includes('send_message'), '不能再叫 send_message，会被宿主的 agent 工具盖掉')
+  const src = await import('node:fs/promises').then((fs) => fs.readFile(new URL('../lib/sendMessage.js', import.meta.url), 'utf8'))
+  assert.match(src, /name: 'send_to_owner'/)
+})
