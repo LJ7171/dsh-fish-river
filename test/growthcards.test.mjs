@@ -69,3 +69,10 @@ test('跨零点台账重置，昨天的待推不带过来', async () => {
     assert.deepEqual(st.pending, [])
   } finally { await rm(r, { recursive: true, force: true }) }
 })
+
+test('成长卡推送必须写 fired:，否则同一天会反复推同一张', async () => {
+  const fs = await import('node:fs/promises')
+  const src = await fs.readFile(new URL('../lib/scheduler.js', import.meta.url), 'utf8')
+  assert.match(src, /fired:\$\{picked\.template\.id\}/)
+  assert.match(src, /card:\$\{dk\} \$\{picked\.template\.id\}/)
+})
