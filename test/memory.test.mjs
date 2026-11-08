@@ -17,7 +17,7 @@ import path from 'node:path'
 import { createPeople, IMPRESSION_MAX, NOTES_MAX, PEOPLE_MAX } from '../lib/people.js'
 import { createJournal, JOURNAL_KEEP, threadKey } from '../lib/journal.js'
 import { visibleTo, filterForAudience } from '../lib/guard.js'
-import { buildIndex, looksLikePrivateLeak, shingles } from '../lib/leakcheck.js'
+import { buildIndex, addEventToIndex, looksLikePrivateLeak, shingles } from '../lib/leakcheck.js'
 
 async function tmpRoot() {
   return fs.mkdtemp(path.join(os.tmpdir(), 'fish-mem-'))
@@ -198,4 +198,15 @@ test('leakcheck：shingles 归一化掉空白与标点', () => {
   const a = shingles('我 老公，下个月要出差')
   const b = shingles('我老公下个月要出差')
   assert.deepEqual([...a].sort(), [...b].sort())
+})
+
+test('addEventToIndex：增量补一条，与全量 buildIndex 等价', () => {
+  const a = { visibility: 'private', person: 'u_1', text: '我下周要去深圳出差两个星期，家里那只猫麻烦你喂一下' }
+  const b = { visibility: 'private', person: 'u_2', text: '周六下午去河边钓鱼，装备放在车库里，别淋雨' }
+  const inc = buildIndex([a])
+  addEventToIndex(inc, b)
+  const full = buildIndex([a, b])
+  assert.equal(inc.size, full.size)
+  for (const [k, v] of full) assert.equal(inc.get(k), v)
+  assert.equal(looksLikePrivateLeak('周六下午去河边钓鱼，装备放在车库里', inc, { person: 'u_9' }).hit, true)
 })

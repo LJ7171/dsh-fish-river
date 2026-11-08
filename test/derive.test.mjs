@@ -1,8 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  stageBounds, stageOf, deriveSelf, consistency, novelty,
-  similarity, pickName, DAY_MS,
+  stageBounds, stageOf, deriveSelf, modelOf, clearModelCache, modelCacheSize,
+  consistency, novelty, similarity, pickName, DAY_MS,
 } from '../lib/derive.js'
 // 2026-10-26：stability 从 derive.js 搬到 quality.js（它要用到 persona 的渲染，
 // 留在 derive 里会绕出 quality → persona → derive → quality 的环）。
@@ -260,4 +260,19 @@ test('stabilityCached：事件追加后先复用上次结果（stale），不在
   assert.equal(b.score, a.score, 'stale 结果必须原样，不能半新半旧')
   const c = stabilityCached(base, { growthDays: 30 }, {}, { ttlMs: 60_000 })
   assert.equal(c.stale, false, '精确命中不算 stale')
+})
+
+test('modelOf：同一份事件流只算一次，事件变化后重算', () => {
+  clearModelCache()
+  const evs = synthetic(20)
+  const a = modelOf(evs, { growthDays: 30 }, T0)
+  const b = modelOf(evs, { growthDays: 30 }, T0)
+  assert.equal(a, b, '同一份事件流应命中同一个对象')
+  assert.equal(modelCacheSize(), 1)
+  const next = [...evs, ev('ev_new_1', 'utterance', 2, '我又想了一遍。')]
+  const c = modelOf(next, { growthDays: 30 }, T0)
+  assert.notEqual(c, a, '事件流变了就该重算')
+  assert.ok(Number(c.day) >= 1)
+  clearModelCache()
+  assert.equal(modelCacheSize(), 0)
 })

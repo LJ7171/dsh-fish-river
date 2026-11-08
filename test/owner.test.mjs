@@ -18,9 +18,11 @@ import { Readable } from 'node:stream'
 
 import { looksLikeLeak, screenOutgoing } from '../lib/guard.js'
 import { parseCookieInput, mentionPrefix, publicOwner, saveOwner, saveAccount } from '../lib/owner.js'
-import { readOwner } from '../lib/store.js'
+import { readOwner, appendEvent, writeConfig } from '../lib/store.js'
 import { registerObserve } from '../lib/observe.js'
 import { loginMid } from '../lib/comment.js'
+import { normalizeConfig } from '../lib/settings.js'
+import { PRIVATE_REDACTED } from '../lib/privacy.js'
 
 test('隐私红线：本机路径与状态库文件名一律拦下', () => {
   for (const s of [
@@ -261,6 +263,34 @@ test('loginMid：认登录账号，没有才退回领养人', async () => {
     assert.equal(await loginMid(root), 42, '没存过账号时用领养人（兼容老数据）')
     await saveAccount({ mid: 777, uname: '小号' }, root)
     assert.equal(await loginMid(root), 777, '存过账号后，判断「她自己」要用小号')
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+  }
+})
+test('/events：别人的私聊只回形状，主人的私聊照常', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-priv-'))
+  try {
+    const ctx = fakeCtx()
+    ctx.cfg.connection = { requestRejection: () => null }
+    await writeConfig(normalizeConfig({ channels: { qq: { enabled: true, ownerId: '10086' } } }), root)
+    await appendEvent(
+      { type: 'heard', text: '主人说的话', person: 'u_10086', visibility: 'private', channel: 'qq', origin: 'owner', influence: 'constitution' },
+      { day: 1, stage: 1, source: 'system' },
+      root,
+    )
+    await appendEvent(
+      { type: 'heard', text: '陌生人说的话', person: 'u_999', visibility: 'private', channel: 'qq', origin: 'guest', influence: 'social' },
+      { day: 1, stage: 1, source: 'system' },
+      root,
+    )
+    registerObserve(ctx, { root })
+    const r = await callRoute(ctx.routes, '/events', 'GET')
+    assert.equal(r.status, 200)
+    const owner = r.body.rows.find((x) => x.person === 'u_10086')
+    const guest = r.body.rows.find((x) => x.person === 'u_999')
+    assert.equal(owner.text, '主人说的话')
+    assert.equal(guest.text, PRIVATE_REDACTED)
+    assert.equal(guest.redacted, true)
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
   }

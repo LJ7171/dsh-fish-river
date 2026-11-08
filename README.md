@@ -140,7 +140,7 @@
 - 私聊里的话带可见性标记，出站前做一次泄漏检查：在群里说出私聊内容的句子会被拦下来，她收不到「已发送」。
 - 她不给人打分。关系层只有「说过几句」和「她记得你什么」，没有好感度数字。
 
-**工程上的**：零运行时依赖（三个依赖字段永远是 `{}`）、1533 个测试全绿、CI 三档（Ubuntu Node 22 / 24、Windows Node 22）、数据全在 `~/.dsh-fish-river/`、可整目录搬走。
+**工程上的**：零运行时依赖（三个依赖字段永远是 `{}`）、1552 个测试全绿、CI 三档（Ubuntu Node 22 / 24、Windows Node 22）、数据全在 `~/.dsh-fish-river/`、可整目录搬走。
 
 ### 四、现在到什么程度
 
@@ -498,9 +498,15 @@ lib/
   commentpics.js / replybox.js   评论图落盘 / 回复暂存
   ownership.js   素材开头的「这是谁的号」措辞
   weixinqr.js    微信 ClawBot 扫码登录与 0600 凭据
+  privacy.js     owner 侧私聊脱敏（/events /status /reports /channels /social）
+  turnLock.js    同一会话单轮锁（唤醒 / 渠道 / 主动 / say）
+  serialize.js   同一文件的读-改-写串行
+  text.js / echo.js   二元组相似度 / 评论回声（断 derive ↔ voices 循环）
+  briefs.js      身份文档里「上网」「看画面」两段纯文本
+  paths.js       路径包含判断（唯一实现）
   observe.js    宿主侧 JSON API（/dsh-fish-river/state、/events、/beliefs、/diary、/config、/wake、/browse、/reports、/update）
   client.js     浏览器半边：设置 → 大肥鱼
-test/           1533 个测试，node --test 全绿
+test/           1552 个测试，node --test 全绿
 ```
 
 ## 跑测试

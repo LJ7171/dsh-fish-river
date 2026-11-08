@@ -59,6 +59,8 @@
 `~/.dsh-fish-river/events.jsonl` 不能删除记录，是唯一可信源，一行一条。**任何改写/删除/重排都是篡改她的记忆。**
 
 - 状态（`state.json`）是派生品，随时可由 `rebuild()` 重算；改它没意义，会被覆盖。
+- `store.readEvents` 有进程内缓存，按文件 stat 失效；`appendEvent` 写成功后同步推进。
+  新写入口必须走 `appendEvent`，不要直接 `appendFile`——stat 会兜底，但别拿它当常规路径。
 - 「让她忘」不是删行，是**降低召回**（`lib/persona.js` 的 `foldOlderBeliefs`：更早的判断折成一行「记不清原话了」，疤那类永不折叠），事件原文始终还在 `events.jsonl` 里，她也能用 `her_recall` 翻回去。
 - 重置与恢复都不删数据：`reset.js` 改名前缀封存，`backup.js` 恢复前把旧档搬去 `dsh-fish-river-backups/pre-restore-*`。
 - 新增事件类型**不必**改 `lib/schema.js` 的 `EVENT_SCHEMA_VERSION`：旧读者读不认识的 `type` 会跳过（`readEvents` 对未知类型宽容），0.7.6 / 0.8.0 的 `ask`、`answer`、`heard` 都是这样加进去的。但**改字段语义、把可选字段变必填、删字段**必须升 `v` 并写迁移（旧版本遇到新 `v` 要拒，否则静默丢字段）。
@@ -69,7 +71,7 @@
 node --test
 ```
 
-当前基线 **1533 个**，独立进程跑 `node --test` 应全绿。任何一条红都不许提交——包括看起来"不是我弄的"那条。
+当前基线 **1552 个**，独立进程跑 `node --test` 应全绿。任何一条红都不许提交——包括看起来"不是我弄的"那条。
 
 按环境挑跑法：
 
@@ -145,6 +147,8 @@ qq_send_message, qq_get_unread_messages, qq_reply
   适配器自己不做判断：`send()` 只负责发，判断在上层 `router.js`。
 - **可见性按会话判**：群聊 `visibility:'public'`，私聊 `visibility:'private'`。私聊事件只对该
   `person` 可见，连主人都看不到原文——这是「不看别人私聊」的代码化。
+  owner 侧只读接口（`/events` `/status` `/reports` `/channels` `/social`）统一走
+  `lib/privacy.js` 脱敏；`her_recall` 不经过——那是她自己的记忆，不是给主人看的窗口。
 - **`heard` 只能由 system 写**（不在 `HER_TYPES` 里），`origin:'guest'`、`influence:'social'`；
   只有主人私聊来的话才配 `origin:'owner'`、`influence:'constitution'`。
 - **群里默认只在她被 @ 时开口**（2026-11-03，用户 m06663）：192 人的群里主人一说话她就回，太吵。
@@ -259,7 +263,7 @@ qq_send_message, qq_get_unread_messages, qq_reply
 - [ ] 三个依赖字段还是 `{}`
 - [ ] 没有新增人格设置入口
 - [ ] 新输入口都过了 `guard.js`
-- [ ] `node --test` 1533 全绿
+- [ ] `node --test` 1552 全绿
 - [ ] 界面文案没有「他」「四道门」「三道门」「好感度」
 - [ ] 改了 `EVENT_SCHEMA_VERSION` 的话，`CHANGELOG.md` 里写了迁移说明
 

@@ -1,3 +1,21 @@
+## 0.1.104 — 2026-11-08
+
+- **私聊可见性按 A 落地**：owner 侧的 `/events` `/status` `/reports` `/channels` `/social`
+  统一走 `lib/privacy.js`——别人的私聊只回类型/时间/person，不回正文；主人自己的私聊照常。
+  `her_recall` 不经过脱敏（那是她自己的记忆），对外引用仍由 leakcheck 的出站闸拦。
+- **事件读取缓存**：`readEvents` 按 stat 缓存解析结果，`appendEvent` 同步推进；
+  外部改写/恢复会自动失效。返回数组是浅拷贝，调用方改不坏缓存。
+- **派生缓存**：新增 `modelOf(events, config)`，同一份事件流 + 同一天只算一次；
+  渠道每条消息的两次 `deriveSelf`、tick 多次派生、面板各接口共用一份。
+- **leak index 增量更新**：只对新增事件补 shingle，每 20k 条回收一次；不再每回一句都重扫 20k。
+- **同文件读-改-写串行**：新增 `lib/serialize.js`；sleep / growth-cards / outreach
+  的额度与状态更新不再互相覆盖；`writeSleep` 同时跳过没变化的写、并保守合并更晚的活动时间。
+- **同会话单轮锁**：新增 `lib/turnLock.js`；唤醒 / 渠道回复 / 主动回合 / `/say` 不再同一条会话
+  并发 prompt，`turn/end` 归属不再串台。
+- **结构去重 / 断环**：`inside` 收口到 `lib/paths.js`；图片魔数收口到 `media.sniffImageExt`；
+  `derive ↔ voices` 与 `selfdoc → browse → capture → selfdoc` 两个循环拆开（`text.js` / `echo.js` / `briefs.js`）。
+- 测试：1552 全绿。
+
 ## 0.1.103 — 2026-11-08
 
 - **修「带链接的话一句都发不出去」**：隐私红线里的盘符规则把 `https://` 的 `p:/`

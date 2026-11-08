@@ -16,7 +16,7 @@ import { startScheduler } from '../lib/scheduler.js'
 import { postComment, scanIfAwake } from '../lib/comment.js'
 import {
   advance, armRoll, blankState, diceOpen, dueRolls, markAct, markBlocked, rollSegment,
-  inActiveWindow, nextActiveStart, readDailySpent, readSleep, sleepEnabled, writeSleep,
+  inActiveWindow, nextActiveStart, noteWeixin, readDailySpent, readSleep, sleepEnabled, writeSleep,
 } from '../lib/sleep.js'
 import { appendEvent } from '../lib/store.js'
 import { dateKey } from '../lib/settings.js'
@@ -345,4 +345,23 @@ test('全局出门：开着的平台共用一个 nextRollAt，不再各自计时
   assert.equal(dueRolls(s, cfg, times[0] - 1).length, 0)
   const due = dueRolls(s, cfg, times[0])
   assert.deepEqual(due.sort(), ['bili', 'tieba', 'zhihu'])
+})
+
+test('writeSleep：旧快照不会把刚被消息叫醒的状态盖回 asleep', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-sleep-race-'))
+  const t0 = at(2026, 11, 8, 12)
+  try {
+    await writeConfig(cfg, root)
+    const stale = { ...blankState(cfg, t0), mode: 'asleep', lastActivityAt: t0, wakeDueAt: t0 + 3_600_000 }
+    await writeSleep(root, stale)
+    await noteWeixin(root, t0 + 1000)
+    const mid = await readSleep(root)
+    assert.equal(mid.mode, 'session_awake')
+    await writeSleep(root, stale)
+    const after = await readSleep(root)
+    assert.equal(after.lastActivityAt, t0 + 1000, '更晚的活动时间不能被旧快照回退')
+    assert.notEqual(after.mode, 'asleep', '期间刚醒过，旧快照不能让她睡回去')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })
