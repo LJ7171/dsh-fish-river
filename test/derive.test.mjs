@@ -276,3 +276,15 @@ test('modelOf：同一份事件流只算一次，事件变化后重算', () => {
   clearModelCache()
   assert.equal(modelCacheSize(), 0)
 })
+
+test('mentions：同一句话重复很多次仍然算多次，高频剪枝不误伤固化', () => {
+  const sentence = '我总是觉得这件事没做完。'
+  const evs = []
+  for (let i = 0; i < 1200; i++) evs.push(ev(`ev_rep_${String(i).padStart(6, '0')}`, 'utterance', 1, sentence))
+  const t0 = performance.now()
+  const m = deriveSelf(evs, { growthDays: 30, now: T0 + 2 * DAY_MS })
+  const ms = performance.now() - t0
+  assert.equal(m.beliefs.length, 1200)
+  assert.equal(m.beliefs[0].mentions, 1200, '重复同一句话不能被当成只有一次')
+  assert.ok(ms < 5000, `1200 条同一句话派生耗时 ${ms.toFixed(0)}ms，候选剪枝可能失效`)
+})

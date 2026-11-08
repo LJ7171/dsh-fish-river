@@ -140,7 +140,7 @@
 - 私聊里的话带可见性标记，出站前做一次泄漏检查：在群里说出私聊内容的句子会被拦下来，她收不到「已发送」。
 - 她不给人打分。关系层只有「说过几句」和「她记得你什么」，没有好感度数字。
 
-**工程上的**：零运行时依赖（三个依赖字段永远是 `{}`）、1553 个测试全绿、CI 三档（Ubuntu Node 22 / 24、Windows Node 22）、数据全在 `~/.dsh-fish-river/`、可整目录搬走。
+**工程上的**：零运行时依赖（三个依赖字段永远是 `{}`）、1554 个测试全绿、CI 三档（Ubuntu Node 22 / 24、Windows Node 22）、数据全在 `~/.dsh-fish-river/`、可整目录搬走。
 
 ### 四、现在到什么程度
 
@@ -506,7 +506,7 @@ lib/
   paths.js       路径包含判断（唯一实现）
   observe.js    宿主侧 JSON API（/dsh-fish-river/state、/events、/beliefs、/diary、/config、/wake、/browse、/reports、/update）
   client.js     浏览器半边：设置 → 大肥鱼
-test/           1553 个测试，node --test 全绿
+test/           1554 个测试，node --test 全绿
 ```
 
 ## 跑测试
