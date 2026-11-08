@@ -14,6 +14,7 @@ import {
   looksLikeSecret,
   sanitizeForeign,
   screenOutgoing,
+  looksLikeLeak,
   looksMojibake,
 } from '../lib/guard.js'
 
@@ -129,6 +130,32 @@ test('普通句子与 BV 号 → 放行', () => {
   ]) {
     assert.equal(looksLikeSecret(s).hit, false, `不该拦：${s}`)
   }
+})
+
+test('公开链接不是隐私泄露：https:// 里的 p:/ 不能被当成盘符路径', () => {
+  // 2026-11-08：原来的 /[A-Za-z]:[\\/][^\s]*/ 会把 http 的 p:/ 当盘符，
+  // 于是她一句带链接的话都发不出去。这条用例钉住「链接放行、本机路径照拦」。
+  for (const s of [
+    '看这个 https://b23.tv/abc',
+    'https://www.bilibili.com/video/BV1ED4y1Y7dc',
+    'https://example.com/abcdefghijklmnopqrstuvwxyz012345',
+  ]) {
+    assert.equal(looksLikeLeak(s).hit, false, `链接不该被当成泄露：${s}`)
+    assert.equal(screenOutgoing(s).ok, true, `链接该发得出去：${s}`)
+  }
+  for (const s of [
+    'D:\\work\\my-project',
+    'C:/Users/someone/.dsh-fish-river/home',
+    '/home/ubuntu/x',
+  ]) {
+    assert.equal(looksLikeLeak(s).hit, true, `本机路径仍要拦：${s}`)
+  }
+})
+
+test('URL 里藏着的凭据仍然要拦', () => {
+  const s = 'https://x.com/?token=sk-abcdefghijklmnopqrstuvwx'
+  assert.equal(looksLikeSecret(s).hit, true)
+  assert.equal(screenOutgoing(s).ok, false)
 })
 
 test('screenOutgoing：命中就不发，没命中原样出门', () => {

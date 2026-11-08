@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { normalizeConfig, DEFAULTS, inWindow, dateKey, pickWakeTime, updateConfig, loadConfig } from '../lib/settings.js'
-import { mkdtemp, rm, readFile } from 'node:fs/promises'
+import { normalizeConfig, DEFAULTS, inWindow, dateKey, pickWakeTime, updateConfig, loadConfig, publicChannelSettings } from '../lib/settings.js'
+import { mkdtemp, rm, readFile, stat, writeFile, chmod } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -207,4 +207,33 @@ test('分段连发的开关在设置页，并且能被 /config 白名单收下',
   const allowed = observe.match(/const allowed = \[([^\]]+)\]/)
   assert.ok(allowed, '要能定位 /config 白名单')
   assert.ok(allowed[1].includes("'im'"), '漏登记的话设置页一点就 400')
+})
+
+test('publicChannelSettings：token 不回显，只回 accessTokenSet；不改原配置', () => {
+  const cfg = { channels: {
+    qq: { enabled: true, accessToken: 'tok-abc', groups: ['1', '2'] },
+    bili: { enabled: false },
+  } }
+  const pub = publicChannelSettings(cfg.channels)
+  assert.equal(pub.qq.accessToken, '', 'GET 不能把令牌原样回给前端')
+  assert.equal(pub.qq.accessTokenSet, true)
+  assert.deepEqual(pub.qq.groups, ['1', '2'])
+  assert.equal(pub.bili.accessTokenSet, false)
+  assert.equal(pub.bili.accessToken, '')
+  assert.equal(cfg.channels.qq.accessToken, 'tok-abc', 'helper 不能改原对象')
+})
+
+test('loadConfig：老 config.json 的宽权限会被收紧到 0600', async () => {
+  if (process.platform === 'win32') return
+  const root = await mkdtemp(join(tmpdir(), 'fish-cfgmode-'))
+  try {
+    const file = join(root, 'config.json')
+    await writeFile(file, '{}', 'utf8')
+    await chmod(file, 0o644)
+    await loadConfig(root)
+    const st = await stat(file)
+    assert.equal(st.mode & 0o777, 0o600, `读一次配置后应收紧，实际 ${(st.mode & 0o777).toString(8)}`)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })

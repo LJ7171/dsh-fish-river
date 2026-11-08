@@ -140,7 +140,7 @@
 - 私聊里的话带可见性标记，出站前做一次泄漏检查：在群里说出私聊内容的句子会被拦下来，她收不到「已发送」。
 - 她不给人打分。关系层只有「说过几句」和「她记得你什么」，没有好感度数字。
 
-**工程上的**：零运行时依赖（三个依赖字段永远是 `{}`）、1285 个测试全绿、CI 三档（Ubuntu Node 22 / 24、Windows Node 22）、数据全在 `~/.dsh-fish-river/`、可整目录搬走。
+**工程上的**：零运行时依赖（三个依赖字段永远是 `{}`）、1533 个测试全绿、CI 三档（Ubuntu Node 22 / 24、Windows Node 22）、数据全在 `~/.dsh-fish-river/`、可整目录搬走。
 
 ### 四、现在到什么程度
 
@@ -472,9 +472,35 @@ lib/
   restrict.js   只让她看见自己的工具（收窄 + 兜底守卫 + 提示词里的「手边有什么」）
   tool.js       插件自己注册工具时用的定义函数
   toolschema.js 简写参数 DSL → 标准 JSON Schema
+  # 渠道层（0.1.55 之后合并版新增）
+  channels/host.js      渠道装配：全关时不建文件、不连网
+  channels/router.js    收到 → 记账 → 判断 → 叫醒 → 发送（队列 / 静默窗 / 分段 / 出站闸）
+  channels/gate.js      该不该接这句话
+  channels/qq.js / bili.js / douyin.js / weixin.js   渠道适配器
+  channels/sub.js       可选子包（抖音）懒加载
+  channels/pace.js      进站静默窗 + 纯确认识别
+  channels/passport.js  场合（重要的人 / 近人 / 陌生人 / 群 / 评论）
+  channels/casual.js    口语标点轻整理
+  # 0.1.55 之后新增的模块（同一层）
+  sleep.js       作息状态机：睡 / 会话醒 / 可掷骰醒
+  growthcards.js 成长卡的触发、冷却与当日台账
+  outingChoice.js choose_outing 工具（她决定走哪几路）
+  wakeconst.js   叫醒语常量（避开 scheduler ↔ home 的循环）
+  wakeTurn.js / channelTurn.js   两个短期回合状态
+  outreach.js    醒来主动找重要的人（额度 + 出站闸）
+  sendMessage.js / sendImage.js  主动说话 / 发本机图两个工具
+  album.js       相册台账（keep_image）
+  meme.js        按画面上的词挑表情包
+  subtitle.js    视频字幕读取
+  zhihu.js / zhihuLook.js / tieba.js / tiebaLook.js  知乎、贴吧只读素材与工具
+  lookmeta.js    素材落盘时的 meta 记账
+  pacing.js      所有平台共用的请求节奏
+  commentpics.js / replybox.js   评论图落盘 / 回复暂存
+  ownership.js   素材开头的「这是谁的号」措辞
+  weixinqr.js    微信 ClawBot 扫码登录与 0600 凭据
   observe.js    宿主侧 JSON API（/dsh-fish-river/state、/events、/beliefs、/diary、/config、/wake、/browse、/reports、/update）
   client.js     浏览器半边：设置 → 大肥鱼
-test/           1090 个测试，node --test 全绿
+test/           1533 个测试，node --test 全绿
 ```
 
 ## 跑测试

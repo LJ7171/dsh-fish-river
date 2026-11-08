@@ -6,7 +6,7 @@ import {
 } from '../lib/derive.js'
 // 2026-10-26：stability 从 derive.js 搬到 quality.js（它要用到 persona 的渲染，
 // 留在 derive 里会绕出 quality → persona → derive → quality 的环）。
-import { stability, stabilityBand, clearStabilityCache } from '../lib/quality.js'
+import { stability, stabilityCached, stabilityBand, clearStabilityCache } from '../lib/quality.js'
 
 const T0 = Date.parse('2026-10-01T00:00:00Z')
 
@@ -247,4 +247,17 @@ test('stability 对同一批事件只算一次（issue #3 缓存）', () => {
   const b = stability(events, { growthDays: 30 })
   assert.deepEqual(a, b)
   assert.ok(a.sample > 0, '有判断时应该真的抽过样')
+})
+
+test('stabilityCached：事件追加后先复用上次结果（stale），不在 /state 里冷算', () => {
+  clearStabilityCache()
+  const base = synthetic(30)
+  const a = stabilityCached(base, { growthDays: 30 }, {}, { ttlMs: 60_000 })
+  assert.equal(a.stale, false, '第一次没有旧结果，只能现算')
+  const next = [...base, ev('ev_zzz_new', 'utterance', 2, '我又想了一遍。')]
+  const b = stabilityCached(next, { growthDays: 30 }, {}, { ttlMs: 60_000 })
+  assert.equal(b.stale, true, '事件追加后 TTL 内先给上一次的结果')
+  assert.equal(b.score, a.score, 'stale 结果必须原样，不能半新半旧')
+  const c = stabilityCached(base, { growthDays: 30 }, {}, { ttlMs: 60_000 })
+  assert.equal(c.stale, false, '精确命中不算 stale')
 })

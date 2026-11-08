@@ -11,7 +11,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { createRouter, buildPrompt, splitBubbles, bubbleGapMs, bubbleSplitOn, casualPunctuationOn, casualizePunctuation, BUBBLE_MAX, BUBBLE_GAP_MIN_MS, BUBBLE_GAP_MAX_MS } from '../lib/channels/router.js'
+import { createRouter, buildPrompt, splitBubbles, bubbleGapMs, bubbleSplitOn, casualPunctuationOn, casualizePunctuation, BUBBLE_MAX, BUBBLE_GAP_MIN_MS, BUBBLE_GAP_MAX_MS, INBOUND_TEXT_MAX } from '../lib/channels/router.js'
 import { createJournal } from '../lib/journal.js'
 import { createPeople } from '../lib/people.js'
 import { appendEvent, readEvents } from '../lib/store.js'
@@ -881,6 +881,40 @@ test('router：静默窗里的两声确认并成一段，到点仍不叫醒', as
   assert.equal(heard.length, 1)
   assert.match(heard[0].text, /嗯/)
   assert.match(heard[0].text, /好的/)
+  await h.router.stop()
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('router：入站文本超过上限就截断，但「听见了」仍然记下来', async () => {
+  const h = await harness({
+    config: { channels: { qq: { enabled: true, ownerId: '10086' } } },
+    ownerIds: { qq: '10086' },
+    reply: '在。',
+  })
+  const text = '开头' + '啊'.repeat(2500) + '{{TAIL}}'
+  const r = await h.router.handle(groupMsg({
+    kind: 'dm', conversationId: '10086', personId: 'u_10086', text, mentionedSelf: false,
+  }))
+  assert.equal(r.sent, true)
+  const prompt = h.calls[0].content[0].text
+  assert.match(prompt, /开头/)
+  assert.doesNotMatch(prompt, /\{\{TAIL\}\}/, '超过上限的尾部不该进提示词')
+  const { events } = await readEvents(h.root)
+  const heard = events.find((e) => e.type === 'heard')
+  assert.ok(heard, '听见了这件事仍要落一条，不能因为太长整条被拒')
+  assert.ok(heard.text.length <= 2000, `heard 超过 schema 上限：${heard.text.length}`)
+  await h.router.stop()
+  await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('router：队列满丢的那条留一条 meta，但不带正文', async () => {
+  const h = await harness({ config: baseConfig, reply: '在。' })
+  for (let i = 0; i < 20; i++) h.router.accept(groupMsg({ text: `第 ${i} 条` }))
+  await soon(300)
+  const { events } = await readEvents(h.root)
+  const drop = events.find((e) => e.type === 'meta' && String(e.text).startsWith('drop:queue-full'))
+  assert.ok(drop, '队列满时应留下 drop:queue-full 的痕迹')
+  assert.doesNotMatch(String(drop.text), /第 \d+ 条/, 'meta 里不能带正文')
   await h.router.stop()
   await fs.rm(h.root, { recursive: true, force: true })
 })
