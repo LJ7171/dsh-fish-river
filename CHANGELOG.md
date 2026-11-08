@@ -4,7 +4,8 @@
   统一走 `lib/privacy.js`——别人的私聊只回类型/时间/person，不回正文；主人自己的私聊照常。
   `her_recall` 不经过脱敏（那是她自己的记忆），对外引用仍由 leakcheck 的出站闸拦。
 - **事件读取缓存**：`readEvents` 按 stat 缓存解析结果，`appendEvent` 同步推进；
-  外部改写/恢复会自动失效。返回数组是浅拷贝，调用方改不坏缓存。
+  外部改写/恢复会自动失效；外部追加后再 `appendEvent` 也会丢掉不完整缓存重读，
+  不会把中间那条挤掉。返回数组是浅拷贝，调用方改不坏缓存。
 - **派生缓存**：新增 `modelOf(events, config)`，同一份事件流 + 同一天只算一次；
   渠道每条消息的两次 `deriveSelf`、tick 多次派生、面板各接口共用一份。
 - **leak index 增量更新**：只对新增事件补 shingle，每 20k 条回收一次；不再每回一句都重扫 20k。
@@ -14,7 +15,7 @@
   并发 prompt，`turn/end` 归属不再串台。
 - **结构去重 / 断环**：`inside` 收口到 `lib/paths.js`；图片魔数收口到 `media.sniffImageExt`；
   `derive ↔ voices` 与 `selfdoc → browse → capture → selfdoc` 两个循环拆开（`text.js` / `echo.js` / `briefs.js`）。
-- 测试：1552 全绿。
+- 测试：1553 全绿。
 
 ## 0.1.103 — 2026-11-08
 

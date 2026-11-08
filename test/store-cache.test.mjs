@@ -67,3 +67,19 @@ test('readEvents 缓存：两个家互不串', async () => {
     await rm(b, { recursive: true, force: true })
   }
 })
+
+test('readEvents 缓存：外部追加之后紧接着 appendEvent，不能把外部那条挤掉', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-cache3-'))
+  try {
+    await appendEvent({ type: 'meta', text: 'A' }, ctx, root)
+    assert.equal((await readEvents(root)).events.length, 1) // 建好缓存
+    await appendFile(paths(root).events, JSON.stringify({ id: 'ev_ext', type: 'meta', text: 'EXTERNAL' }) + '\n', 'utf8')
+    await appendEvent({ type: 'meta', text: 'C' }, ctx, root)
+    const { events } = await readEvents(root)
+    assert.equal(events.length, 3, '外部那条 + 自己这条都要在')
+    assert.ok(events.some((e) => e.text === 'EXTERNAL'))
+    assert.ok(events.some((e) => e.text === 'C'))
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
