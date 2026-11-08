@@ -15,7 +15,8 @@
   并发 prompt，`turn/end` 归属不再串台。
 - **结构去重 / 断环**：`inside` 收口到 `lib/paths.js`；图片魔数收口到 `media.sniffImageExt`；
   `derive ↔ voices` 与 `selfdoc → browse → capture → selfdoc` 两个循环拆开（`text.js` / `echo.js` / `briefs.js`）。
-- 测试：1553 全绿。
+- turn 分类补 `chan-` / `proactive-` 前缀；stability 缓存键加本地日期；
+  `silenceMsFor` 去掉冗余条件。测试：1553 全绿。
 
 ## 0.1.103 — 2026-11-08
 

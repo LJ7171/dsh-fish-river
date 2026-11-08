@@ -157,6 +157,8 @@ test('来源判据：真人 / 插件 / 上下文 分得清', () => {
   assert.equal(classifyMessage({ source: { kind: 'user', rpcId: 'uuid-1', clientTimeZone: 'Asia/Shanghai' } }), 'human')
   assert.equal(classifyMessage({ source: { kind: 'user', rpcId: 'wake-abc' } }), 'plugin')
   assert.equal(classifyMessage({ source: { kind: 'user', rpcId: 'say-abc' } }), 'plugin')
+  assert.equal(classifyMessage({ source: { kind: 'user', rpcId: 'chan-1700000000-ab' } }), 'plugin')
+  assert.equal(classifyMessage({ source: { kind: 'user', rpcId: 'proactive-1700000000' } }), 'plugin')
   assert.equal(classifyMessage({ source: { kind: 'runtime-context' } }), 'context')
   assert.equal(classifyMessage({ source: { kind: 'skill-catalog' } }), 'context')
   assert.equal(classifyMessage({ source: { kind: 'plugin:hindsight' } }), 'context')
