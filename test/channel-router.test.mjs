@@ -11,7 +11,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { createRouter, buildPrompt, splitBubbles, bubbleGapMs, bubbleSplitOn, casualPunctuationOn, casualizePunctuation, BUBBLE_MAX, BUBBLE_GAP_MIN_MS, BUBBLE_GAP_MAX_MS, INBOUND_TEXT_MAX } from '../lib/channels/router.js'
+import { createRouter, buildPrompt, splitBubbles, bubbleGapMs, bubbleSplitOn, casualPunctuationOn, casualizePunctuation, BUBBLE_MAX, BUBBLE_GAP_MIN_MS, BUBBLE_GAP_MAX_MS, INBOUND_TEXT_MAX, PROMPT_MAX_CHARS } from '../lib/channels/router.js'
 import { createJournal } from '../lib/journal.js'
 import { createPeople } from '../lib/people.js'
 import { appendEvent, readEvents } from '../lib/store.js'
@@ -917,4 +917,16 @@ test('router：队列满丢的那条留一条 meta，但不带正文', async () 
   assert.doesNotMatch(String(drop.text), /第 \d+ 条/, 'meta 里不能带正文')
   await h.router.stop()
   await fs.rm(h.root, { recursive: true, force: true })
+})
+
+test('buildPrompt：素材再长也截到上限，入站那句话和结尾说明还在', () => {
+  const lines = Array.from({ length: 16 }, (_, i) => ({ role: i % 2 ? 'her' : 'me', text: '流水'.repeat(300) }))
+  const prompt = buildPrompt(
+    { channel: 'qq', kind: 'dm', conversationId: '10086', personId: 'u_10086', personName: '甲', text: '这是要回的那句话' },
+    lines,
+    { isOwner: true, contextLines: 16, video: '视频文案'.repeat(3000), social: [{ text: '一种做法' }] },
+  )
+  assert.ok(prompt.length <= PROMPT_MAX_CHARS + 10, `超预算：${prompt.length}`)
+  assert.match(prompt, /这是要回的那句话/, '入站正文不能被截掉')
+  assert.match(prompt, /回不回、说几句/, '结尾的“可以不说话”说明不能被截掉')
 })
