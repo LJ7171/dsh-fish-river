@@ -1,3 +1,12 @@
+## 0.1.109 — 2026-11-09
+
+- **restore / reset 期间冻结写入**：新增 `lib/maintenance.js`，`store.writeAtomic` 与
+  `appendEvent` 在冻结中直接拒绝；observe 的 `/backup/restore` 和 `/reset` 只把真正的
+  文件替换包进维护区，重置后建新会话的部分不冻。
+- **调度器 pause/resume**：换档时先停一拍，结束后恢复（`resume` 会清 lastTick，
+  下一分钟正常 tick）。已开始的那一轮会自己跑完，不会被半路砍。
+- 测试数 1557；全套全绿。
+
 ## 0.1.108 — 2026-11-09
 
 - **拆 scheduler**：把醒来前「看见点东西」的四路素材（`biliLook` / `douyinLook` /

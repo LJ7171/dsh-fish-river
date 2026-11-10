@@ -140,7 +140,7 @@
 - 私聊里的话带可见性标记，出站前做一次泄漏检查：在群里说出私聊内容的句子会被拦下来，她收不到「已发送」。
 - 她不给人打分。关系层只有「说过几句」和「她记得你什么」，没有好感度数字。
 
-**工程上的**：零运行时依赖（三个依赖字段永远是 `{}`）、1556 个测试全绿、CI 三档（Ubuntu Node 22 / 24、Windows Node 22）、数据全在 `~/.dsh-fish-river/`、可整目录搬走。
+**工程上的**：零运行时依赖（三个依赖字段永远是 `{}`）、1557 个测试全绿、CI 三档（Ubuntu Node 22 / 24、Windows Node 22）、数据全在 `~/.dsh-fish-river/`、可整目录搬走。
 
 ### 四、现在到什么程度
 
@@ -419,7 +419,8 @@ node tools/check-install.mjs --profile desktop
 lib/
   index.js      插件入口（inject 必须是一个数组，见文件头注释）
   schema.js     事件形状与校验；ULID；selfmod 侦测
-  store.js      只追加写；原子写；rebuild()
+  store.js      只追加写；原子写；rebuild()；读缓存
+  maintenance.js  换档/恢复期间的写冻结
   derive.js     纯函数：事件流 → 此刻的她（含阶段门）
   persona.js    她看到的那段提示词（四条禁令在这里）
   identity.js   把「此刻的她」送进 system 角色
@@ -507,7 +508,7 @@ lib/
   paths.js       路径包含判断（唯一实现）
   observe.js    宿主侧 JSON API（/dsh-fish-river/state、/events、/beliefs、/diary、/config、/wake、/browse、/reports、/update）
   client.js     浏览器半边：设置 → 大肥鱼
-test/           1556 个测试，node --test 全绿
+test/           1557 个测试，node --test 全绿
 ```
 
 ## 跑测试
