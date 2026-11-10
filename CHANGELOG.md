@@ -1,3 +1,13 @@
+## 0.1.110 — 2026-11-09
+
+- **移动数据目录也进维护区**：`/move` 期间冻结写入，`moveRoot` 写迁移指针时显式放行
+  这一笔；成功后停调度器与渠道、保持冻结，返回 `restartRequired`，重启后在新家启动。
+  失败则恢复调度器，不改指针。
+- **日志缓冲写盘**：`logLine` 先按 root 缓冲，最多 32 行 / 1 秒落一次；
+  `tailLog` / `logFile` / `clearLog` / 进程退出时强制 flush，轮转仍在本行写入前判断。
+  减少每行一次 `appendFileSync` 的同步 I/O，同时保持「读之前一定写下去」。
+- 测试数 1557；全套全绿。
+
 ## 0.1.109 — 2026-11-09
 
 - **restore / reset 期间冻结写入**：新增 `lib/maintenance.js`，`store.writeAtomic` 与
