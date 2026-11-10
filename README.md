@@ -428,6 +428,7 @@ lib/
   events.js     事件模板目录（每条有 id / prompt / cond）
   generator.js  今天该出哪条事件（纯函数，没候选就不打扰）
   scheduler.js  生物钟：每分钟 tick 一次
+  schedulerLook.js  醒来前的四路素材（B 站 / 抖音 / 知乎 / 贴吧）
   capture.js    growth_commit 工具——她写判断的入口 + debrief() 防注入（日记在 herdiary.js）
   guard.js      防注入与防泄露的最后一道闸
   rules.js      规则的诞生与四层结构

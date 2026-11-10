@@ -1,3 +1,11 @@
+## 0.1.108 — 2026-11-09
+
+- **拆 scheduler**：把醒来前「看见点东西」的四路素材（`biliLook` / `douyinLook` /
+  `zhihuLook` / `tiebaLook` / `lookBeforeWake` / `browseGate`）整体挪到
+  `lib/schedulerLook.js`；`scheduler.js` 只保留生物钟与唤醒，导出面保持不变
+  （`lookBeforeWake` 仍可从 scheduler 引）。纯搬家，行为不变。
+- 测试数 1556；全套全绿。
+
 ## 0.1.107 — 2026-11-09
 
 - **修知乎/贴吧素材记录串平台**：`scheduler` 里 `tiebaLook` 调了 `zhihuLookMeta`、
