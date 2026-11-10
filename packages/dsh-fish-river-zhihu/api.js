@@ -1,8 +1,9 @@
 /**
- * api.js —— 知乎只读数据（热榜 / 关注动态）
+ * api.js —— 知乎数据（热榜 / 关注 / 评论 / 回答）
  *
- * 为什么是只读、为什么这么简单：这个子包只做「她看世界」的一条素材线，
- * 不评论、不私信、不点赞。所以没有写操作，也就不需要处理 csrf 那一套。
+ * 读接口能用移动端就用移动端，网页端只拿确实不要签名的那几个。
+ * 写评论、回楼中楼、写回答走网页端 comment_v5 / questions，要 cookie 里的 `_xsrf`
+ * （请求头 `x-xsrftoken`）。要验证码或风控就停，不取验证码、不重试。
  *
  * 两个域名的分工（2026-11-04 实测）：
  *   - `www.zhihu.com/api/...`：网页端。热榜能用；但「某人的回答」等接口会回
@@ -348,17 +349,207 @@ export async function fetchComments({ cookie = '', target = 'answer', id = '', l
     })
     const list = Array.isArray(r.json?.data) ? r.json.data : []
     if (!list.length) return { ok: false, why: `没读到评论（HTTP ${r.status}）`, comments: [] }
-    const comments = list.map((c) => ({
-      id: String(c?.id ?? ''),
-      author: String(c?.author?.name ?? '').trim(),
-      likes: Number(c?.like_count) || 0,
-      text: trimText(htmlToText(c?.content), 300),
-      images: commentImageUrls(c),
-      replies: Number(c?.child_comment_count) || 0,
-    }))
+    const comments = list.map(mapComment)
     return { ok: true, comments, total: Number(r.json?.paging?.totals) || comments.length, why: '' }
   } catch (error) {
     return { ok: false, why: `读评论失败：${errorText(error)}`, comments: [] }
+  }
+}
+
+/** 写操作冷却只在这个进程里。要验证码或风控才记，不自动重试。 */
+const writeRisk = { until: 0, streak: 0, at: 0 }
+
+export function resetZhihuWriteRisk() {
+  writeRisk.until = 0
+  writeRisk.streak = 0
+  writeRisk.at = 0
+}
+
+function zhihuCooldown(now = Date.now()) {
+  if (!writeRisk.until || now >= writeRisk.until) return null
+  return { ok: false, code: 'COOLDOWN', why: '先歇一会儿' }
+}
+
+function noteZhihuWriteRisk(now = Date.now()) {
+  const streak = writeRisk.at && now - writeRisk.at < 30 * 60_000 ? writeRisk.streak + 1 : 1
+  const wait = Math.min(30 * 60_000, 5 * 60_000 * 2 ** (streak - 1))
+  writeRisk.until = now + wait
+  writeRisk.streak = streak
+  writeRisk.at = now
+}
+
+function mapComment(c) {
+  return {
+    id: String(c?.id ?? ''),
+    author: String(c?.author?.name ?? '').trim(),
+    authorId: String(c?.author?.id ?? ''),
+    likes: Number(c?.like_count) || 0,
+    text: trimText(htmlToText(c?.content), 300),
+    images: commentImageUrls(c),
+    replies: Number(c?.child_comment_count) || 0,
+    created: Number(c?.created_time ?? c?.created ?? 0) || 0,
+  }
+}
+
+function xsrfOf(cookie) {
+  const m = /(?:^|;\s*)_xsrf=([^;]+)/i.exec(String(cookie ?? ''))
+  if (!m) return ''
+  try { return decodeURIComponent(m[1]) } catch { return m[1] }
+}
+
+async function postJson({ fetchImpl, url, cookie, referer, body, timeoutMs = TIMEOUT_MS }) {
+  const xsrf = xsrfOf(cookie)
+  const signal = typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(timeoutMs) : undefined
+  const res = await fetchImpl(url, {
+    method: 'POST',
+    headers: {
+      'user-agent': UA_WEB,
+      accept: 'application/json, text/plain, */*',
+      'content-type': 'application/json',
+      origin: WEB,
+      referer: referer || `${WEB}/`,
+      'x-requested-with': 'fetch',
+      ...(cookie ? { cookie } : {}),
+      ...(xsrf ? { 'x-xsrftoken': xsrf } : {}),
+    },
+    body: JSON.stringify(body ?? {}),
+    signal,
+  })
+  const text = await res.text()
+  let json = null
+  try { json = JSON.parse(text) } catch { json = null }
+  return { status: res.status, json, text }
+}
+
+/** 验证码 / 风控 / 普通失败。成功返回空串。不发起第二次请求。 */
+function classifyWrite(status, json) {
+  const err = json?.error && typeof json.error === 'object' ? json.error : {}
+  const message = String(err.message ?? json?.message ?? '')
+  const name = String(err.name ?? json?.name ?? '')
+  const blob = `${name} ${message}`
+  const captcha = /验证码|captcha|need_captcha/i.test(blob) || Boolean(json?.captcha || json?.need_captcha || err.captcha)
+  if (captcha) return 'CAPTCHA'
+  const code = Number(err.code ?? json?.code)
+  const risk = /风控|请求存在异常|操作过于频繁/.test(blob)
+    || [403, 412, 429].includes(Number(status))
+    || [4039, 40362, 180000].includes(code)
+  if (risk) return 'RISK'
+  if (Number(status) === 401 || /未登录|请登录/.test(message)) return 'NOT_LOGIN'
+  if (Number(status) >= 400 || (err.code != null && err.code !== 0)) return 'FAIL'
+  return ''
+}
+
+function stopForRisk(kind) {
+  if (kind !== 'CAPTCHA' && kind !== 'RISK') return null
+  noteZhihuWriteRisk()
+  return { ok: false, code: kind, why: kind === 'CAPTCHA' ? '要验证' : '被拦了一下' }
+}
+
+/**
+ * 一条评论下面的楼中楼。空列表也算读到了。
+ * GET /api/v4/comment_v5/comment/{id}/child_comment
+ */
+export async function fetchChildComments({ cookie = '', id = '', limit = 20, fetchImpl = fetch } = {}) {
+  try {
+    const rid = String(id ?? '').trim()
+    if (!rid) return { ok: false, why: '缺评论 id', comments: [] }
+    const n = clamp(limit, 1, 20)
+    const r = await getJson({
+      fetchImpl,
+      url: `${WEB}/api/v4/comment_v5/comment/${encodeURIComponent(rid)}/child_comment?order_by=ts&limit=${n}&offset=`,
+      cookie,
+      referer: `${WEB}/`,
+    })
+    const list = Array.isArray(r.json?.data) ? r.json.data : []
+    if (!list.length && r.status >= 400) return { ok: false, why: `没读到楼中楼（HTTP ${r.status}）`, comments: [] }
+    return { ok: true, comments: list.map(mapComment), why: '' }
+  } catch (error) {
+    return { ok: false, why: `读楼中楼失败：${errorText(error)}`, comments: [] }
+  }
+}
+
+/**
+ * 在一条回答下面写评论，或回复某一条。
+ * replyCommentId 空着是主楼；有值是楼中楼（仍挂在这条回答上）。
+ */
+export async function createComment({ cookie = '', id = '', content = '', replyCommentId = '', fetchImpl = fetch } = {}) {
+  const blocked = zhihuCooldown()
+  if (blocked) return blocked
+  const rid = String(id ?? '').trim()
+  const text = String(content ?? '').trim()
+  if (!rid || !text) return { ok: false, code: 'EMPTY', why: '空评论不发' }
+  if (!xsrfOf(cookie)) return { ok: false, code: 'NO_CSRF', why: 'cookie 不完整' }
+  try {
+    const r = await postJson({
+      fetchImpl,
+      url: `${WEB}/api/v4/comment_v5/answers/${encodeURIComponent(rid)}/comment`,
+      cookie,
+      referer: `${WEB}/answer/${rid}`,
+      body: {
+        content: text,
+        reply_comment_id: String(replyCommentId ?? ''),
+        selected_settings: [],
+        unfriendly_check: 'strict',
+      },
+    })
+    const kind = classifyWrite(r.status, r.json)
+    const stopped = stopForRisk(kind)
+    if (stopped) return stopped
+    if (kind === 'NOT_LOGIN') return { ok: false, code: 'NOT_LOGIN', why: '没登录' }
+    if (kind) return { ok: false, code: 'FAIL', why: String(r.json?.error?.message ?? r.json?.message ?? '没发出去').slice(0, 60) }
+    const cid = String(r.json?.id ?? r.json?.comment?.id ?? r.json?.data?.id ?? '')
+    if (!cid) return { ok: false, code: 'FAIL', why: '没发出去' }
+    return { ok: true, id: cid }
+  } catch (error) {
+    return { ok: false, code: 'NETWORK', why: `没发出去：${errorText(error)}` }
+  }
+}
+
+function answerHtml(text) {
+  const esc = String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  return esc.split(/\n{2,}/).map((part) => `<p>${part.replace(/\n/g, '<br>')}</p>`).join('')
+}
+
+/** 给一个问题写回答。正文按纯文本转成段落，不接收调用方拼好的 HTML。 */
+export async function createAnswer({ cookie = '', questionId = '', content = '', fetchImpl = fetch } = {}) {
+  const blocked = zhihuCooldown()
+  if (blocked) return blocked
+  const qid = String(questionId ?? '').trim()
+  const text = String(content ?? '').trim()
+  if (!qid || !text) return { ok: false, code: 'EMPTY', why: '空回答不发' }
+  if (!xsrfOf(cookie)) return { ok: false, code: 'NO_CSRF', why: 'cookie 不完整' }
+  try {
+    const r = await postJson({
+      fetchImpl,
+      url: `${WEB}/api/v4/questions/${encodeURIComponent(qid)}/answers`,
+      cookie,
+      referer: `${WEB}/question/${qid}`,
+      body: {
+        content: answerHtml(text),
+        reward_setting: { can_reward: false, tagline: '' },
+        comment_permission: 'all',
+        reshipment_settings: 'allowed',
+        push_activity: true,
+        disclaimer_status: 'close',
+        disclaimer_type: 'none',
+        table_of_contents_enabled: false,
+        commercial_report_info: { is_report: false },
+        answer_type: 'normal',
+      },
+    })
+    const kind = classifyWrite(r.status, r.json)
+    const stopped = stopForRisk(kind)
+    if (stopped) return stopped
+    if (kind === 'NOT_LOGIN') return { ok: false, code: 'NOT_LOGIN', why: '没登录' }
+    if (kind) return { ok: false, code: 'FAIL', why: String(r.json?.error?.message ?? r.json?.message ?? '没发出去').slice(0, 60) }
+    const aid = String(r.json?.id ?? r.json?.data?.id ?? r.json?.answer?.id ?? '')
+    if (!aid) return { ok: false, code: 'FAIL', why: '没发出去' }
+    return { ok: true, id: aid }
+  } catch (error) {
+    return { ok: false, code: 'NETWORK', why: `没发出去：${errorText(error)}` }
   }
 }
 
@@ -381,4 +572,7 @@ export async function probe({ cookie = '', fetchImpl = fetch } = {}) {
 }
 
 export const ENDPOINTS = { WEB, MOBILE }
-export default { fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestion, fetchAnswer, fetchComments, htmlToText, extractImages, probe, ENDPOINTS }
+export default {
+  fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestion, fetchAnswer, fetchComments,
+  fetchChildComments, createComment, createAnswer, htmlToText, extractImages, probe, ENDPOINTS,
+}

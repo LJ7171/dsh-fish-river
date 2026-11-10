@@ -22,7 +22,9 @@ test('配置里不再有 voices；旧的 true 被忽略，评论占位字段在'
   const cfg = normalizeConfig({ zhihu: { enabled: true, voices: true } })
   assert.equal(cfg.zhihu.voices, undefined)
   assert.equal(cfg.zhihu.owner, 'owner', '默认用重要的人的号看')
-  assert.deepEqual(cfg.zhihu.comment, { enabled: false, perDay: 1, replyPerDay: 1 })
+  assert.deepEqual(cfg.zhihu.comment, {
+    enabled: false, perDay: 1, replyPerDay: 1, replyToReplies: true, scanEveryMin: 30, lastScanAt: '',
+  })
 })
 
 test('刷知乎不再拉评论区：即使旧配置写着 voices:true', async () => {

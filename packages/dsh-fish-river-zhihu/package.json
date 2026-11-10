@@ -1,7 +1,7 @@
 {
   "name": "dsh-fish-river-zhihu",
   "version": "0.1.0",
-  "description": "知乎只读素材源（热榜 / 关注动态）—— dsh-fish-river 的可选子包",
+  "description": "知乎素材，以及评论 / 楼中楼 / 写回答—— dsh-fish-river 的可选子包",
   "type": "module",
   "main": "index.js",
   "exports": {
@@ -30,7 +30,7 @@
   "private": true,
   "dsh": {
     "source": "zhihu",
-    "kind": "read-only materials",
+    "kind": "materials",
     "requires": [
       "a logged-in Zhihu account (QR scan)"
     ]

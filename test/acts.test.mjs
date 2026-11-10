@@ -1,5 +1,5 @@
 /**
- * acts.test.mjs —— 动作表：旧行还能拆，未接线的评论不写出。
+ * acts.test.mjs —— 动作表：旧行还能拆，知乎和贴吧的说话已经接线。
  */
 import test from 'node:test'
 import assert from 'node:assert/strict'
@@ -64,10 +64,11 @@ test('点开不加配额；知乎和贴吧评论只在表里', () => {
     assert.equal(row.quota, null, prefix)
     assert.equal(row.wired, true, prefix)
   }
-  for (const prefix of ['zhihu-comment:', 'zhihu-reply:', 'tieba-comment:', 'tieba-reply:']) {
+  for (const prefix of ['zhihu-comment:', 'zhihu-reply:', 'zhihu-answer:', 'tieba-comment:', 'tieba-reply:']) {
     const row = actByPrefix(prefix)
     assert.ok(row, prefix)
-    assert.equal(row.wired, false, prefix)
+    assert.equal(row.wired, true, prefix)
+    assert.equal(row.phase, 'talking', prefix)
   }
   assert.equal(ACTS.some((act) => act.prefixes.includes('hand:')), false)
   assert.equal(ACTS.some((act) => act.prefixes.includes('looked:')), false)

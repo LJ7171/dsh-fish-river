@@ -5,7 +5,10 @@
  * 这样知乎改接口 / 加签名时，改动都留在这个目录里。
  */
 
-export { fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestion, fetchAnswer, fetchComments, htmlToText, extractImages, probe, ENDPOINTS } from './api.js'
+export {
+  fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestion, fetchAnswer, fetchComments,
+  fetchChildComments, createComment, createAnswer, resetZhihuWriteRisk, htmlToText, extractImages, probe, ENDPOINTS,
+} from './api.js'
 export {
   createQr,
   pollQr,
@@ -16,7 +19,10 @@ export {
   credentialPath,
 } from './auth.js'
 
-import { fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestion, fetchAnswer, fetchComments, htmlToText, extractImages, probe } from './api.js'
+import {
+  fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestion, fetchAnswer, fetchComments,
+  fetchChildComments, createComment, createAnswer, resetZhihuWriteRisk, htmlToText, extractImages, probe,
+} from './api.js'
 import { createQr, pollQr, saveCookie, readAuth, loadCookie, clearAuth, credentialPath } from './auth.js'
 
 export default {
@@ -27,6 +33,10 @@ export default {
   fetchQuestion,
   fetchAnswer,
   fetchComments,
+  fetchChildComments,
+  createComment,
+  createAnswer,
+  resetZhihuWriteRisk,
   htmlToText,
   extractImages,
   probe,

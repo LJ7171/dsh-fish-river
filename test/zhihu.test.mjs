@@ -202,7 +202,10 @@ test('默认配置：关着、配额按「次」进作息、推荐只是逛的�
   assert.equal(cfg.zhihu.history.enabled, true)
   assert.equal(cfg.zhihu.recommend.enabled, true, '推荐仍是「一次逛什么」里的一项')
   assert.equal(cfg.zhihu.voices, undefined, '读评论设置已撤（功能之后统一到社会层）')
-  assert.deepEqual(cfg.zhihu.comment, { enabled: false, perDay: 1, replyPerDay: 1 })
+  assert.deepEqual(cfg.zhihu.comment, {
+    enabled: false, perDay: 1, replyPerDay: 1, replyToReplies: true, scanEveryMin: 30, lastScanAt: '',
+  })
+  assert.deepEqual(cfg.zhihu.answer, { enabled: false, perDay: 1 })
 })
 
 test('配置夹紧：次数与条数超范围会被拉回', () => {
