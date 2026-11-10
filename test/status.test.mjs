@@ -248,3 +248,69 @@ test('状态页：知乎/贴吧也显示刷了什么', () => {
   assert.ok(lines.some((t) => t.includes('刷了知乎 2 条：热榜一条 / 推荐一条')), lines.join('\n'))
   assert.ok(lines.some((t) => t.includes('刷了贴吧 1 条：meme吧-无人分享meme')), lines.join('\n'))
 })
+
+test('近处的抖音、知乎点开、贴吧进帖各用自己的 label', () => {
+  const cases = [
+    [`dy-browse:${DK} [{"id":"1","title":"一条抖音"}]`, '在刷抖音'],
+    [`zhihu-open:${DK} 123 {"title":"一个问题"}`, '在看知乎的一页'],
+    [`tieba-thread:${DK} 999 {"title":"一个帖子"}`, '在看一个帖子'],
+  ]
+  for (const [line, label] of cases) {
+    const st = deriveStatus({
+      events: [meta(20 * MIN, `wake:${DK} nightly`), meta(1 * MIN, line)],
+      config: cfg,
+      now: NOW,
+    })
+    assert.equal(st.phase, 'browsing', line)
+    assert.equal(st.label, label, line)
+  }
+})
+
+test('heard、fired、sched 不会把二十分钟前的刷站标成正在看', () => {
+  const st = deriveStatus({
+    events: [
+      meta(30 * MIN, `wake:${DK} nightly`),
+      meta(20 * MIN, `browse:${DK} ${JSON.stringify([{ bvid: 'BV1', title: '旧视频' }])}`),
+      meta(2 * MIN, 'fired:test_first'),
+      meta(1 * MIN, `sched:${DK} ${new Date(NOW.getTime() + 60 * MIN).toISOString()}`),
+      { id: 'heard1', ts: new Date(NOW.getTime() - 30_000).toISOString(), type: 'heard', text: '群里有人说话' },
+    ],
+    config: cfg,
+    now: NOW,
+  })
+  assert.notEqual(st.phase, 'browsing')
+  assert.equal(st.phase, 'awake-idle')
+  assert.equal(st.label, '在吃大白饭')
+  assert.match(st.detail, /20 分钟前/)
+})
+
+test('dice_awake 加上刚刷的 browse 仍是 browsing，不改这句话', () => {
+  const at = NOW.getTime() - 1 * MIN
+  const st = deriveStatus({
+    events: [
+      meta(20 * MIN, `wake:${DK} nightly`),
+      meta(1 * MIN, `browse:${DK} ${JSON.stringify([{ title: '刚刷的' }])}`),
+    ],
+    config: cfg,
+    now: NOW,
+    sleepState: { mode: 'dice_awake', since: NOW.getTime() - 10 * MIN, wakeDueAt: 0 },
+  })
+  assert.equal(st.phase, 'browsing')
+  assert.equal(st.label, '在看别人的视频')
+  assert.ok(st.detail.includes('刚刷的'), st.detail)
+  assert.equal(st.since, new Date(at).toISOString())
+})
+
+test('五分钟内的评论用动作表上的那句', () => {
+  const st = deriveStatus({
+    events: [
+      meta(20 * MIN, `wake:${DK} nightly`),
+      meta(1 * MIN, `comment:${DK} BV1 99 {"text":"说一句"}`),
+    ],
+    config: cfg,
+    now: NOW,
+  })
+  assert.equal(st.phase, 'talking')
+  assert.equal(st.label, '在 B 站说了一句')
+  assert.notEqual(st.detail, '')
+})

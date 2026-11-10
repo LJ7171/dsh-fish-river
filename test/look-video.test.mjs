@@ -72,7 +72,10 @@ test('what=video：按 BV 号看指定的那一条，详情只取一次', async 
     const { events } = await readEvents(root)
     const texts = events.filter((e) => e.type === 'meta').map((e) => String(e.text ?? ''))
     assert.ok(texts.includes(`looked:${v().bvid}`))
-    assert.ok(texts.includes(`look:${dateKey()} ${v().bvid}`))
+    const lookLine = texts.find((t) => t.startsWith(`look:${dateKey()} ${v().bvid}`))
+    assert.ok(lookLine, texts.join('\n'))
+    assert.equal(lookLine.split(/\s+/)[1], v().bvid)
+    assert.match(lookLine, /\{"title":/)
   })
 })
 
