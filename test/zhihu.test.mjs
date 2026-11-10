@@ -22,7 +22,8 @@ import {
 import { registerZhihuLook, zhihuLookOnce, parseTarget } from '../lib/zhihuLook.js'
 import { fetchQuestion, fetchAnswer, fetchComments, htmlToText, extractImages } from '../packages/dsh-fish-river-zhihu/api.js'
 import { saveImages } from '../lib/zhihuLook.js'
-import { normalizeConfig } from '../lib/settings.js'
+import { dateKey, normalizeConfig } from '../lib/settings.js'
+import { readEvents } from '../lib/store.js'
 
 function fakeResponse(body, status = 200) {
   return {
@@ -436,6 +437,31 @@ test('zhihuLookOnce：question / answer / comments 三种都能点进去', async
     const dirty = await zhihuLookOnce({ root, cfg, kind: 'answer', id: '', mod })
     assert.equal(dirty.ok, false)
     assert.match(dirty.note, /回答号|链接/)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('再拉热榜记 zhihu:，点进去记 zhihu-open:，都不加 runs', async () => {
+  const root = await tempRoot()
+  try {
+    const cfg = normalizeConfig({ zhihu: { enabled: true } })
+    const mod = {
+      ...detailMod(),
+      async readAuth() { return { cookie: 'z' } },
+      async fetchHot() { return { ok: true, items: [{ id: 'h1', title: '热榜标题' }] } },
+    }
+    const hot = await zhihuLookOnce({ root, cfg, kind: 'hot', mod })
+    assert.equal(hot.ok, true, hot.note)
+    const q = await zhihuLookOnce({ root, cfg, kind: 'question', id: '36867384', mod })
+    assert.equal(q.ok, true, q.note)
+    const { events } = await readEvents(root)
+    const texts = events.map((e) => String(e.text ?? ''))
+    const dk = dateKey()
+    assert.ok(texts.some((t) => t.startsWith(`zhihu:${dk} `)), texts.join('\n'))
+    assert.ok(texts.some((t) => t.startsWith(`zhihu-open:${dk} `)), texts.join('\n'))
+    assert.equal(texts.some((t) => t.startsWith('zhihu-comment:')), false)
+    assert.equal(runsToday(await readState(root), dk), 0)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

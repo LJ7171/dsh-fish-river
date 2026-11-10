@@ -62,7 +62,10 @@ test('她自己点开评论仍然能看，但不再自动收成 voice', async ()
     assert.equal(r.ok, true)
     assert.match(r.text, /这条评论挺长的一句话/)
     const { readFile } = await import('node:fs/promises')
-    await assert.rejects(readFile(join(root, 'events.jsonl'), 'utf8'), '显式点开也不写 voice')
+    const lines = (await readFile(join(root, 'events.jsonl'), 'utf8')).split('\n').filter(Boolean).map((l) => JSON.parse(l))
+    assert.equal(lines.some((e) => e.type === 'voice'), false, '显式点开也不写 voice')
+    assert.ok(lines.some((e) => String(e.text ?? '').startsWith('zhihu-open:')), '看评论页记的是点开')
+    assert.equal(lines.some((e) => String(e.text ?? '').startsWith('zhihu-comment:')), false)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

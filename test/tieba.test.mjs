@@ -8,7 +8,7 @@ import { mkdtemp, rm, readFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { normalizeConfig } from '../lib/settings.js'
+import { dateKey, normalizeConfig } from '../lib/settings.js'
 import { readEvents } from '../lib/store.js'
 import {
   SIGN_SECRET, bdussFromBody, cookieFromSetCookie, parseJsonp, pickCookie, postsFrom,
@@ -223,6 +223,47 @@ test('推荐有内容就记 1 次，响应里不出现 cookie', async () => {
       fetchImpl: async () => ({ ok: true, status: 200, text: async () => JSON.stringify({ error_code: 0, ...FEED }), headers: { getSetCookie: () => [] } }),
     })
     assert.equal(again.blocked, true, '同一条推荐看过就不再算一次空抓')
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('进帖、进吧、再看推荐都记账，但不加每天的次数', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-tieba-act-'))
+  try {
+    await savePastedCookie(root, 'BDUSS=abc123456789', async () => ({
+      ok: true, status: 200, text: async () => '{"error_code":0,"data":{"user":{}}}', headers: { getSetCookie: () => [] },
+    }))
+    const threadJson = {
+      error_code: 0,
+      thread: { id: '11157099999', title: '有图帖' },
+      forum: { name: '测试' },
+      post_list: [{ floor: 1, author_id: 1, content: [{ type: 0, text: '看看字' }] }],
+      user_list: [{ id: 1, name_show: '甲' }],
+    }
+    const fetchImpl = async (url) => {
+      const u = String(url)
+      let json = { error_code: 0, data: { anti: { tbs: 't' }, user: {} } }
+      if (u.includes('personalized_pc')) json = { error_code: 0, ...FEED }
+      else if (u.includes('page_pc') && u.includes('/pb/')) json = threadJson
+      else if (u.includes('frs/page_pc')) json = { error_code: 0, thread_list: [{ tid: '222', title: '吧里一条' }] }
+      return { ok: true, status: 200, text: async () => JSON.stringify(json), headers: { getSetCookie: () => [] } }
+    }
+    const cfg = normalizeConfig({ tieba: { enabled: true } })
+    const thread = await tiebaLookOnce({ root, cfg, kind: 'thread', id: '11157099999', fetchImpl })
+    const forum = await tiebaLookOnce({ root, cfg, kind: 'forum', name: '测试', fetchImpl })
+    const rec = await tiebaLookOnce({ root, cfg, kind: 'recommend', fetchImpl })
+    assert.equal(thread.ok, true, thread.note)
+    assert.equal(forum.ok, true, forum.note)
+    assert.equal(rec.ok, true, rec.note)
+    const { events } = await readEvents(root)
+    const texts = events.map((e) => String(e.text ?? ''))
+    const dk = dateKey()
+    assert.ok(texts.some((t) => t.startsWith(`tieba-thread:${dk} `)), texts.join('\n'))
+    assert.ok(texts.some((t) => t.startsWith(`tieba-forum:${dk} `)), texts.join('\n'))
+    assert.ok(texts.some((t) => t.startsWith(`tieba:${dk} `)), texts.join('\n'))
+    assert.equal(texts.some((t) => t.startsWith('tieba-comment:')), false)
+    assert.equal((await tiebaStatus(root)).runsToday, 0)
   } finally {
     await rm(root, { recursive: true, force: true })
   }

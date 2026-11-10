@@ -5,6 +5,16 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 
 import { zhihuLookMeta, tiebaLookMeta, MAX_ITEMS, MAX_TITLE } from '../lib/lookmeta.js'
+import { formatZhihuBrowse, formatTiebaBrowse } from '../lib/acts.js'
+
+test('转发动作表：知乎前缀是 zhihu:，贴吧前缀是 tieba:', () => {
+  const zh = [{ title: '知乎标题' }]
+  const tb = [{ forum: '吧', title: '标题' }]
+  assert.equal(zhihuLookMeta('2026-11-07', zh), formatZhihuBrowse('2026-11-07', zh))
+  assert.equal(tiebaLookMeta('2026-11-07', tb), formatTiebaBrowse('2026-11-07', tb))
+  assert.match(zhihuLookMeta('2026-11-07', zh), /^zhihu:2026-11-07 /)
+  assert.match(tiebaLookMeta('2026-11-07', tb), /^tieba:2026-11-07 /)
+})
 
 test('知乎：只记标题，去换行、截断、最多 8 条', () => {
   const picks = Array.from({ length: 10 }, (_, i) => ({ title: `标题${i}\n第二行` }))
