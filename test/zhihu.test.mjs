@@ -23,6 +23,8 @@ import { registerZhihuLook, zhihuLookOnce, parseTarget } from '../lib/zhihuLook.
 import { fetchQuestion, fetchAnswer, fetchComments, htmlToText, extractImages } from '../packages/dsh-fish-river-zhihu/api.js'
 import { saveImages } from '../lib/zhihuLook.js'
 import { normalizeConfig } from '../lib/settings.js'
+import { lookBeforeWake } from '../lib/scheduler.js'
+import { readEvents } from '../lib/store.js'
 
 function fakeResponse(body, status = 200) {
   return {
@@ -557,6 +559,29 @@ test('zhihuLookOnce：看图关掉不落盘；max 截断张数', async () => {
     assert.equal(capped.ok, true)
     const hits = capped.text.match(/zhihu-media[/\\]a-1-\d+\.jpg/g) || []
     assert.equal(hits.length, 2)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
+
+test('出门抓知乎写 zhihu:，不写 tieba:（前缀不能串）', async () => {
+  const root = await tempRoot()
+  try {
+    const cfg = normalizeConfig({ zhihu: { enabled: true } })
+    const mod = fetchMod({ hot: [{ id: 'hot:1', title: '热榜一' }] })
+    const out = await lookBeforeWake(
+      root,
+      { day: 1, stage: 1 },
+      cfg,
+      '2026-11-04',
+      { channels: ['zhihu'], zhihuMod: mod, zhihuFetch: async () => ({ ok: true }), now: new Date('2026-11-04T10:15:00') },
+      () => {},
+    )
+    assert.equal(out.acted.zhihu, true)
+    const { events } = await readEvents(root)
+    const metas = events.filter((e) => e.type === 'meta').map((e) => String(e.text ?? ''))
+    assert.ok(metas.some((t) => t.startsWith('zhihu:')), `应写 zhihu:，实际 ${metas.join(' | ')}`)
+    assert.equal(metas.some((t) => t.startsWith('tieba:')), false, '知乎不能写成 tieba:')
   } finally {
     await rm(root, { recursive: true, force: true })
   }
