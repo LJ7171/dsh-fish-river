@@ -52,7 +52,7 @@ const off = adapter.onMessage(fn)  // → 注销函数
 
 1. **永不把异常抛给调用方。** `start` / `send` / `stop` 一律返回对象；异常在里面吞掉、记日志。
 2. **重连自己管。** 阶梯退避，别让 router 去管 socket。断了要把 `ok:false` 记进 `adapter.status()`。
-3. **凭据不许进日志。** cookie / access_token / SESSDATA 打印前打码（照 `lib/log.js` 的 `scrub`）。
+3. **凭据不许进日志。** cookie / access_token / SESSDATA 打印前打码（照 `lib/core/log.js` 的 `scrub`）。
    设置页的 `GET /channels` 也不回 `accessToken` 原值，只回 `accessTokenSet`。
 4. **不许在模块加载时建连接。** 只有 `start()` 里才碰网络——否则插件 import 阶段就会被拖死。
 5. **不许有运行时依赖。** HTTP 用 `fetch`，WS 用 `globalThis.WebSocket`（Node 22+），

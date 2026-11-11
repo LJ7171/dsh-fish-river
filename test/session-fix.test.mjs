@@ -7,10 +7,10 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { startScheduler } from '../lib/scheduler.js'
-import { normalizeConfig } from '../lib/settings.js'
-import { writeConfig } from '../lib/store.js'
-import { blankState, markManual, readSleep, writeSleep } from '../lib/sleep.js'
+import { startScheduler } from '../lib/life/scheduler.js'
+import { normalizeConfig } from '../lib/core/settings.js'
+import { writeConfig } from '../lib/core/store.js'
+import { blankState, markManual, readSleep, writeSleep } from '../lib/life/sleep.js'
 
 const pad = (n) => String((n + 24) % 24).padStart(2, '0')
 const now = new Date()

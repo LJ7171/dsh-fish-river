@@ -26,9 +26,9 @@ import {
   withFileLock,
   TENANT_FILE,
   CLAIM_TTL_MS,
-} from '../lib/tenant.js'
-import { validateEvent } from '../lib/schema.js'
-import { writeSelfDoc } from '../lib/selfdoc.js'
+} from '../lib/house/tenant.js'
+import { validateEvent } from '../lib/core/schema.js'
+import { writeSelfDoc } from '../lib/mind/selfdoc.js'
 
 const made = []
 async function tmpRoot() {

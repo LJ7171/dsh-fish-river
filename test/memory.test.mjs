@@ -14,10 +14,10 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { createPeople, IMPRESSION_MAX, NOTES_MAX, PEOPLE_MAX } from '../lib/people.js'
-import { createJournal, JOURNAL_KEEP, threadKey } from '../lib/journal.js'
-import { visibleTo, filterForAudience } from '../lib/guard.js'
-import { buildIndex, addEventToIndex, looksLikePrivateLeak, shingles } from '../lib/leakcheck.js'
+import { createPeople, IMPRESSION_MAX, NOTES_MAX, PEOPLE_MAX } from '../lib/mind/people.js'
+import { createJournal, JOURNAL_KEEP, threadKey } from '../lib/mind/journal.js'
+import { visibleTo, filterForAudience } from '../lib/core/guard.js'
+import { buildIndex, addEventToIndex, looksLikePrivateLeak, shingles } from '../lib/core/leakcheck.js'
 
 async function tmpRoot() {
   return fs.mkdtemp(path.join(os.tmpdir(), 'fish-mem-'))

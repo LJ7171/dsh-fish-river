@@ -13,8 +13,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { FAQ, FAQ_TITLE, escapeHtml, renderFaqPage } from '../lib/faq.js'
-import { registerObserve } from '../lib/observe.js'
+import { FAQ, FAQ_TITLE, escapeHtml, renderFaqPage } from '../lib/ui/faq.js'
+import { registerObserve } from '../lib/ui/observe.js'
 
 const CLIENT = fileURLToPath(new URL('../lib/client.js', import.meta.url))
 

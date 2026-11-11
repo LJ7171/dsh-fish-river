@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..')
 const CLIENT = join(ROOT, 'lib', 'client.js')
-const OBSERVE = join(ROOT, 'lib', 'observe.js')
+const OBSERVE = join(ROOT, 'lib', 'ui', 'observe.js')
 const LOOP = join(ROOT, 'media', 'principle-loop.svg')
 const MEMORY = join(ROOT, 'media', 'principle-memory.svg')
 const PKG = join(ROOT, 'package.json')
@@ -52,7 +52,7 @@ test('出图走服务端白名单路由，客户端不内联图', async () => {
   // 2026-10-28 起同一条路由既出 svg 也出 jpg，类型按扩展名给，不再是一句写死的常量。
   assert.ok(ob.includes("'image/svg+xml; charset=utf-8'"), '必须声明 svg 类型')
   assert.ok(ob.includes("'image/jpeg'"), '二维码那张必须声明 jpeg 类型')
-  assert.ok(ob.includes('fileURLToPath(new URL(`../media/'), '必须从包内 media/ 读文件')
+  assert.ok(ob.includes('fileURLToPath(new URL(`../../media/'), '必须从包内 media/ 读文件')
 
   const cl = await readFile(CLIENT, 'utf8')
   assert.ok(cl.includes('`${API}/media/principle-loop.svg`'), '图一必须走 /media 路由')

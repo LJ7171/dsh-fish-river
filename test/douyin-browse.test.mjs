@@ -18,8 +18,8 @@ import {
   recordDouyinBrowse,
   gatherDouyin,
   loadDouyin,
-} from '../lib/douyinbrowse.js'
-import { appendEvent, readEvents } from '../lib/store.js'
+} from '../lib/platforms/douyinbrowse.js'
+import { appendEvent, readEvents } from '../lib/core/store.js'
 
 async function tmpRoot() {
   return fs.mkdtemp(path.join(os.tmpdir(), 'fish-dy-'))

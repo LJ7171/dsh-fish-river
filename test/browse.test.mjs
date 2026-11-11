@@ -8,7 +8,7 @@
  *   4. 刷站失败 = 今天没看到，**不能**让唤醒流程失败
  *   5. 报告必须能从事件流重建（派生品，删了能再生成）
  *
- * 全部用假 client，不联网。真接口的形状由 lib/bili.js 负责，不在这里测。
+ * 全部用假 client，不联网。真接口的形状由 lib/platforms/bili.js 负责，不在这里测。
  */
 
 import { test } from 'node:test'
@@ -20,11 +20,11 @@ import { join } from 'node:path'
 import {
   avoidHit, scoreOf, rankVideos, fmtCount, absorb, renderItem, renderMaterial,
   seenBvids, browseCountToday, itemsFromEvents, recordBrowse, candidates, gather,
-} from '../lib/browse.js'
-import { normalizeConfig, dateKey } from '../lib/settings.js'
-import { lookOnce } from '../lib/look.js'
-import { readEvents, appendEvent } from '../lib/store.js'
-import { buildReport, flushReport, quotesOf, listReports } from '../lib/report.js'
+} from '../lib/platforms/browse.js'
+import { normalizeConfig, dateKey } from '../lib/core/settings.js'
+import { lookOnce } from '../lib/platforms/look.js'
+import { readEvents, appendEvent } from '../lib/core/store.js'
+import { buildReport, flushReport, quotesOf, listReports } from '../lib/life/report.js'
 
 async function withRoot(fn) {
   const root = await mkdtemp(join(tmpdir(), 'fish-p2-'))

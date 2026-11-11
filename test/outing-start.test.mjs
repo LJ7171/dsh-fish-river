@@ -18,9 +18,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
 
-import { registerObserve } from '../lib/observe.js'
-import { attachIdentity } from '../lib/identity.js'
-import { readOutings, readPossessions, snapshotEvents, startOuting, endOuting, startPossession } from '../lib/outing.js'
+import { registerObserve } from '../lib/ui/observe.js'
+import { attachIdentity } from '../lib/mind/identity.js'
+import { readOutings, readPossessions, snapshotEvents, startOuting, endOuting, startPossession } from '../lib/life/outing.js'
 
 function fakeAgent(id, cwd) {
   const sections = []
@@ -295,7 +295,7 @@ test('出门首轮要说清：不许碰的是屋子里的文件和记录，不�
 })
 
 test('工具手册不许把工具说成「屋子里的东西」（m01581）', async () => {
-  const { toolBrief } = await import('../lib/persona.js')
+  const { toolBrief } = await import('../lib/mind/persona.js')
   const txt = toolBrief(['ops_bash'])
   assert.ok(!txt.includes('上面这几样是你自己的屋子里的东西'), '原来那句会被身份快照原样带出门，必须改掉')
   assert.match(txt, /跟着我走|不是屋子里的东西/, '要把「工具跟着她走」说清楚')

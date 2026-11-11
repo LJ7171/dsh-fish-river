@@ -10,8 +10,8 @@ import {
   herCommentsRecent,
   replyCountToday,
   targetsToday,
-} from '../lib/comment.js'
-import { formatBiliComment, formatBiliLook, formatBiliReply } from '../lib/acts.js'
+} from '../lib/platforms/comment.js'
+import { formatBiliComment, formatBiliLook, formatBiliReply } from '../lib/core/acts.js'
 
 const DK = '2026-11-07'
 

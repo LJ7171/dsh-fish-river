@@ -23,9 +23,9 @@ import {
   restoreBackup,
   backupFileName,
   quarantineDirFor,
-} from '../lib/backup.js'
-import { readEvents, appendEvent } from '../lib/store.js'
-import { validateEvent, EVENT_SCHEMA_VERSION } from '../lib/schema.js'
+} from '../lib/ops/backup.js'
+import { readEvents, appendEvent } from '../lib/core/store.js'
+import { validateEvent, EVENT_SCHEMA_VERSION } from '../lib/core/schema.js'
 
 async function makeRoot() {
   const root = await mkdtemp(join(tmpdir(), 'fish-backup-'))
@@ -214,7 +214,7 @@ test('界面与路由都接上了（别只写了个模块）', async () => {
   assert.match(c, /备份成一份文件/)
   assert.match(c, /从备份恢复/)
   assert.match(c, /pre-restore-/)
-  const o = await readFile(new URL('../lib/observe.js', import.meta.url), 'utf8')
+  const o = await readFile(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')
   assert.match(o, /\['\/backup\/restore'/)
   assert.match(o, /collectBackup\(root\)/)
   // 恢复必须走「先封存」那条路，不许直接覆盖

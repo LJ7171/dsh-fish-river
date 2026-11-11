@@ -8,14 +8,14 @@ import { mkdtemp, rm, readFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { dateKey, normalizeConfig } from '../lib/settings.js'
-import { readEvents } from '../lib/store.js'
+import { dateKey, normalizeConfig } from '../lib/core/settings.js'
+import { readEvents } from '../lib/core/store.js'
 import {
   SIGN_SECRET, bdussFromBody, cookieFromSetCookie, parseJsonp, pickCookie, postsFrom,
   extractPostImages, renderMaterial, signParams, threadsFrom, fetchTiebaMaterial, createQr, pollQr, readAuth,
   savePastedCookie, tiebaStatus,
-} from '../lib/tieba.js'
-import { registerTiebaLook, tiebaLookOnce, parseThreadId } from '../lib/tiebaLook.js'
+} from '../lib/platforms/tieba.js'
+import { registerTiebaLook, tiebaLookOnce, parseThreadId } from '../lib/platforms/tiebaLook.js'
 
 const FEED = {
   page_data: {

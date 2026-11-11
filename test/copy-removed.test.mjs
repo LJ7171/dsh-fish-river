@@ -19,7 +19,7 @@ import { dirname, join } from 'node:path'
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(HERE, '..')
 const CLIENT = join(ROOT, 'lib', 'client.js')
-const OBSERVE = join(ROOT, 'lib', 'observe.js')
+const OBSERVE = join(ROOT, 'lib', 'ui', 'observe.js')
 
 test('客户端里没有文案页与覆盖层', async () => {
   const cl = await readFile(CLIENT, 'utf8')

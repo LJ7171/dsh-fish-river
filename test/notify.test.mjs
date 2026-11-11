@@ -16,9 +16,9 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { snippet, shouldNotify, readPending, markShown, lastUtteranceToday } from '../lib/notify.js'
-import { appendEvent, writeConfig } from '../lib/store.js'
-import { loadConfig, updateConfig } from '../lib/settings.js'
+import { snippet, shouldNotify, readPending, markShown, lastUtteranceToday } from '../lib/talk/notify.js'
+import { appendEvent, writeConfig } from '../lib/core/store.js'
+import { loadConfig, updateConfig } from '../lib/core/settings.js'
 
 async function fixture() {
   const root = await mkdtemp(join(tmpdir(), 'fish-notify-'))
@@ -181,7 +181,7 @@ test('回写失败不抛：最多明天少提醒一次', async () => {
 
 test('不再有任何子进程路径：原 PowerShell 方案已删除', async () => {
   const fs = await import('node:fs/promises')
-  const raw = await fs.readFile(new URL('../lib/notify.js', import.meta.url), 'utf8')
+  const raw = await fs.readFile(new URL('../lib/talk/notify.js', import.meta.url), 'utf8')
   // 注释里必须保留"为什么删掉"的说明，所以先剥注释再查代码。
   const code = raw
     .replace(/\/\*[\s\S]*?\*\//g, '')

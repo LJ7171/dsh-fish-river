@@ -18,14 +18,14 @@ import { dirname, join } from 'node:path'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 
-import { normalizeConfig, inWindow, DEFAULTS } from '../lib/settings.js'
-import { lookBeforeWake } from '../lib/scheduler.js'
-import { registerObserve } from '../lib/observe.js'
-import { HER_TOOLS, rememberFromView } from '../lib/restrict.js'
+import { normalizeConfig, inWindow, DEFAULTS } from '../lib/core/settings.js'
+import { lookBeforeWake } from '../lib/life/scheduler.js'
+import { registerObserve } from '../lib/ui/observe.js'
+import { HER_TOOLS, rememberFromView } from '../lib/ops/restrict.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const CLIENT = join(HERE, '..', 'lib', 'client.js')
-const OBSERVE = join(HERE, '..', 'lib', 'observe.js')
+const OBSERVE = join(HERE, '..', 'lib', 'ui', 'observe.js')
 
 test('上网/知乎/说话的时段已删除：固定作息接管，不再有这三段默认值', () => {
   const cfg = normalizeConfig({})

@@ -16,8 +16,8 @@ import {
   activeOutingSync, startPossession, endPossession, bindOutingSession, abortOuting,
   lastOutingForCwd, outingsOfSession, rejectNoteText, sessionIsHers, tripDays, tripNoOf,
   pendingOf, settlePending,
-} from '../lib/outing.js'
-import { resolveSessionAgent } from '../lib/observe.js'
+} from '../lib/life/outing.js'
+import { resolveSessionAgent } from '../lib/ui/observe.js'
 
 function tmp() {
   const root = mkdtempSync(join(tmpdir(), 'fish-outing-'))
@@ -223,7 +223,7 @@ test('建会话失败时撤掉空壳，否则她会一直「挂在门外」', as
 test('出门页对所有人可见：服务端只多一个一次性确认，不再按 dev 藏', async () => {
   // 2026-10-29 用户 m00608：早先按「代码路径里有没有 node_modules」猜安装形态，
   // 发布包被解包到插件目录 / 经 junction 指过去时路径里没有这一段，页签就漏给了所有人。
-  const src = readFileSync(new URL('../lib/observe.js', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')
   assert.ok(!src.includes('IS_DEV_INSTALL'), '不能再按安装形态算一次就定死')
   assert.ok(!src.includes("includes('node_modules')"), '安装路径判定会把页签漏给正式版')
   // 2026-10-30 用户 m01904：可见性不再看 dev；GET 带回 ack，POST 能把它写下来。
@@ -232,7 +232,7 @@ test('出门页对所有人可见：服务端只多一个一次性确认，不�
   // dev 字段保留——本机还拿它做别的判断，只是不再用来藏页签。
   assert.ok(src.includes('dev: await devMode(root)'), '/outing 仍带回 dev')
   // 同一个判据也被「去刷 B 站」用：没有 .dev 时两处一起藏，不各算各的。
-  assert.ok(src.includes("from './devmode.js'"), '要复用 devmode 那个文件开关')
+  assert.ok(src.includes("from '../ops/devmode.js'"), '要复用 devmode 那个文件开关')
 })
 
 test('已经绑了会话的那条不能被当空壳撤掉', async () => {
@@ -340,7 +340,7 @@ test('装配失败可以把已经绑了会话的那趟强制撤掉（0.6.25 真�
 })
 
 test('出门 start：先写日志再装配，装配失败强制撤掉，不留幽灵记录', () => {
-  const src = readFileSync(new URL('../lib/observe.js', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')
   assert.ok(src.includes('（接回第 ${tripNo} 趟）'), '复用成功时日志要写清是第几趟')
   assert.ok(src.includes('abortOuting(root, { force: true })'), '装配失败要能把带 sessionId 的这条撤掉')
   assert.ok(src.includes('装备挂上了'), '装配完要再写一行，说明装备到底挂上没有')
@@ -379,7 +379,7 @@ test('接回上次那趟：这版宿主没有 sessionController.resume，要走 
   // 一个入口都没有：要说人话，不是 undefined is not a function
   await assert.rejects(() => resolveSessionAgent({}, 's3'), /resolveAgent/)
   // 源码里不允许再直接调不存在的 sc.resume
-  const src = readFileSync(new URL('../lib/observe.js', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')
   assert.ok(!src.includes('sc.resume('), '不要再调这版宿主没有的 sc.resume')
   assert.ok(src.includes('await resolveSessionAgent(sc, reuseId)'), '复用分支要走 resolveSessionAgent')
 })
@@ -421,7 +421,7 @@ test('等复核的那趟：能找出来、复核通过就收下，结束时间�
 })
 
 test('/outing 复核接口：GET 带回 pendingReview，POST action=review 通过后收下（0.6.32）', () => {
-  const observe = readFileSync(new URL('../lib/observe.js', import.meta.url), 'utf8')
+  const observe = readFileSync(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')
   assert.ok(observe.includes('pendingOf, settlePending'), '复核用的两个函数要 import 进来')
   assert.ok(observe.includes("action === 'review'"), 'POST 要有 review 分支')
   assert.ok(observe.includes('pendingReview'), 'GET 要把等复核的那趟带回界面')

@@ -20,20 +20,20 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync, readdirSync, mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
 
-import { defineTool } from '../lib/tool.js'
-import { registerCapture } from '../lib/capture.js'
-import { registerLetter } from '../lib/letter.js'
-import { registerLook } from '../lib/look.js'
-import { registerRecall } from '../lib/recall.js'
-import { registerHerDiary } from '../lib/herdiary.js'
-import { registerSpeak } from '../lib/speak.js'
-import { registerWatch } from '../lib/watch.js'
-import { FISH_TOOLS, HER_TOOLS } from '../lib/restrict.js'
-import { runChecks } from '../lib/selfcheck.js'
+import { defineTool } from '../lib/core/tool.js'
+import { registerCapture } from '../lib/mind/capture.js'
+import { registerLetter } from '../lib/house/letter.js'
+import { registerLook } from '../lib/platforms/look.js'
+import { registerRecall } from '../lib/mind/recall.js'
+import { registerHerDiary } from '../lib/mind/herdiary.js'
+import { registerSpeak } from '../lib/platforms/speak.js'
+import { registerWatch } from '../lib/platforms/watch.js'
+import { FISH_TOOLS, HER_TOOLS } from '../lib/ops/restrict.js'
+import { runChecks } from '../lib/ops/selfcheck.js'
 
 const LIB = fileURLToPath(new URL('../lib/', import.meta.url))
 const ROOT = join(tmpdir(), 'dsh-fish-tools-test')
@@ -53,13 +53,18 @@ function fakeCtx() {
 
 test('lib/ 里不再 import 宿主的 dsh-tools', () => {
   const hits = []
-  for (const f of readdirSync(LIB)) {
-    if (!f.endsWith('.js')) continue
-    const s = readFileSync(join(LIB, f), 'utf8')
-    // 注释里可以提这个名字（tool.js 就在解释为什么不用它），但代码里不许出现
-    const code = s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-    if (/@deepseek-ai\/dsh-tools/.test(code)) hits.push(f)
+  const walk = (dir) => {
+    for (const ent of readdirSync(dir, { withFileTypes: true })) {
+      const p = join(dir, ent.name)
+      if (ent.isDirectory()) { walk(p); continue }
+      if (!ent.name.endsWith('.js') && !ent.name.endsWith('.mjs')) continue
+      const s = readFileSync(p, 'utf8')
+      // 注释里可以提这个名字（tool.js 就在解释为什么不用它），但代码里不许出现
+      const code = s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
+      if (/@deepseek-ai\/dsh-tools/.test(code)) hits.push(relative(LIB, p))
+    }
   }
+  walk(LIB)
   assert.deepEqual(hits, [], '这些文件又把宿主的 dsh-tools import 回来了')
 })
 

@@ -11,7 +11,7 @@ import { mkdtemp, readFile, readdir, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { paths, writeAtomic, writeConfig, readConfig } from '../lib/store.js'
+import { paths, writeAtomic, writeConfig, readConfig } from '../lib/core/store.js'
 
 test('writeAtomic：同一文件并发写不撞 tmp，也不留半截', async () => {
   const root = await mkdtemp(join(tmpdir(), 'fish-atomic-'))

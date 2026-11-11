@@ -10,8 +10,8 @@ import {
   stanceSummary,
   STANCE_MAX,
   STANCE_PROMPT_MAX,
-} from '../lib/stance.js'
-import { personaLine } from '../lib/persona.js'
+} from '../lib/mind/stance.js'
+import { personaLine } from '../lib/mind/persona.js'
 
 // 2026-10-25 用户拍板「方案二」：四道门不再加门，走完之后长一张立场清单。
 // 这些用例锁的是三件事——什么算立场、什么才算「站住」、清单怎么摆进身份文档。
@@ -130,8 +130,8 @@ test('观测台字段：/memory 与 /state 都从 stance.js 取数', () => {
   assert.equal(sum.stanceBacked, 1)
   assert.deepEqual(sum.stanceFirst, { kind: 'never', text: 'x' })
 
-  const observe = read('lib/observe.js')
-  assert.ok(observe.includes("from './stance.js'"))
+  const observe = read('lib/ui/observe.js')
+  assert.ok(observe.includes("from '../mind/stance.js'"))
   assert.ok(/stanceCount:\s*buildStances\(m\)\.length/.test(observe), '/state 要有 stanceCount')
   assert.ok(observe.includes('...stanceSummary(buildStances(model))'), '/memory 要把摘要并进 sections')
 })
@@ -150,14 +150,14 @@ test('立场三种写法：还没开始 / 走完 0 条 / 已有条数', () => {
 })
 
 test('/state 给出 stanceReady，且不再有 capabilityOf', () => {
-  const o = read('lib/observe.js')
+  const o = read('lib/ui/observe.js')
   assert.ok(/stanceReady:\s*gatesDone\(m\)/.test(o), '/state 要给 stanceReady')
   assert.ok(!o.includes('capabilityOf'))
   assert.equal(fs.existsSync(new URL('../lib/capability.js', import.meta.url)), false)
 })
 
 test('say.js 不再落 task meta', () => {
-  const s = read('lib/say.js')
+  const s = read('lib/talk/say.js')
   assert.ok(!s.includes('taskMeta'))
   assert.ok(!s.includes('looksLikeRework'))
 })

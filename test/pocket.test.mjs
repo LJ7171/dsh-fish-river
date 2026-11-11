@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { POCKET_TITLE, ensurePocket, ensurePocketOrder, findPocketWorkspace, pocketDirPath } from '../lib/pocket.js'
+import { POCKET_TITLE, ensurePocket, ensurePocketOrder, findPocketWorkspace, pocketDirPath } from '../lib/life/pocket.js'
 
 const tmp = () => mkdtempSync(join(tmpdir(), 'fish-pocket-'))
 

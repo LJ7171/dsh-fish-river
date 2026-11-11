@@ -29,10 +29,10 @@
 
 ## 已经定下的事
 
-- **五个可选字段**（`lib/schema.js`）：`person` / `visibility` / `channel` / `origin` / `influence`。
+- **五个可选字段**（`lib/core/schema.js`）：`person` / `visibility` / `channel` / `origin` / `influence`。
   全部可选，不写就不落 JSON，**不升 `EVENT_SCHEMA_VERSION`**。只收系统侧（`source !== 'tool'`），
   她自己改不了——否则等于绕过社会层那道闸。
-- **两条成长通道**（`lib/derive.js`）：立宪层（`influence:'constitution'`，默认）进 `beliefs`；
+- **两条成长通道**（`lib/mind/derive.js`）：立宪层（`influence:'constitution'`，默认）进 `beliefs`；
   社会层（`influence:'social'`）只在**开闸之后**才被读，进 `model.influence.social`，不进 `beliefs`、
   不动阶段、不动称呼。`influence:'none'` 的流水事件完全不参与派生。
 - **开闸是事件不是配置**：`meta social-open:<ISO>`。配置会跟着备份搬来搬去，事件流不会。
@@ -50,15 +50,15 @@
 
 ## 社会层开闸（2026-11-02 已完成）
 
-- `lib/socialgate.js`：四条闸（阶段≥3 / 立场≥6 / 30 天没整条推翻 / 活≥14 天且稳定度在 0.02–0.35），只从事件流算，不落盘、不可配置。
-- `lib/social.js`：`social_open` 工具，她自己按才写 `social-open:<ISO>` 的 meta；差着时只回原因、不写事件。
-- `lib/selfdoc.js`：差着时身份文档一个字不提；可以决定时出现「## 外面的人」；开了之后换成"不能收回"的说法。
+- `lib/life/socialgate.js`：四条闸（阶段≥3 / 立场≥6 / 30 天没整条推翻 / 活≥14 天且稳定度在 0.02–0.35），只从事件流算，不落盘、不可配置。
+- `lib/life/social.js`：`social_open` 工具，她自己按才写 `social-open:<ISO>` 的 meta；差着时只回原因、不写事件。
+- `lib/mind/selfdoc.js`：差着时身份文档一个字不提；可以决定时出现「## 外面的人」；开了之后换成"不能收回"的说法。
 - `test/social.test.mjs`：15 条。
 
 ## 代发与世界书（2026-11-02 已完成）
 
 - **代发**：`POST /channels/send` → `router.sendAs` → 适配器。不问她、不过 gate、不写出站筛、不写事件流，只留 `role:owner` 流水。面板「最近的流水」每个会话带一个输入框。
-- **世界书**：`lib/worldbook.js` + `/worldbook` 路由 + 设置页「她知道的事」。导入 SillyTavern lorebook（对象/数组都认），按关键词取 ≤5 条、≤1200 字，只进渠道路由的 `knowledgeBlock`，不进身份文档、不进 beliefs。
+- **世界书**：`lib/mind/worldbook.js` + `/worldbook` 路由 + 设置页「她知道的事」。导入 SillyTavern lorebook（对象/数组都认），按关键词取 ≤5 条、≤1200 字，只进渠道路由的 `knowledgeBlock`，不进身份文档、不进 beliefs。
 - **社会层真的被读到**：开闸后 `selfdoc.js` 写「我在外面学到的」（≤6 条），`router.buildPrompt` 写「在外面见过的做法」（≤5 条）。此前只派生不注入，开闸等于空转。
 - **身份文档也带世界书**（用户 m01879）：`selfdoc.js` 写「## 我知道的事」（≤24 条），渠道提示词那一路不变。
 - 测试：`test/worldbook.test.mjs` 6 条 + `test/channel-router.test.mjs` 代发 2 条 + 社会层注入 2 条。全套 **1218 / 1215 / 0 / 3**。

@@ -20,7 +20,7 @@ import {
   sweepMedia,
   mediaDir,
   MAX_IMAGE_BYTES,
-} from '../lib/media.js'
+} from '../lib/core/media.js'
 
 // 1×1 透明 PNG
 const PNG_B64 =

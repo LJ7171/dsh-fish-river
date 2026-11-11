@@ -11,8 +11,8 @@ import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { registerSendImage, sendImageOnce } from '../lib/sendImage.js'
-import { setChannelTurn, clearChannelTurn, setChannelSender, resetChannelTurnForTests, currentChannelTurn } from '../lib/channelTurn.js'
+import { registerSendImage, sendImageOnce } from '../lib/talk/sendImage.js'
+import { setChannelTurn, clearChannelTurn, setChannelSender, resetChannelTurnForTests, currentChannelTurn } from '../lib/channels/channelTurn.js'
 
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',

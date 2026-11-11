@@ -23,10 +23,10 @@ import {
   lettersSince,
   leaveLetter,
   registerLetter,
-} from '../lib/letter.js'
-import { buildInbox, readInbox, writeInboxFile } from '../lib/inbox.js'
-import { readEvents, paths } from '../lib/store.js'
-import { dateKey } from '../lib/settings.js'
+} from '../lib/house/letter.js'
+import { buildInbox, readInbox, writeInboxFile } from '../lib/house/inbox.js'
+import { readEvents, paths } from '../lib/core/store.js'
+import { dateKey } from '../lib/core/settings.js'
 
 async function withRoot(fn) {
   const root = await mkdtemp(join(tmpdir(), 'dsh-fish-letter-'))
@@ -147,7 +147,7 @@ test('信箱把留话单独数出来，而且只数未读的', async () => {
     const a = await leaveLetter(root, '这句是留给你的。')
     assert.equal(a.ok, true)
     // 一条独白（不是留话）
-    const { appendEvent } = await import('../lib/store.js')
+    const { appendEvent } = await import('../lib/core/store.js')
     await appendEvent({ type: 'utterance', text: '这句只是自言自语。' }, { day: 1, stage: 1, source: 'tool' }, root)
 
     // 默认口径只放留话（2026-10-24 用户定）；先关掉它验证"留话能被单独数出来"。
@@ -170,7 +170,7 @@ test('信箱把留话单独数出来，而且只数未读的', async () => {
 test('读完之后留话不再计入 letters（角标会消失）', async () => {
   await withRoot(async (root) => {
     await leaveLetter(root, '留一句')
-    const { markRead } = await import('../lib/inbox.js')
+    const { markRead } = await import('../lib/house/inbox.js')
     await markRead(root)
     const box = await readInbox(root)
     assert.equal(box.unread, 0)
@@ -184,7 +184,7 @@ test('读完之后留话不再计入 letters（角标会消失）', async () => 
 test('inbox.md 只写留话，标成「她留给你的话」，独白不进这个文件', async () => {
   await withRoot(async (root) => {
     await leaveLetter(root, '我有话跟你说。')
-    const { appendEvent } = await import('../lib/store.js')
+    const { appendEvent } = await import('../lib/core/store.js')
     await appendEvent({ type: 'utterance', text: '随便一句。' }, { day: 1, stage: 1, source: 'tool' }, root)
     await writeInboxFile(root)
     const md = await readFile(join(paths(root).root, 'inbox.md'), 'utf8')

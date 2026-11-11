@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { join, resolve } from 'node:path'
 
-import { isInside, isInsideStrict } from '../lib/paths.js'
+import { isInside, isInsideStrict } from '../lib/core/paths.js'
 
 const base = resolve('/tmp/fish-paths-base')
 const child = join(base, 'media', 'a.png')

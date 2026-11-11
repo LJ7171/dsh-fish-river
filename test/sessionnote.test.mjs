@@ -8,8 +8,8 @@ import { mkdtempSync, rmSync, readFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { appendNote, queueNote, takeNotes, deliverQueued } from '../lib/sessionnote.js'
-import { registerIdentity } from '../lib/identity.js'
+import { appendNote, queueNote, takeNotes, deliverQueued } from '../lib/mind/sessionnote.js'
+import { registerIdentity } from '../lib/mind/identity.js'
 
 function tmp() {
   return mkdtempSync(join(tmpdir(), 'fish-note-'))
@@ -144,7 +144,7 @@ test('registerIdentity：她家那条会话一起来，就把排队的话补进�
 })
 
 test('identity.js 里真的调了 deliverQueued（防止它再变回死代码）', () => {
-  const src = readFileSync(new URL('../lib/identity.js', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../lib/mind/identity.js', import.meta.url), 'utf8')
   assert.match(src, /import \{ deliverQueued \} from '\.\/sessionnote\.js'/)
   assert.match(src, /deliverQueued\(agent, root/)
 })

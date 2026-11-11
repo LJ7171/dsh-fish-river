@@ -1,3 +1,14 @@
+## 0.1.117 — 2026-11-11
+
+- 纯目录整理：主包 `lib/` 根上的文件按领域收进子目录，只改路径和 import，不改行为。
+  `channels/` 收回 `bridge.js`、`channelTurn.js`、`extturn.js`、`weixinqr.js`。
+  新增 `core/`（账本和共用原语）、`mind/`（她是谁、记得什么）、`life/`（她的一天）、
+  `platforms/`（平台主包侧）、`house/`（屋子与物品）、`talk/`（对话）、
+  `ui/`（观测台服务端）、`ops/`（运维）。
+  `lib/index.js`、`lib/client.js`、`lib/vendor/` 留在原地。`packages/` 未动，贴吧和 B 站仍在主包。
+- 清单外的 `media.js` 放进 `core/`：图片落盘、魔数和 ffmpeg 探测被相册、表情、发图、微信、观测台、自检和各平台一起用，是共用原语，不是某一个平台的入口。
+- 测试：总 1603 全绿。
+
 ## 0.1.116 — 2026-11-11
 
 - 修 Node 20 加载可选知乎子包：`zhihuLoad` 遇到 `ERR_REQUIRE_ESM` / 未知扩展名按“没装”处理，

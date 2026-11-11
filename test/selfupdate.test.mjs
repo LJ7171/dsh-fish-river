@@ -33,8 +33,8 @@ import {
   runtimeBins,
   profileDirOf,
   createSelfUpdater,
-} from '../lib/selfupdate.js'
-import { registerObserve } from '../lib/observe.js'
+} from '../lib/ops/selfupdate.js'
+import { registerObserve } from '../lib/ui/observe.js'
 
 // ---------------------------------------------------------------- tar 工具
 
@@ -127,10 +127,10 @@ test('profile 里那条依赖分得清"开发版"和"可升级的安装"', () =>
 })
 
 test('从模块路径反推 profile 目录：link 安装（真身在源码目录）要识别为"没有 profile"', () => {
-  const winUrl = 'file:///C:/Users/DANG/.dsh/profiles/desktop/node_modules/dsh-fish-river/lib/selfupdate.js'
+  const winUrl = 'file:///C:/Users/DANG/.dsh/profiles/desktop/node_modules/dsh-fish-river/lib/ops/selfupdate.js'
   const got = profileDirOf(winUrl).split(String.fromCharCode(92)).join('/').replace(/^\/(?=[A-Za-z]:)/, '')
   assert.equal(got, 'C:/Users/DANG/.dsh/profiles/desktop')
-  const linkUrl = pathToFileURL('D:/deepseekagent/02-我的项目/大肥鱼/plugin/lib/selfupdate.js').href
+  const linkUrl = pathToFileURL('D:/deepseekagent/02-我的项目/大肥鱼/plugin/lib/ops/selfupdate.js').href
   assert.equal(profileDirOf(linkUrl), '')
 })
 

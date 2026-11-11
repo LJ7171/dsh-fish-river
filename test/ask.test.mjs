@@ -23,14 +23,14 @@ import {
   restedToday,
   settleAsk,
   settleStaleAsks,
-} from '../lib/ask.js'
-import { picked } from '../lib/askinchat.js'
-import { dateKey, loadConfig } from '../lib/settings.js'
-import { readConfig, readEvents } from '../lib/store.js'
-import { validateEvent } from '../lib/schema.js'
-import { registerObserve } from '../lib/observe.js'
-import { HER_TOOLS, currentToolSurface } from '../lib/restrict.js'
-import { ASK_BRIEF } from '../lib/persona.js'
+} from '../lib/talk/ask.js'
+import { picked } from '../lib/talk/askinchat.js'
+import { dateKey, loadConfig } from '../lib/core/settings.js'
+import { readConfig, readEvents } from '../lib/core/store.js'
+import { validateEvent } from '../lib/core/schema.js'
+import { registerObserve } from '../lib/ui/observe.js'
+import { HER_TOOLS, currentToolSurface } from '../lib/ops/restrict.js'
+import { ASK_BRIEF } from '../lib/mind/persona.js'
 
 async function withRoot(fn) {
   const root = mkdtempSync(join(tmpdir(), 'fish-ask-'))
@@ -227,7 +227,7 @@ test('她得知道自己有 ask_owner：白名单、手边清单、身份文档�
   assert.match(ASK_BRIEF, /ask_owner/)
   assert.match(ASK_BRIEF, /一天最多一次/, '上限要告诉她，不然被挡下时她会以为工具坏了')
   // 说明书得真的挂进身份文档（selfdoc 落盘的那份），否则她读到的是别的工具。
-  const selfdoc = readFileSync(new URL('../lib/selfdoc.js', import.meta.url), 'utf8')
+  const selfdoc = readFileSync(new URL('../lib/mind/selfdoc.js', import.meta.url), 'utf8')
   assert.match(selfdoc, /ASK_BRIEF/, '身份文档里没挂说明书，等于还是不知道')
 })
 

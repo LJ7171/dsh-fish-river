@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseRefusal, classifyReaction, REACTIONS, REACTION_HURTS } from '../lib/refuse.js'
-import { validateEvent } from '../lib/schema.js'
-import { deriveSelf, DAY_MS } from '../lib/derive.js'
-import { personaLine } from '../lib/persona.js'
+import { parseRefusal, classifyReaction, REACTIONS, REACTION_HURTS } from '../lib/mind/refuse.js'
+import { validateEvent } from '../lib/core/schema.js'
+import { deriveSelf, DAY_MS } from '../lib/mind/derive.js'
+import { personaLine } from '../lib/mind/persona.js'
 
 // P1 第二块（2026-10-24 用户批准）：拒绝要有形状，他听完的反应要有归因。
 

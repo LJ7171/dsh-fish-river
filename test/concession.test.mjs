@@ -11,7 +11,7 @@
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { deriveSelf, gatePassed } from '../lib/derive.js'
+import { deriveSelf, gatePassed } from '../lib/mind/derive.js'
 
 const T0 = Date.parse('2026-11-03T10:00:00+08:00')
 

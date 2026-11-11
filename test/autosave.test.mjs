@@ -6,7 +6,7 @@ import { readFile } from 'node:fs/promises'
 // 原来的问题是：每个页签底部挂一颗「保存改动」，住所页没有设置项也挂着一颗，
 // 让人以为必须点；上网页设置项很多，只改一半、没滚到底，改动就不生效且没有任何提示。
 const CLIENT = new URL('../lib/client.js', import.meta.url)
-const STATUS = new URL('../lib/status.js', import.meta.url)
+const STATUS = new URL('../lib/ui/status.js', import.meta.url)
 
 test('设置页不再有底部保存条，改成改完即存', async () => {
   const src = await readFile(CLIENT, 'utf8')

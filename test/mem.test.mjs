@@ -14,12 +14,12 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { personaLine, assemble, foldOlderBeliefs, HARD_BANS, sleepPrompt } from '../lib/persona.js'
-import { renderSelfDoc } from '../lib/selfdoc.js'
-import { addExchange, recentExchanges, renderCarry, TALK_KEEP } from '../lib/talkmem.js'
-import { bumpTurns, rotateTalkSession, activeCarry, homeStatus, CARRY_TURNS } from '../lib/home.js'
-import { searchEvents, tokensOf, renderRecall, RECALL_LIMIT } from '../lib/recall.js'
-import { normalizeConfig, DEFAULTS } from '../lib/settings.js'
+import { personaLine, assemble, foldOlderBeliefs, HARD_BANS, sleepPrompt } from '../lib/mind/persona.js'
+import { renderSelfDoc } from '../lib/mind/selfdoc.js'
+import { addExchange, recentExchanges, renderCarry, TALK_KEEP } from '../lib/mind/talkmem.js'
+import { bumpTurns, rotateTalkSession, activeCarry, homeStatus, CARRY_TURNS } from '../lib/house/home.js'
+import { searchEvents, tokensOf, renderRecall, RECALL_LIMIT } from '../lib/mind/recall.js'
+import { normalizeConfig, DEFAULTS } from '../lib/core/settings.js'
 
 const DAY = 86_400_000
 
@@ -138,7 +138,7 @@ function fakeCtx({ createId = 'sess-new' } = {}) {
 }
 
 test('轮换：旧会话改名留档、新会话接管、原话搬过去', () => withRoot(async (root) => {
-  const { writeAtomic, paths } = await import('../lib/store.js')
+  const { writeAtomic, paths } = await import('../lib/core/store.js')
   const homeFile = join(paths(root).root, 'home.json')
   await writeAtomic(homeFile, JSON.stringify({ wsId: 'ws-1', sessionId: 'sess-old', turns: 40 }))
   await addExchange(root, { me: '你还记得那天吗', her: '记得。' })
@@ -163,7 +163,7 @@ test('轮换：旧会话改名留档、新会话接管、原话搬过去', () =>
 }))
 
 test('换会话只换该换的：preset / hearAt / title 这些还不能丢（issue #14 第二报）', () => withRoot(async (root) => {
-  const { writeAtomic, paths } = await import('../lib/store.js')
+  const { writeAtomic, paths } = await import('../lib/core/store.js')
   const homeFile = join(paths(root).root, 'home.json')
   // 以前这里整份覆盖写，preset/hearAt/title 全被抹掉 —— 换完会话旁听节奏归零、
   // 她挑的那套预设也丢了，但没有任何日志能看出来。
@@ -191,7 +191,7 @@ test('换会话只换该换的：preset / hearAt / title 这些还不能丢（is
 }))
 
 test('搬运最多管 8 轮，之后自己消失（否则她会被一段旧话钉住）', () => withRoot(async (root) => {
-  const { writeAtomic, paths } = await import('../lib/store.js')
+  const { writeAtomic, paths } = await import('../lib/core/store.js')
   const homeFile = join(paths(root).root, 'home.json')
   await writeAtomic(homeFile, JSON.stringify({
     wsId: 'ws-1', sessionId: 's', turns: 0, rotatedAt: new Date().toISOString(), carry: '## 上次我们说到这\n- 旧话',
@@ -202,7 +202,7 @@ test('搬运最多管 8 轮，之后自己消失（否则她会被一段旧话�
 }))
 
 test('搬运超过三天也失效', () => withRoot(async (root) => {
-  const { writeAtomic, paths } = await import('../lib/store.js')
+  const { writeAtomic, paths } = await import('../lib/core/store.js')
   const homeFile = join(paths(root).root, 'home.json')
   await writeAtomic(homeFile, JSON.stringify({
     wsId: 'ws-1', sessionId: 's', turns: 0,
@@ -298,7 +298,7 @@ test('「想一想」的提示词不要求她总结人生', () => {
 // 于是 780 字的中文文档报成 2340 字节、比值恒为 1、进度条永远是满的橙色——
 // 看上去「她快撑爆了」，其实只用了六成。数字没错，口径错了。
 test('personaBudget 用字数算用量，且与 personaLine 一致', async () => {
-  const { personaBudget, personaLine, SELF_DOC_BUDGET } = await import('../lib/persona.js')
+  const { personaBudget, personaLine, SELF_DOC_BUDGET } = await import('../lib/mind/persona.js')
   const m = model({ beliefs: Array.from({ length: 12 }, (_, i) => ({ text: `判断 ${i} 号` })) })
   const b = personaBudget(m, { budget: SELF_DOC_BUDGET, withBans: true })
   const line = personaLine(m, { budget: SELF_DOC_BUDGET, withBans: true })
@@ -311,7 +311,7 @@ test('personaBudget 用字数算用量，且与 personaLine 一致', async () =>
 })
 
 test('预算紧到离谱时核心段仍完整，可选段被逐个报进 dropped', async () => {
-  const { personaBudget, personaLine } = await import('../lib/persona.js')
+  const { personaBudget, personaLine } = await import('../lib/mind/persona.js')
   const m = model({
     beliefs: Array.from({ length: 8 }, (_, i) => ({ text: `判断 ${i} 号` })),
     refusals: [{ what: '拒绝过一次' }],

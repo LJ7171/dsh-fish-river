@@ -4,14 +4,14 @@
  * 这条设置是**环境参数**，不是人格设置：它只描述"这一轮最多写多少字"，
  * 0 = 提示词里完全不出现任何长度要求（默认）。
  * 守门要点：这段文字不能回到 say.js 的 user 消息里拼身份，
- * 所以它单独放在 lib/budget.js，say.js 只从那儿取。
+ * 所以它单独放在 lib/core/budget.js，say.js 只从那儿取。
  */
 
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { lengthBudget } from '../lib/budget.js'
-import { normalizeConfig } from '../lib/settings.js'
+import { lengthBudget } from '../lib/core/budget.js'
+import { normalizeConfig } from '../lib/core/settings.js'
 
 const SRC = (p) => readFileSync(new URL(p, import.meta.url), 'utf8')
 
@@ -41,15 +41,15 @@ test('配置层：chat.replyChars 有夹值，ui.ownerHintDismissed 布尔化', 
 })
 
 test('generator：唤醒消息按配置带上预算', () => {
-  const src = SRC('../lib/generator.js')
-  assert.ok(src.includes("import { lengthBudget } from './budget.js'"))
+  const src = SRC('../lib/mind/generator.js')
+  assert.ok(src.includes("import { lengthBudget } from '../core/budget.js'"))
   assert.ok(src.includes('budget: cfg?.chat?.replyChars'), 'pick 要把预算传进 safePrompt')
   assert.ok(src.includes('lengthBudget(ctx.budget)'), 'safePrompt 要自己判断有没有预算')
 })
 
 test('say.js：递话时也带预算，但不许把身份拼回去', () => {
-  const src = SRC('../lib/say.js')
-  assert.ok(src.includes("import { lengthBudget } from './budget.js'"), '从 budget.js 取，不要从 persona.js')
+  const src = SRC('../lib/talk/say.js')
+  assert.ok(src.includes("import { lengthBudget } from '../core/budget.js'"), '从 budget.js 取，不要从 persona.js')
   assert.ok(src.includes('lengthBudget(config?.chat?.replyChars)'))
   assert.ok(!src.includes("from './persona.js'"), 'say.js 不许 import persona（会把身份塞回 user 消息）')
   assert.ok(!src.includes('TOOL_BRIEF'))

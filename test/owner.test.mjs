@@ -16,13 +16,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
 
-import { looksLikeLeak, screenOutgoing } from '../lib/guard.js'
-import { parseCookieInput, mentionPrefix, publicOwner, saveOwner, saveAccount } from '../lib/owner.js'
-import { readOwner, appendEvent, writeConfig } from '../lib/store.js'
-import { registerObserve } from '../lib/observe.js'
-import { loginMid } from '../lib/comment.js'
-import { normalizeConfig } from '../lib/settings.js'
-import { PRIVATE_REDACTED } from '../lib/privacy.js'
+import { looksLikeLeak, screenOutgoing } from '../lib/core/guard.js'
+import { parseCookieInput, mentionPrefix, publicOwner, saveOwner, saveAccount } from '../lib/core/owner.js'
+import { readOwner, appendEvent, writeConfig } from '../lib/core/store.js'
+import { registerObserve } from '../lib/ui/observe.js'
+import { loginMid } from '../lib/platforms/comment.js'
+import { normalizeConfig } from '../lib/core/settings.js'
+import { PRIVATE_REDACTED } from '../lib/core/privacy.js'
 
 test('隐私红线：本机路径与状态库文件名一律拦下', () => {
   for (const s of [

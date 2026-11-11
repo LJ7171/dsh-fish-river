@@ -19,7 +19,7 @@ import { spawnSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { detectFfmpeg, bundledFfmpegPath } from '../lib/media.js'
+import { detectFfmpeg, bundledFfmpegPath } from '../lib/core/media.js'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const BIN_DIR = dirname(bundledFfmpegPath())

@@ -21,10 +21,10 @@ import {
   homeStatus,
   ensureHomeDir,
   talkSessionId,
-} from '../lib/home.js'
-import { writeSelfDoc, selfDocPath, selfDocStatus } from '../lib/selfdoc.js'
-import { appendEvent } from '../lib/store.js'
-import { updateConfig } from '../lib/settings.js'
+} from '../lib/house/home.js'
+import { writeSelfDoc, selfDocPath, selfDocStatus } from '../lib/mind/selfdoc.js'
+import { appendEvent } from '../lib/core/store.js'
+import { updateConfig } from '../lib/core/settings.js'
 
 async function tmpRoot() {
   return mkdtemp(join(tmpdir(), 'fish-home-'))
@@ -435,7 +435,7 @@ test('宿主没有改名接口时保持原名，不抛', async () => {
 })
 
 test('观测台的 /home 现读工作区标题，不靠 home.json 的旧值', async () => {
-  const src = await readFile(new URL('../lib/observe.js', import.meta.url), 'utf8')
+  const src = await readFile(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')
   assert.match(src, /title: wsTitle/, '/home 要带标题')
   assert.match(src, /reg\?\.get\?\.\(h\.wsId\)\?\.title/, '标题要现读，不能记在 home.json 里')
 })

@@ -14,7 +14,7 @@ import {
   redactEvents,
   redactBeliefsForOwner,
   redactThreads,
-} from '../lib/privacy.js'
+} from '../lib/core/privacy.js'
 
 const config = { channels: { qq: { ownerId: '10086' }, weixin: { ownerId: 'u_wxid_a' } } }
 const sets = ownerIdSets(config)

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { newId, idTime, validateEvent, detectSelfMod, Reject, HER_TYPES, isBlankNarration } from '../lib/schema.js'
+import { newId, idTime, validateEvent, detectSelfMod, Reject, HER_TYPES, isBlankNarration } from '../lib/core/schema.js'
 
 test('ULID 单调递增，且能从 id 反解时间', () => {
   const t = 1759000000000

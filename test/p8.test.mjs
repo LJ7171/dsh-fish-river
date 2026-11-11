@@ -3,9 +3,9 @@ import assert from 'node:assert/strict'
 import {
   deriveSelf, detectTensions, stripNegation, polarity,
   SOLID_MENTIONS, SOLID_VERIFIED, DAY_MS,
-} from '../lib/derive.js'
-import { personaLine, SELF_DOC_BUDGET, BELIEF_SHOWN } from '../lib/persona.js'
-import { ruleById } from '../lib/rules.js'
+} from '../lib/mind/derive.js'
+import { personaLine, SELF_DOC_BUDGET, BELIEF_SHOWN } from '../lib/mind/persona.js'
+import { ruleById } from '../lib/mind/rules.js'
 
 // P0-1 判断之间要能打架 / P0-2 显著性遗忘与固化 / P1 自我叙述 / P2 黑名单口径
 // 用户 m01429 批准的四项（2026-10-24）。

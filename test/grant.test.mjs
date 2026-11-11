@@ -12,8 +12,8 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { currentOffer, recordGrant } from '../lib/grant.js'
-import { readEvents } from '../lib/store.js'
+import { currentOffer, recordGrant } from '../lib/mind/grant.js'
+import { readEvents } from '../lib/core/store.js'
 
 /**
  * 建一个临时的「家」，跑完就删。

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import net from 'node:net'
-import { probeTcp } from '../lib/observe.js'
+import { probeTcp } from '../lib/ui/observe.js'
 
 function listen() {
   return new Promise((resolve) => {

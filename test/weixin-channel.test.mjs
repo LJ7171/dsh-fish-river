@@ -1,5 +1,5 @@
 /**
- * weixin-channel.test.mjs —— lib/channels/weixin.js 与 lib/weixinqr.js 的契约测试。
+ * weixin-channel.test.mjs —— lib/channels/weixin.js 与 lib/channels/weixinqr.js 的契约测试。
  *
  * 全程不碰真网络：fetch 是假的，登录接口按官方 iLink 的形状回包
  * （get_bot_qrcode / get_qrcode_status / getupdates / sendmessage）。
@@ -15,7 +15,7 @@ import { tmpdir } from 'os'
 import { join } from 'path'
 import { create } from '../lib/channels/weixin.js'
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto'
-import { createQr, pollQr, saveCredential, loadCredential, credentialPath, publicCredential, CDN_BASE_URL } from '../lib/weixinqr.js'
+import { createQr, pollQr, saveCredential, loadCredential, credentialPath, publicCredential, CDN_BASE_URL } from '../lib/channels/weixinqr.js'
 import { canReply } from '../lib/channels/gate.js'
 
 const T0 = 1700000000000

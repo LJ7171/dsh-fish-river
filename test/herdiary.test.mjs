@@ -15,9 +15,9 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { registerHerDiary, renderDiary, DIARY_READ_MAX } from '../lib/herdiary.js'
-import { DIARY_BRIEF } from '../lib/persona.js'
-import { writeDaily } from '../lib/store.js'
+import { registerHerDiary, renderDiary, DIARY_READ_MAX } from '../lib/mind/herdiary.js'
+import { DIARY_BRIEF } from '../lib/mind/persona.js'
+import { writeDaily } from '../lib/core/store.js'
 
 async function tmpRoot() {
   return mkdtemp(join(tmpdir(), 'fish-herdiary-'))
@@ -162,8 +162,8 @@ test('DIARY_BRIEF 写了机制：用 write_diary 交一整篇（0.1.29 拆出来
 })
 
 test('这段机制句确实进身份文档（selfdoc 的 diary 分支还在）', async () => {
-  const selfdoc = await readFile(new URL('../lib/selfdoc.js', import.meta.url), 'utf8')
+  const selfdoc = await readFile(new URL('../lib/mind/selfdoc.js', import.meta.url), 'utf8')
   assert.ok(selfdoc.includes('if (diary) body.push(DIARY_BRIEF'), 'diary 开关仍然决定这一段进不进文档')
-  const src = await readFile(new URL('../lib/persona.js', import.meta.url), 'utf8')
+  const src = await readFile(new URL('../lib/mind/persona.js', import.meta.url), 'utf8')
   assert.ok(src.includes('write_diary'), '机制句在 persona.js 里')
 })

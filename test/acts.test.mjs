@@ -14,7 +14,7 @@ import {
   formatTiebaThread,
   formatZhihuOpen,
   parseAct,
-} from '../lib/acts.js'
+} from '../lib/core/acts.js'
 
 test('旧 look / comment 仍能拆出 id；带 JSON 时有标题或摘要', () => {
   const look = parseAct('look:2026-11-07 BV1xx411c7mD')

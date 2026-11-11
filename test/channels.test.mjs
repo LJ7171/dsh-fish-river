@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { validateEvent, INFLUENCES, VISIBILITIES, ORIGINS, CHANNELS, EVENT_SCHEMA_VERSION } from '../lib/schema.js'
-import { deriveSelf, SOCIAL_OPEN_PREFIX, DAY_MS } from '../lib/derive.js'
+import { validateEvent, INFLUENCES, VISIBILITIES, ORIGINS, CHANNELS, EVENT_SCHEMA_VERSION } from '../lib/core/schema.js'
+import { deriveSelf, SOCIAL_OPEN_PREFIX, DAY_MS } from '../lib/mind/derive.js'
 
 const T0 = Date.parse('2026-10-01T00:00:00Z')
 

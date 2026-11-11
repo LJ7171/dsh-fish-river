@@ -1,11 +1,11 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { CATALOG, findTemplate } from '../lib/events.js'
-import { pick, topicEcho } from '../lib/generator.js'
-import { todayCounts } from '../lib/scheduler.js'
-import { normalizeConfig, DEFAULTS } from '../lib/settings.js'
-import { deriveSelf } from '../lib/derive.js'
-import { newId } from '../lib/schema.js'
+import { CATALOG, findTemplate } from '../lib/mind/events.js'
+import { pick, topicEcho } from '../lib/mind/generator.js'
+import { todayCounts } from '../lib/life/scheduler.js'
+import { normalizeConfig, DEFAULTS } from '../lib/core/settings.js'
+import { deriveSelf } from '../lib/mind/derive.js'
+import { newId } from '../lib/core/schema.js'
 
 const DAY = 86_400_000
 const iso = (msAgo = 0) => new Date(Date.now() - msAgo).toISOString()

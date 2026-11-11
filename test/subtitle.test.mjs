@@ -1,5 +1,5 @@
 /**
- * subtitle.test.mjs —— 字幕抽取（lib/subtitle.js）。
+ * subtitle.test.mjs —— 字幕抽取（lib/platforms/subtitle.js）。
  *
  * 不联网：`subtitleFor` 只依赖注入的 client；抽样、字数上限、防注入都在纯函数里验。
  */
@@ -7,7 +7,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { formatStamp, pickSubtitleLines, subtitleFor } from '../lib/subtitle.js'
+import { formatStamp, pickSubtitleLines, subtitleFor } from '../lib/platforms/subtitle.js'
 
 test('formatStamp：秒 → mm:ss，超过一小时带小时位', () => {
   assert.equal(formatStamp(0), '00:00')

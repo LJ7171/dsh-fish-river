@@ -3,9 +3,9 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { registerSpeak } from '../lib/speak.js'
-import { updateConfig } from '../lib/settings.js'
-import { appendEvent } from '../lib/store.js'
+import { registerSpeak } from '../lib/platforms/speak.js'
+import { updateConfig } from '../lib/core/settings.js'
+import { appendEvent } from '../lib/core/store.js'
 
 function grab(ctx) {
   let spec = null

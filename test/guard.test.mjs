@@ -16,7 +16,7 @@ import {
   screenOutgoing,
   looksLikeLeak,
   looksMojibake,
-} from '../lib/guard.js'
+} from '../lib/core/guard.js'
 
 /* ---------------------------- 4. 解码坏了 ---------------------------- */
 

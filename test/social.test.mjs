@@ -17,11 +17,11 @@ import path from 'node:path'
 import {
   evaluateSocialGate, socialOpenAt, lastRefutedAt, daysAlive, gateBrief,
   SOCIAL_STANCE_MIN, SOCIAL_QUIET_DAYS, SOCIAL_LIVE_DAYS,
-} from '../lib/socialgate.js'
-import { deriveSelf, SOCIAL_OPEN_PREFIX, DAY_MS } from '../lib/derive.js'
-import { appendEvent, readEvents } from '../lib/store.js'
-import { registerSocialOpen } from '../lib/social.js'
-import { renderSelfDoc } from '../lib/selfdoc.js'
+} from '../lib/life/socialgate.js'
+import { deriveSelf, SOCIAL_OPEN_PREFIX, DAY_MS } from '../lib/mind/derive.js'
+import { appendEvent, readEvents } from '../lib/core/store.js'
+import { registerSocialOpen } from '../lib/life/social.js'
+import { renderSelfDoc } from '../lib/mind/selfdoc.js'
 
 const NOW = Date.parse('2026-11-02T00:00:00Z')
 const iso = (daysAgo) => new Date(NOW - daysAgo * DAY_MS).toISOString()

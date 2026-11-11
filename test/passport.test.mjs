@@ -8,15 +8,15 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { normalizeConfig } from '../lib/settings.js'
-import { validateEvent } from '../lib/schema.js'
+import { normalizeConfig } from '../lib/core/settings.js'
+import { validateEvent } from '../lib/core/schema.js'
 import {
   resolveOccasion, occasionLine, contextLinesFor, queueRank, nextQueueIndex,
   HOME_CONTEXT_LINES,
 } from '../lib/channels/passport.js'
-import { renderMaterial as renderZhihu } from '../lib/zhihu.js'
-import { renderMaterial as renderBili } from '../lib/browse.js'
-import { renderDouyin } from '../lib/douyinbrowse.js'
+import { renderMaterial as renderZhihu } from '../lib/platforms/zhihu.js'
+import { renderMaterial as renderBili } from '../lib/platforms/browse.js'
+import { renderDouyin } from '../lib/platforms/douyinbrowse.js'
 
 const cfg = () => normalizeConfig({ channels: { bili: { closeIds: '200' } } })
 

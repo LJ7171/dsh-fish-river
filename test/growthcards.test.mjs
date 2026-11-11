@@ -7,13 +7,13 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { normalizeConfig, dateKey } from '../lib/settings.js'
-import { appendEvent, writeConfig } from '../lib/store.js'
-import { readDailySpent } from '../lib/sleep.js'
+import { normalizeConfig, dateKey } from '../lib/core/settings.js'
+import { appendEvent, writeConfig } from '../lib/core/store.js'
+import { readDailySpent } from '../lib/life/sleep.js'
 import {
   blankCards, readCards, writeCards, quotaProgress, recordMilestones,
   canPush, queueCard, dayFinished, CARD_GAP_MS,
-} from '../lib/growthcards.js'
+} from '../lib/mind/growthcards.js'
 
 async function root() { return mkdtemp(join(tmpdir(), 'fish-cards-')) }
 
@@ -72,7 +72,7 @@ test('跨零点台账重置，昨天的待推不带过来', async () => {
 
 test('成长卡推送必须写 fired:，否则同一天会反复推同一张', async () => {
   const fs = await import('node:fs/promises')
-  const src = await fs.readFile(new URL('../lib/scheduler.js', import.meta.url), 'utf8')
+  const src = await fs.readFile(new URL('../lib/life/scheduler.js', import.meta.url), 'utf8')
   assert.match(src, /fired:\$\{picked\.template\.id\}/)
   assert.match(src, /card:\$\{dk\} \$\{picked\.template\.id\}/)
 })

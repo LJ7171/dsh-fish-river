@@ -20,10 +20,10 @@ import {
   glancedItems,
   handedUnseen,
   seenOn,
-} from '../lib/whatseen.js'
-import { buildReport } from '../lib/report.js'
-import { historyFromEvents } from '../lib/history.js'
-import { summarizeAway } from '../lib/away.js'
+} from '../lib/life/whatseen.js'
+import { buildReport } from '../lib/life/report.js'
+import { historyFromEvents } from '../lib/life/history.js'
+import { summarizeAway } from '../lib/ui/away.js'
 
 const DK = '2026-10-30'
 const B1 = 'BV1xx411c7mD'

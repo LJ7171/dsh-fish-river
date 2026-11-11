@@ -3,10 +3,10 @@ import assert from 'node:assert/strict'
 import {
   stageBounds, stageOf, deriveSelf, modelOf, clearModelCache, modelCacheSize,
   consistency, novelty, similarity, pickName, DAY_MS,
-} from '../lib/derive.js'
+} from '../lib/mind/derive.js'
 // 2026-10-26：stability 从 derive.js 搬到 quality.js（它要用到 persona 的渲染，
 // 留在 derive 里会绕出 quality → persona → derive → quality 的环）。
-import { stability, stabilityCached, stabilityBand, clearStabilityCache } from '../lib/quality.js'
+import { stability, stabilityCached, stabilityBand, clearStabilityCache } from '../lib/mind/quality.js'
 
 const T0 = Date.parse('2026-10-01T00:00:00Z')
 

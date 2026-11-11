@@ -17,9 +17,9 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-import { HER_TOOLS, SCHEDULE_TOOLS, toolSurfaceText } from '../lib/restrict.js'
-import { SCHEDULE_BRIEF } from '../lib/persona.js'
-import { classifyMessage } from '../lib/turns.js'
+import { HER_TOOLS, SCHEDULE_TOOLS, toolSurfaceText } from '../lib/ops/restrict.js'
+import { SCHEDULE_BRIEF } from '../lib/mind/persona.js'
+import { classifyMessage } from '../lib/talk/turns.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const libDir = join(here, '..', 'lib')
@@ -46,7 +46,7 @@ test('说明书讲清三件事：怎么定、到点怎么做、出门时先别�
 })
 
 test('身份文档只在放行时挂这段说明书', () => {
-  const src = readFileSync(join(libDir, 'selfdoc.js'), 'utf8')
+  const src = readFileSync(join(libDir, 'mind', 'selfdoc.js'), 'utf8')
   assert.ok(/import .*SCHEDULE_BRIEF/.test(src), 'selfdoc 得 import 它')
   assert.ok(/schedule \? \[SCHEDULE_BRIEF/.test(src), '得有条件地挂：没放行就不能告诉她「你有」')
   assert.ok(src.includes("=== 'schedule_create'"), '判据要读白名单里的 schedule_create')

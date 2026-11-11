@@ -80,7 +80,7 @@ test('状态声明加在 useState 列表最后（不顶掉按下标注入的测�
 })
 
 test('插件的根目录自检：这两张图仍然由服务端白名单出图', async () => {
-  const observe = await read('lib/observe.js')
+  const observe = await read('lib/ui/observe.js')
   assert.ok(observe.includes('principle-[a-z]+'))
   const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
   assert.ok((pkg.files || []).includes('media'), 'package.json.files 必须含 media')

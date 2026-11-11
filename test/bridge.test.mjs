@@ -4,7 +4,7 @@ import net from 'node:net'
 import fs from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
-import { parseWsUrl, detectBridge, startBridge, probeTcp, DEFAULT_WS } from '../lib/bridge.js'
+import { parseWsUrl, detectBridge, startBridge, probeTcp, DEFAULT_WS } from '../lib/channels/bridge.js'
 
 function listen() {
   return new Promise((resolve) => {

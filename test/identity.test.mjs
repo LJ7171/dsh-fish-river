@@ -36,14 +36,14 @@ import {
   reorderForHer,
   resetIdentityCache,
   setWakeSection,
-} from '../lib/identity.js'
-import { legacySelfDocPath, selfDocPath } from '../lib/selfdoc.js'
-import { DEFAULTS } from '../lib/settings.js'
-import { BELIEF_SHOWN, SELF_DOC_BUDGET } from '../lib/persona.js'
+} from '../lib/mind/identity.js'
+import { legacySelfDocPath, selfDocPath } from '../lib/mind/selfdoc.js'
+import { DEFAULTS } from '../lib/core/settings.js'
+import { BELIEF_SHOWN, SELF_DOC_BUDGET } from '../lib/mind/persona.js'
 
 const INDEX = fs.readFileSync(new URL('../lib/index.js', import.meta.url), 'utf8')
 const CLIENT = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
-const SAY = fs.readFileSync(new URL('../lib/say.js', import.meta.url), 'utf8')
+const SAY = fs.readFileSync(new URL('../lib/talk/say.js', import.meta.url), 'utf8')
 
 const tmp = () => fs.mkdtempSync(join(os.tmpdir(), 'fish-identity-'))
 

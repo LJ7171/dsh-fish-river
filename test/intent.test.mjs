@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { extractBvid, parseWatchIntent, watchHint } from '../lib/intent.js'
-import { renderSelfDoc } from '../lib/selfdoc.js'
-import { deriveSelf } from '../lib/derive.js'
+import { extractBvid, parseWatchIntent, watchHint } from '../lib/mind/intent.js'
+import { renderSelfDoc } from '../lib/mind/selfdoc.js'
+import { deriveSelf } from '../lib/mind/derive.js'
 
 const BV = 'BV1ED4y1Y7dc'
 

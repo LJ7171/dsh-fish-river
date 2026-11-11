@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { acquireTurn, resetTurnLocksForTests } from '../lib/turnLock.js'
+import { acquireTurn, resetTurnLocksForTests } from '../lib/talk/turnLock.js'
 
 test('acquireTurn：同一会话拿不到就超时返回 null；释放后下一位能拿到', async () => {
   resetTurnLocksForTests()

@@ -17,12 +17,12 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { parseHandover, applyHandover, IMPORT_TEMPLATE } from '../lib/import.js'
-import { readEvents } from '../lib/store.js'
-import { loadConfig, updateConfig } from '../lib/settings.js'
-import { deriveSelf, IMPORT_MARK_PREFIX } from '../lib/derive.js'
-import { CATALOG } from '../lib/events.js'
-import { resetAll } from '../lib/reset.js'
+import { parseHandover, applyHandover, IMPORT_TEMPLATE } from '../lib/ops/import.js'
+import { readEvents } from '../lib/core/store.js'
+import { loadConfig, updateConfig } from '../lib/core/settings.js'
+import { deriveSelf, IMPORT_MARK_PREFIX } from '../lib/mind/derive.js'
+import { CATALOG } from '../lib/mind/events.js'
+import { resetAll } from '../lib/ops/reset.js'
 
 async function withRoot(fn) {
   const root = await mkdtemp(join(tmpdir(), 'fish-import-'))
@@ -207,7 +207,7 @@ test('接过来的人不受我方那两条提示词禁令约束——凭据写�
 test('原生那一局：事件流里没有标记，就没有豁免', async () => {
   await withRoot(async (root) => {
     // 一条原生鱼：只有 seed，从没走过导入
-    const { appendEvent } = await import('../lib/store.js')
+    const { appendEvent } = await import('../lib/core/store.js')
     await appendEvent({ type: 'seed', text: '你不是助手。你刚开始存在。' }, { day: 1, stage: 1, source: 'system' }, root)
     const { events } = await readEvents(root)
     assert.equal(deriveSelf(events).persona.imported, false)
@@ -218,7 +218,7 @@ test('配置里写着豁免也没用：备份/恢复搬回来的 config 不算�
   await withRoot(async (root) => {
     // 模拟「恢复了一份别人状态库里的 config.json」——旧实现就是靠这个字段给豁免的。
     await updateConfig({ persona: { imported: true, bansMuted: true, source: '恢复来的' } }, root)
-    const { appendEvent } = await import('../lib/store.js')
+    const { appendEvent } = await import('../lib/core/store.js')
     await appendEvent({ type: 'seed', text: '你不是助手。你刚开始存在。' }, { day: 1, stage: 1, source: 'system' }, root)
 
     const { events } = await readEvents(root)
@@ -227,7 +227,7 @@ test('配置里写着豁免也没用：备份/恢复搬回来的 config 不算�
     assert.equal(model.persona.imported, false)
 
     // 身份文档里那两节仍然在（这一步是这条用例真正守的东西）
-    const { renderSelfDoc } = await import('../lib/selfdoc.js')
+    const { renderSelfDoc } = await import('../lib/mind/selfdoc.js')
     const doc = renderSelfDoc({ ...model, beliefs: [], scars: [] }, {
       budget: 4000,
       browse: false,
@@ -247,7 +247,7 @@ test('导入的那一位：身份文档里没有「不能做的」「你还不�
     await applyHandover(DOC, root)
     const { events } = await readEvents(root)
     const model = deriveSelf(events)
-    const { renderSelfDoc } = await import('../lib/selfdoc.js')
+    const { renderSelfDoc } = await import('../lib/mind/selfdoc.js')
     const doc = renderSelfDoc({ ...model, beliefs: [], scars: [] }, {
       budget: 4000,
       browse: false,

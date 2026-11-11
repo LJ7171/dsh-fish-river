@@ -16,8 +16,8 @@ import { mkdtemp, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/prom
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { grabFrames, sampleTimes, normalizeAt } from '../lib/video.js'
-import { detectFfmpeg, mediaDir } from '../lib/media.js'
+import { grabFrames, sampleTimes, normalizeAt } from '../lib/platforms/video.js'
+import { detectFfmpeg, mediaDir } from '../lib/core/media.js'
 
 const BVID = 'BV1ph4y1g75E'
 const PNG_MAGIC = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
@@ -168,7 +168,7 @@ test('源码守门：失败原因要先过 scrub 再交出去（stderr 里可能
   // describe() 的输出有两个去处都不该带凭据：media/ffmpeg.log（日志）
   // 和 watch.js 的 note（直接交给模型看）。日志那条自己有 scrub，
   // 交给模型那条只有 describe 这一道关。
-  const src = await readFile(new URL('../lib/video.js', import.meta.url), 'utf8')
+  const src = await readFile(new URL('../lib/platforms/video.js', import.meta.url), 'utf8')
   const body = src.slice(src.indexOf('function describe'))
   assert.match(body.slice(0, 500), /scrub\(/, 'describe() 里的 stderr 必须先过 scrub')
   assert.match(
@@ -183,7 +183,7 @@ test('源码守门：不给 ffmpeg 任何文件路径输出（issue #13 的核�
   // 而是**根本不让它写文件**：帧和拼图都走 stdout，落盘由插件自己做。
   // 这条守门就是防止以后有人「顺手」把输出路径加回去——加了在完整权限下照样绿，
   // 只有在 workspace-write 的真机上才会炸，那时候就很难查了。
-  const src = await readFile(new URL('../lib/video.js', import.meta.url), 'utf8')
+  const src = await readFile(new URL('../lib/platforms/video.js', import.meta.url), 'utf8')
 
   // 旧写法留下过 tmp-* 临时目录，这个不该再出现
   assert.doesNotMatch(src, /tmp-\$\{/, '不该再建 tmp-* 临时帧目录')
@@ -213,7 +213,7 @@ test('源码守门：给了 CA 就必须同时开校验（光给 -ca_file 是空
   // 只传 -ca_file 而不传 -tls_verify 1，CA 用不上——传一个**不存在**的 CA 文件
   // 都照样出图，stderr 只有一句 `Error while reading file.`。
   // 所以这两个参数必须成对出现，否则用户设了 DSH_FISH_CA_FILE 却没有校验效果。
-  const src = await readFile(new URL('../lib/video.js', import.meta.url), 'utf8')
+  const src = await readFile(new URL('../lib/platforms/video.js', import.meta.url), 'utf8')
 
   // 只数带引号的代码字面量，注释里提到的名字不算（否则注释写两遍就误报）
   const ca = (src.match(/'-ca_file'/g) ?? []).length

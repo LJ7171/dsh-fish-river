@@ -10,17 +10,17 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { normalizeConfig } from '../lib/settings.js'
-import { writeConfig } from '../lib/store.js'
-import { startScheduler } from '../lib/scheduler.js'
-import { postComment, scanIfAwake } from '../lib/comment.js'
+import { normalizeConfig } from '../lib/core/settings.js'
+import { writeConfig } from '../lib/core/store.js'
+import { startScheduler } from '../lib/life/scheduler.js'
+import { postComment, scanIfAwake } from '../lib/platforms/comment.js'
 import {
   advance, armRoll, blankState, diceOpen, dueRolls, markAct, markBlocked, rollSegment,
   inActiveWindow, nextActiveStart, noteWeixin, readDailySpent, readSleep, sleepEnabled, writeSleep,
-} from '../lib/sleep.js'
-import { appendEvent } from '../lib/store.js'
-import { dateKey } from '../lib/settings.js'
-import { writeState as writeZhihuState } from '../lib/zhihu.js'
+} from '../lib/life/sleep.js'
+import { appendEvent } from '../lib/core/store.js'
+import { dateKey } from '../lib/core/settings.js'
+import { writeState as writeZhihuState } from '../lib/platforms/zhihu.js'
 
 const at = (y, mo, d, h, mi = 0) => new Date(y, mo - 1, d, h, mi, 0, 0).getTime()
 const cfg = normalizeConfig({
@@ -331,7 +331,7 @@ test('作息页每天配额旁边写出当天已用', async () => {
   assert.match(cl, /extra: usedLine\(quotaUsed, 'douyin', qDouyin\)/)
   assert.match(cl, /extra: usedLine\(quotaUsed, 'zhihu', qZhihu\)/)
   assert.match(cl, /extra: usedLine\(quotaUsed, 'tieba', qTieba\)/)
-  const obs = await readFile(new URL('../lib/observe.js', import.meta.url), 'utf8')
+  const obs = await readFile(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')
   assert.match(obs, /dailyUsed = await readDailySpent\(root\)/)
 })
 

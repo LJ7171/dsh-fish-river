@@ -9,12 +9,12 @@
 
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { RULES, LAYERS, promptBans, rulesByLayer, ruleById } from '../lib/rules.js'
-import { personaLine, HARD_BANS } from '../lib/persona.js'
-import { deriveSelf } from '../lib/derive.js'
+import { RULES, LAYERS, promptBans, rulesByLayer, ruleById } from '../lib/mind/rules.js'
+import { personaLine, HARD_BANS } from '../lib/mind/persona.js'
+import { deriveSelf } from '../lib/mind/derive.js'
 import {
   assess, offerDueDay, pendingOffer, offerHistory, activeGrants, grantableRules, EVIDENCE,
-} from '../lib/unlock.js'
+} from '../lib/mind/unlock.js'
 
 const NOW = Date.parse('2026-10-24T12:00:00+08:00')
 

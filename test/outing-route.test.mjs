@@ -19,8 +19,8 @@ import { tmpdir, EOL } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
 
-import { registerObserve } from '../lib/observe.js'
-import { snapshotEvents, startOuting, readOutings } from '../lib/outing.js'
+import { registerObserve } from '../lib/ui/observe.js'
+import { snapshotEvents, startOuting, readOutings } from '../lib/life/outing.js'
 
 function harness(root, { agents = {} } = {}) {
   const routes = new Map()
@@ -202,8 +202,8 @@ test('/outing 回家：点「这趟不算数」会把这一趟写下的条目全
     assert.ok(!ids.includes('ev_before'), '出门前的那条不能被算进这一趟')
 
     // 真正的验收：deriveSelf 里这趟一条都不算
-    const { deriveSelf } = await import('../lib/derive.js')
-    const { readEvents } = await import('../lib/store.js')
+    const { deriveSelf } = await import('../lib/mind/derive.js')
+    const { readEvents } = await import('../lib/core/store.js')
     const { events } = await readEvents(root)
     const m = deriveSelf(events)
     assert.equal(m.refusals.length, 0, '整趟不算之后，这趟的拒绝不该长在她身上')
@@ -264,7 +264,7 @@ test('/outing 确认门：ack 默认 false，点一次才写进配置', async ()
     const after = await call('GET')
     assert.equal(after.json.ack, true, '点过之后 GET 要带回 true')
 
-    const { loadConfig } = await import('../lib/settings.js')
+    const { loadConfig } = await import('../lib/core/settings.js')
     const { config } = await loadConfig(root)
     assert.equal(config.outing.ack, true, '确认要落盘，重启之后不再问')
   } finally {

@@ -14,7 +14,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { ASK_TIMEOUT_MS, askInChat, picked } from '../lib/askinchat.js'
+import { ASK_TIMEOUT_MS, askInChat, picked } from '../lib/talk/askinchat.js'
 
 /** 假上下文：一个「活着」的 agent + 一个记下请求的提问服务。 */
 function fakeCtx({ answer = null, agents = true, service = true, onAsk = null } = {}) {

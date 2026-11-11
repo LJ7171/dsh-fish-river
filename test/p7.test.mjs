@@ -11,10 +11,10 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { summarizeAway, lastSeenMs, awaySince, readAway } from '../lib/away.js'
-import { isBvid, normPic, coverPath, coverLines, coverDir, fetchCover } from '../lib/cover.js'
-import { itemsFromEvents, recordBrowse } from '../lib/browse.js'
-import { paths } from '../lib/store.js'
+import { summarizeAway, lastSeenMs, awaySince, readAway } from '../lib/ui/away.js'
+import { isBvid, normPic, coverPath, coverLines, coverDir, fetchCover } from '../lib/platforms/cover.js'
+import { itemsFromEvents, recordBrowse } from '../lib/platforms/browse.js'
+import { paths } from '../lib/core/store.js'
 
 const BV1 = 'BV1MN4y177PB'
 const BV2 = 'BV1BK411L7DJ'
@@ -140,7 +140,7 @@ test('cover：fetchCover 存下来以后第二次直接命中缓存', async () =
 test('browse：记账里带上封面地址，历史才能配图', async () => {
   const root = tmpRoot()
   await recordBrowse(root, '2026-10-21', [{ bvid: BV1, title: 'x', up: 'y', pic: '//i0/a.jpg' }], { day: 1, stage: 1 })
-  const { readEvents } = await import('../lib/store.js')
+  const { readEvents } = await import('../lib/core/store.js')
   const { events } = await readEvents(root)
   const items = itemsFromEvents(events, '2026-10-21')
   assert.equal(items.length, 1)
@@ -148,7 +148,7 @@ test('browse：记账里带上封面地址，历史才能配图', async () => {
 })
 
 test('observe：/away 与 /cover 两条路由都注册了', async () => {
-  const { registerObserve } = await import('../lib/observe.js')
+  const { registerObserve } = await import('../lib/ui/observe.js')
   const root = tmpRoot()
   const registered = []
   const webServer = {
@@ -167,7 +167,7 @@ test('observe：/away 与 /cover 两条路由都注册了', async () => {
 test('observe：/update 路由注册了，且把版本号带给了客户端', async () => {
   // 「检查更新」是 2026-10-25 用户要求的：插件从 GitHub 装回来后没人提醒有新版本。
   // 这里只钉住"路由存在 + 版本号能传到前端"，真正联网的行为靠人手点一次验证。
-  const { registerObserve } = await import('../lib/observe.js')
+  const { registerObserve } = await import('../lib/ui/observe.js')
   const root = tmpRoot()
   const registered = []
   const webServer = { register: (r) => { registered.push(r.path); return () => {} } }
@@ -179,7 +179,7 @@ test('observe：/update 路由注册了，且把版本号带给了客户端', as
   registerObserve(ctx, { root, version: 'v0.3.0' })
   assert.ok(registered.includes('/dsh-fish-river/update'), '/update 要注册')
   // 版本号要在 /state 的 meta 里（前端「当前版本」那行读的就是它）
-  const src = fs.readFileSync(new URL('../lib/observe.js', import.meta.url), 'utf8')
+  const src = fs.readFileSync(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')
   assert.ok(/meta:\s*\{[^}]*version:/.test(src), '/state 的 meta 里要有 version')
 })
 

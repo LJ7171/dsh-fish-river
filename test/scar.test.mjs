@@ -1,10 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { deriveSelf, DAY_MS } from '../lib/derive.js'
-import { personaLine, SELF_DOC_BUDGET } from '../lib/persona.js'
-import { isConcede, CONCEDE_WINDOW_MS } from '../lib/refuse.js'
-import { scarHint, PRESSURE } from '../lib/generator.js'
-import { validateEvent } from '../lib/schema.js'
+import { deriveSelf, DAY_MS } from '../lib/mind/derive.js'
+import { personaLine, SELF_DOC_BUDGET } from '../lib/mind/persona.js'
+import { isConcede, CONCEDE_WINDOW_MS } from '../lib/mind/refuse.js'
+import { scarHint, PRESSURE } from '../lib/mind/generator.js'
+import { validateEvent } from '../lib/core/schema.js'
 
 // P1 第三块（2026-10-24 用户 m01772 批准）：疤与回引。
 // 一条拒绝 → 他顶回来/难过 → 她后来退了步 = 疤；疤永不折叠、同类处境先回引、

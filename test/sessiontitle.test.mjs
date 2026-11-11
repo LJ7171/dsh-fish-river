@@ -6,7 +6,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { titleOfSession, titleOfAgent, clipTitle } from '../lib/sessiontitle.js'
+import { titleOfSession, titleOfAgent, clipTitle } from '../lib/mind/sessiontitle.js'
 
 const withEvents = (events) => ({ snapshotEvents: () => events })
 const titleEvent = (title, seq = 1) => ({ type: 'session/title', seq, time: 0, data: { title, messageSeqs: [], source: { kind: 'agent' } } })
@@ -59,10 +59,10 @@ test('请神下拉的标签不再回退到会话 id 尾巴', () => {
   assert.ok(client.includes('还没起名字的对话'), '没名字时要说人话')
   assert.ok(!client.includes('现在上身：${possessActive.title || possessActive.sessionId}'), '现在上身也不能甩 id')
 
-  const observe = readFileSync(new URL('../lib/observe.js', import.meta.url), 'utf8')
-  assert.ok(observe.includes("from './sessiontitle.js'"), '服务端要复用同一个取名函数')
+  const observe = readFileSync(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')
+  assert.ok(observe.includes("from '../mind/sessiontitle.js'"), '服务端要复用同一个取名函数')
   assert.ok(observe.includes('titleOfAgent(ctx, a)'), '/possession 返回的名字来自 session/title')
 
-  const possess = readFileSync(new URL('../lib/possess.js', import.meta.url), 'utf8')
+  const possess = readFileSync(new URL('../lib/life/possess.js', import.meta.url), 'utf8')
   assert.ok(possess.includes('titleOfAgent(ctx, agent)'), '请神台账里也存真名字')
 })

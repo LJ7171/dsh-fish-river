@@ -4,7 +4,7 @@ import { mkdtemp, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { wakeIfBlank } from '../lib/home.js'
+import { wakeIfBlank } from '../lib/house/home.js'
 
 const tick = () => new Promise((r) => setTimeout(r, 0))
 

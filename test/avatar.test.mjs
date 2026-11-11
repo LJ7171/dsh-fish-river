@@ -19,11 +19,11 @@ import {
   avatarInfo,
   removeAvatar,
   saveAvatar,
-} from '../lib/avatar.js'
+} from '../lib/ui/avatar.js'
 
 const CLIENT = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
-const OBSERVE = fs.readFileSync(new URL('../lib/observe.js', import.meta.url), 'utf8')
-const AVATAR = fs.readFileSync(new URL('../lib/avatar.js', import.meta.url), 'utf8')
+const OBSERVE = fs.readFileSync(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')
+const AVATAR = fs.readFileSync(new URL('../lib/ui/avatar.js', import.meta.url), 'utf8')
 
 const tmp = () => fs.mkdtempSync(join(os.tmpdir(), 'fish-avatar-'))
 

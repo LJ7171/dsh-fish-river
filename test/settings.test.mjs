@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { normalizeConfig, DEFAULTS, inWindow, dateKey, pickWakeTime, updateConfig, loadConfig, publicChannelSettings } from '../lib/settings.js'
+import { normalizeConfig, DEFAULTS, inWindow, dateKey, pickWakeTime, updateConfig, loadConfig, publicChannelSettings } from '../lib/core/settings.js'
 import { mkdtemp, rm, readFile, stat, writeFile, chmod } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -114,7 +114,7 @@ test('配置文件不存在时返回默认值，且不主动写盘', async () =>
 })
 
 test('白名单解析：半角/全角逗号、空格、换行都算分隔，去重保序', async () => {
-  const { parseToolNames } = await import('../lib/settings.js')
+  const { parseToolNames } = await import('../lib/core/settings.js')
   assert.deepEqual(parseToolNames('skill, web_search，read_image\nskill'), ['skill', 'web_search', 'read_image'])
   assert.deepEqual(parseToolNames(''), [])
   assert.deepEqual(parseToolNames(null), [])
@@ -122,7 +122,7 @@ test('白名单解析：半角/全角逗号、空格、换行都算分隔，去�
 })
 
 test('白名单校验：拼错的名字与不存在的工具都不许过，拿不到名单时不做存在性判断', async () => {
-  const { validateToolNames } = await import('../lib/settings.js')
+  const { validateToolNames } = await import('../lib/core/settings.js')
   const known = ['web_search', 'read_image', 'skill']
 
   const ok = validateToolNames('skill, read_image', known)
@@ -188,7 +188,7 @@ test('进站静默窗缺省按场合，0 是关；确认静默默认开', () => 
 test('分段连发的开关在设置页，并且能被 /config 白名单收下', async () => {
   const { readFile } = await import('node:fs/promises')
   const client = await readFile(new URL('../lib/client.js', import.meta.url), 'utf8')
-  const observe = await readFile(new URL('../lib/observe.js', import.meta.url), 'utf8')
+  const observe = await readFile(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')
   assert.ok(client.includes('渠道回复分段连发'), '设置页要有这个开关')
   assert.ok(client.includes('默认关着'), '文案要说清默认关、关掉与以前一样')
   assert.ok(client.includes('口语标点轻整理'), '设置页要有标点轻整理开关')

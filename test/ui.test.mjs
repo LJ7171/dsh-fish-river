@@ -14,7 +14,7 @@ import { dirname, join } from 'node:path'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const CLIENT = join(HERE, '..', 'lib', 'client.js')
-const OBSERVE = join(HERE, '..', 'lib', 'observe.js')
+const OBSERVE = join(HERE, '..', 'lib', 'ui', 'observe.js')
 
 test('数字框：打字超范围后离开输入框会收敛回上下限', async () => {
   const src = await readFile(CLIENT, 'utf8')

@@ -14,12 +14,12 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { startScheduler } from '../lib/scheduler.js'
-import { appendEvent, readEvents, writeConfig } from '../lib/store.js'
-import { normalizeConfig, dateKey } from '../lib/settings.js'
-import { getWakeSection, clearWakeSection } from '../lib/identity.js'
-import { registerCapture } from '../lib/capture.js'
-import { inWake } from '../lib/wakewin.js'
+import { startScheduler } from '../lib/life/scheduler.js'
+import { appendEvent, readEvents, writeConfig } from '../lib/core/store.js'
+import { normalizeConfig, dateKey } from '../lib/core/settings.js'
+import { getWakeSection, clearWakeSection } from '../lib/mind/identity.js'
+import { registerCapture } from '../lib/mind/capture.js'
+import { inWake } from '../lib/life/wakewin.js'
 
 const at = (h, m, day = 29) => new Date(2026, 9, day, h, m).getTime()
 const wakeEv = (t, dk = '2026-10-29') => ({ type: 'meta', text: `wake:${dk} x`, ts: new Date(t).toISOString() })

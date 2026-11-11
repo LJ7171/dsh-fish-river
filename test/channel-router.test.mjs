@@ -12,9 +12,9 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { createRouter, buildPrompt, splitBubbles, bubbleGapMs, bubbleSplitOn, casualPunctuationOn, casualizePunctuation, BUBBLE_MAX, BUBBLE_GAP_MIN_MS, BUBBLE_GAP_MAX_MS, INBOUND_TEXT_MAX, PROMPT_MAX_CHARS } from '../lib/channels/router.js'
-import { createJournal } from '../lib/journal.js'
-import { createPeople } from '../lib/people.js'
-import { appendEvent, readEvents } from '../lib/store.js'
+import { createJournal } from '../lib/mind/journal.js'
+import { createPeople } from '../lib/mind/people.js'
+import { appendEvent, readEvents } from '../lib/core/store.js'
 import { canReply, channelConfig } from '../lib/channels/gate.js'
 
 async function tmpRoot() {
@@ -157,7 +157,7 @@ test('router：群不在白名单——不听也不问，只留一行流水', as
   const { events } = await readEvents(h.root)
   assert.equal(events.filter((e) => e.type === 'heard').length, 0, '名单外的群不进她的事件流')
   // 但消息还在流水里：她回头能看见那一带在说什么，只是没长到身上。
-  const { createJournal } = await import('../lib/journal.js')
+  const { createJournal } = await import('../lib/mind/journal.js')
   const lines = await createJournal(h.root).recent({ channel: 'qq', kind: 'group', conversationId: '222' })
   assert.equal(lines.length, 1)
   await fs.rm(h.root, { recursive: true, force: true })

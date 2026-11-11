@@ -17,11 +17,11 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { appendEvent, readEvents, readDaily, paths } from '../lib/store.js'
-import { buildInbox, readInbox, markRead, writeInboxFile, newHerEventsSince } from '../lib/inbox.js'
-import { sayToHer } from '../lib/say.js'
-import { leaveLetter } from '../lib/letter.js'
-import { enterWake, leaveWake } from '../lib/wakewin.js'
+import { appendEvent, readEvents, readDaily, paths } from '../lib/core/store.js'
+import { buildInbox, readInbox, markRead, writeInboxFile, newHerEventsSince } from '../lib/house/inbox.js'
+import { sayToHer } from '../lib/talk/say.js'
+import { leaveLetter } from '../lib/house/letter.js'
+import { enterWake, leaveWake } from '../lib/life/wakewin.js'
 
 async function tmpRoot() {
   return mkdtemp(join(tmpdir(), 'fish-p3-'))

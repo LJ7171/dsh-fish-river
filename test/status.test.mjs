@@ -10,7 +10,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { deriveStatus, ACTIVE_MS, IDLE_MS } from '../lib/status.js'
+import { deriveStatus, ACTIVE_MS, IDLE_MS } from '../lib/ui/status.js'
 
 const NOW = new Date(2026, 9, 23, 21, 0, 0) // 2026-10-23 21:00 本地
 const DK = '2026-10-23'

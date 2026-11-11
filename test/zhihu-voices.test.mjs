@@ -10,9 +10,9 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { normalizeConfig } from '../lib/settings.js'
-import { fetchZhihuMaterial } from '../lib/zhihu.js'
-import { zhihuLookOnce } from '../lib/zhihuLook.js'
+import { normalizeConfig } from '../lib/core/settings.js'
+import { fetchZhihuMaterial } from '../lib/platforms/zhihu.js'
+import { zhihuLookOnce } from '../lib/platforms/zhihuLook.js'
 
 async function tempRoot() {
   return mkdtemp(join(tmpdir(), 'fish-zh-voice-'))

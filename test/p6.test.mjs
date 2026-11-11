@@ -13,11 +13,11 @@ import { mkdtemp, rm, writeFile, mkdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { videoUrl, historyFromEvents, renderWatchList } from '../lib/history.js'
-import { riskState, noteRisk, clearRisk, browsePlan, STRIKES_MIN } from '../lib/risk.js'
-import { runChecks, peersOnMachine } from '../lib/selfcheck.js'
-import { lookBeforeWake } from '../lib/scheduler.js'
-import { FISH_TOOLS } from '../lib/restrict.js'
+import { videoUrl, historyFromEvents, renderWatchList } from '../lib/life/history.js'
+import { riskState, noteRisk, clearRisk, browsePlan, STRIKES_MIN } from '../lib/platforms/risk.js'
+import { runChecks, peersOnMachine } from '../lib/ops/selfcheck.js'
+import { lookBeforeWake } from '../lib/life/scheduler.js'
+import { FISH_TOOLS } from '../lib/ops/restrict.js'
 
 const M = (text) => ({ type: 'meta', text })
 

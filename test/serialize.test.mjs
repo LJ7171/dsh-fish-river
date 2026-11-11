@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { withSerial, resetSerialForTests } from '../lib/serialize.js'
+import { withSerial, resetSerialForTests } from '../lib/core/serialize.js'
 
 const tick = (ms = 5) => new Promise((r) => setTimeout(r, ms))
 

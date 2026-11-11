@@ -11,10 +11,10 @@ import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { watchedToday, registerWatch } from '../lib/watch.js'
-import { logFile } from '../lib/log.js'
-import { appendEvent } from '../lib/store.js'
-import { updateConfig } from '../lib/settings.js'
+import { watchedToday, registerWatch } from '../lib/platforms/watch.js'
+import { logFile } from '../lib/core/log.js'
+import { appendEvent } from '../lib/core/store.js'
+import { updateConfig } from '../lib/core/settings.js'
 
 test('watchedToday 只数当天的 watched: 记录，昨天的不算', () => {
   const dk = '2026-10-23'
@@ -100,7 +100,7 @@ test('registerWatch：画面功能关掉时拒，理由与"打不开"分开', as
 test('registerWatch：额度已经用完时只说"不想看了"，不报数字', async () => {
   await withRoot(async (root) => {
     await updateConfig({ browse: { enabled: true }, video: { enabled: true, perDay: 1 } }, root)
-    const { dateKey } = await import('../lib/settings.js')
+    const { dateKey } = await import('../lib/core/settings.js')
     const dk = dateKey()
     await appendEvent({ type: 'meta', text: `watched:${dk} BV1xx411c7mD` }, { source: 'system' }, root)
     const ctx = fakeCtx()
@@ -148,7 +148,7 @@ test('视频号不合法时，日志里留下「视频号不合法」和原样�
 test('额度用完时日志写数字（1/1），好追额度怎么用掉的', async () => {
   await withRoot(async (root) => {
     await updateConfig({ browse: { enabled: true }, video: { enabled: true, perDay: 1 } }, root)
-    const { dateKey } = await import('../lib/settings.js')
+    const { dateKey } = await import('../lib/core/settings.js')
     await appendEvent({ type: 'meta', text: `watched:${dateKey()} BV1xx411c7mD` }, { source: 'system' }, root)
     const ctx = fakeCtx()
     registerWatch(ctx, { root })

@@ -30,8 +30,8 @@ import {
   scrub,
   tailEvents,
   tailLog,
-} from '../lib/log.js'
-import { DEFAULTS } from '../lib/settings.js'
+} from '../lib/core/log.js'
+import { DEFAULTS } from '../lib/core/settings.js'
 
 async function tempRoot() {
   return await mkdtemp(join(tmpdir(), 'fish-log-'))

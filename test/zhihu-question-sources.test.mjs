@@ -84,8 +84,8 @@ test('评论主楼 reply_comment_id=0；回复带 reply_root_comment_id', async 
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fetchZhihuMaterial } from '../lib/zhihu.js'
-import { normalizeConfig, DEFAULTS } from '../lib/settings.js'
+import { fetchZhihuMaterial } from '../lib/platforms/zhihu.js'
+import { normalizeConfig, DEFAULTS } from '../lib/core/settings.js'
 import { ZHIHU_DEFAULTS } from '../packages/dsh-fish-river-zhihu/config.js'
 
 test('刷知乎：开着回答才抓邀请/推荐，并把首页问题一起递给她', async () => {

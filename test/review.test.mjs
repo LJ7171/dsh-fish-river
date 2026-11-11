@@ -11,8 +11,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { eventsSince } from '../lib/outing.js'
-import { deriveSelf } from '../lib/derive.js'
+import { eventsSince } from '../lib/life/outing.js'
+import { deriveSelf } from '../lib/mind/derive.js'
 
 function tmp() {
   const root = mkdtempSync(join(tmpdir(), 'fish-review-'))
@@ -134,7 +134,7 @@ test('eventsSince：真实事件流里的 ISO 字符串 ts 也要算数（2026-1
 })
 
 test('tsMs：数值、ISO 字符串、坏值三种都给毫秒（不抛）', async () => {
-  const { tsMs } = await import('../lib/schema.js')
+  const { tsMs } = await import('../lib/core/schema.js')
   assert.equal(tsMs({ ts: 1_700_000_000_000 }), 1_700_000_000_000)
   assert.equal(tsMs({ ts: '2026-10-29T21:16:02.000Z' }), Date.parse('2026-10-29T21:16:02.000Z'))
   assert.equal(tsMs({ ts: '不是时间' }), 0)

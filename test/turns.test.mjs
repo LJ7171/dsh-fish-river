@@ -16,11 +16,11 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { classifyMessage, messageText, assistantText, registerTurns } from '../lib/turns.js'
-import { homeStatus } from '../lib/home.js'
-import { appendEvent, readEvents, writeAtomic, paths } from '../lib/store.js'
-import { recentExchanges } from '../lib/talkmem.js'
-import { beginExternalTurn, endExternalTurn, _resetExternalTurn } from '../lib/extturn.js'
+import { classifyMessage, messageText, assistantText, registerTurns } from '../lib/talk/turns.js'
+import { homeStatus } from '../lib/house/home.js'
+import { appendEvent, readEvents, writeAtomic, paths } from '../lib/core/store.js'
+import { recentExchanges } from '../lib/mind/talkmem.js'
+import { beginExternalTurn, endExternalTurn, _resetExternalTurn } from '../lib/channels/extturn.js'
 
 const HER_SESSION = 's-her'
 

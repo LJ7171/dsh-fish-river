@@ -6,9 +6,9 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { attachIdentity, attachAwayGuard, awayBlockedPaths, flatPath, detachOutside, mountedCount } from '../lib/identity.js'
-import { startOuting, endOuting, readOutings } from '../lib/outing.js'
-import { registerIdentity } from '../lib/identity.js'
+import { attachIdentity, attachAwayGuard, awayBlockedPaths, flatPath, detachOutside, mountedCount } from '../lib/mind/identity.js'
+import { startOuting, endOuting, readOutings } from '../lib/life/outing.js'
+import { registerIdentity } from '../lib/mind/identity.js'
 
 const BS = String.fromCharCode(92)
 

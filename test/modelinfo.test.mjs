@@ -8,7 +8,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { resolveHerModel } from '../lib/modelinfo.js'
+import { resolveHerModel } from '../lib/core/modelinfo.js'
 
 function ctxOf({ snapshot, stateOf, llm } = {}) {
   const services = {}

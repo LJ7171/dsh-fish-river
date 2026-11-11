@@ -18,10 +18,10 @@ import {
   knowledgeBlock,
   WORLDBOOK_FILE,
   MATCH_MAX,
-} from '../lib/worldbook.js'
+} from '../lib/mind/worldbook.js'
 import { buildPrompt } from '../lib/channels/router.js'
-import { renderSelfDoc, writeSelfDoc, KNOWLEDGE_SHOWN } from '../lib/selfdoc.js'
-import { deriveSelf } from '../lib/derive.js'
+import { renderSelfDoc, writeSelfDoc, KNOWLEDGE_SHOWN } from '../lib/mind/selfdoc.js'
+import { deriveSelf } from '../lib/mind/derive.js'
 
 async function tmpRoot() {
   return fs.mkdtemp(path.join(os.tmpdir(), 'fish-wb-'))

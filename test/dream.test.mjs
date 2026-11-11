@@ -17,14 +17,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { Readable } from 'node:stream'
 
-import { DREAM_MAX, DREAM_REFS_MAX, dreamOn, dreamView, writeDream } from '../lib/dream.js'
-import { deriveSelf } from '../lib/derive.js'
-import { dateKey } from '../lib/settings.js'
-import { readEvents } from '../lib/store.js'
-import { validateEvent } from '../lib/schema.js'
-import { registerObserve } from '../lib/observe.js'
-import { HER_TOOLS } from '../lib/restrict.js'
-import { DREAM_BRIEF } from '../lib/persona.js'
+import { DREAM_MAX, DREAM_REFS_MAX, dreamOn, dreamView, writeDream } from '../lib/mind/dream.js'
+import { deriveSelf } from '../lib/mind/derive.js'
+import { dateKey } from '../lib/core/settings.js'
+import { readEvents } from '../lib/core/store.js'
+import { validateEvent } from '../lib/core/schema.js'
+import { registerObserve } from '../lib/ui/observe.js'
+import { HER_TOOLS } from '../lib/ops/restrict.js'
+import { DREAM_BRIEF } from '../lib/mind/persona.js'
 
 async function withRoot(fn) {
   const root = mkdtempSync(join(tmpdir(), 'fish-dream-'))
@@ -183,7 +183,7 @@ test('/dream 路由：没有 .dev 就 404，有 .dev 才看得到', async () => 
 test('她得知道自己有 her_dream，也只在本机实验里知道', () => {
   assert.ok(HER_TOOLS.includes('her_dream'), '本机白名单里要有它')
   assert.match(DREAM_BRIEF, /her_dream/)
-  const selfdoc = readFileSync(new URL('../lib/selfdoc.js', import.meta.url), 'utf8')
+  const selfdoc = readFileSync(new URL('../lib/mind/selfdoc.js', import.meta.url), 'utf8')
   assert.match(selfdoc, /DREAM_BRIEF/)
   assert.match(selfdoc, /dream \? \[DREAM_BRIEF/, '身份文档要按 .dev 决定挂不挂')
   const client = readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')

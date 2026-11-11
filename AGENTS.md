@@ -30,19 +30,19 @@
 
 ## 3. 四条黑名单是代码级硬禁，不是提示词
 
-真相在 `lib/rules.js`（四层结构）与 `lib/persona.js`（`PRESCRIPTION_BANS`、`HARD_BANS`），不在文档里。
+真相在 `lib/mind/rules.js`（四层结构）与 `lib/mind/persona.js`（`PRESCRIPTION_BANS`、`HARD_BANS`），不在文档里。
 
 | 条款 | 真相在哪 | 守它的测试 |
 | --- | --- | --- |
-| 不撒娇卖萌（写成「还不会」，不是「不许」） | `lib/rules.js` 的 `learn-affection` | `test/rules.test.mjs`（断言含「还不会」且不含「不可以」） |
-| 没有好感度/亲密度数字 | `lib/rules.js` 的 `no-relational-score` | `test/rules.test.mjs`（提示词里 `cannot` 只剩这一条） |
-| 不能读自己的数值与设定（能看自己说过什么） | `lib/rules.js` 的 `no-read-self`（物理层，`section: null`，**不进提示词**）；工具侧由 `lib/restrict.js` 的 `HER_TOOLS` 收窄 | `test/rules.test.mjs` + `test/restrict.test.mjs` |
-| 不能调工具改自己 | `lib/rules.js` 的 `no-self-modify`（物理层，同样不进提示词）；写入侧入口是 `lib/capture.js` 的 `growth_commit`（判断）与 `lib/herdiary.js` 的 `write_diary`（日记） | `test/rules.test.mjs` + `test/capture.test.mjs` |
+| 不撒娇卖萌（写成「还不会」，不是「不许」） | `lib/mind/rules.js` 的 `learn-affection` | `test/rules.test.mjs`（断言含「还不会」且不含「不可以」） |
+| 没有好感度/亲密度数字 | `lib/mind/rules.js` 的 `no-relational-score` | `test/rules.test.mjs`（提示词里 `cannot` 只剩这一条） |
+| 不能读自己的数值与设定（能看自己说过什么） | `lib/mind/rules.js` 的 `no-read-self`（物理层，`section: null`，**不进提示词**）；工具侧由 `lib/ops/restrict.js` 的 `HER_TOOLS` 收窄 | `test/rules.test.mjs` + `test/restrict.test.mjs` |
+| 不能调工具改自己 | `lib/mind/rules.js` 的 `no-self-modify`（物理层，同样不进提示词）；写入侧入口是 `lib/mind/capture.js` 的 `growth_commit`（判断）与 `lib/mind/herdiary.js` 的 `write_diary`（日记） | `test/rules.test.mjs` + `test/capture.test.mjs` |
 
 两条实现原则，改代码时别破坏：
 
 - **物理层与契约层不进提示词。** 写「你不可以读设定」等于告诉她「旁边有份设定，很关键」——那是诱因，不是防线。靠代码不给路径、不给工具来保证。
-- **不要绕过 `lib/guard.js`。** 她是"根本没看见"重塑人格那句话，不是"看见了但被劝住"。任何新的输入口（新工具、新接口、新外部文本源）都必须过 `guard.js`；秘密外发（cookie / token / `sk-` / Bearer / 长 base64）在这里一律拦下。
+- **不要绕过 `lib/core/guard.js`。** 她是"根本没看见"重塑人格那句话，不是"看见了但被劝住"。任何新的输入口（新工具、新接口、新外部文本源）都必须过 `guard.js`；秘密外发（cookie / token / `sk-` / Bearer / 长 base64）在这里一律拦下。
 
 ## 4. 文案有守门词，改之前先看测试
 
@@ -61,9 +61,9 @@
 - 状态（`state.json`）是派生品，随时可由 `rebuild()` 重算；改它没意义，会被覆盖。
 - `store.readEvents` 有进程内缓存，按文件 stat 失效；`appendEvent` 写成功后同步推进。
   新写入口必须走 `appendEvent`，不要直接 `appendFile`——stat 会兜底，但别拿它当常规路径。
-- 「让她忘」不是删行，是**降低召回**（`lib/persona.js` 的 `foldOlderBeliefs`：更早的判断折成一行「记不清原话了」，疤那类永不折叠），事件原文始终还在 `events.jsonl` 里，她也能用 `her_recall` 翻回去。
+- 「让她忘」不是删行，是**降低召回**（`lib/mind/persona.js` 的 `foldOlderBeliefs`：更早的判断折成一行「记不清原话了」，疤那类永不折叠），事件原文始终还在 `events.jsonl` 里，她也能用 `her_recall` 翻回去。
 - 重置与恢复都不删数据：`reset.js` 改名前缀封存，`backup.js` 恢复前把旧档搬去 `dsh-fish-river-backups/pre-restore-*`。
-- 新增事件类型**不必**改 `lib/schema.js` 的 `EVENT_SCHEMA_VERSION`：旧读者读不认识的 `type` 会跳过（`readEvents` 对未知类型宽容），0.7.6 / 0.8.0 的 `ask`、`answer`、`heard` 都是这样加进去的。但**改字段语义、把可选字段变必填、删字段**必须升 `v` 并写迁移（旧版本遇到新 `v` 要拒，否则静默丢字段）。
+- 新增事件类型**不必**改 `lib/core/schema.js` 的 `EVENT_SCHEMA_VERSION`：旧读者读不认识的 `type` 会跳过（`readEvents` 对未知类型宽容），0.7.6 / 0.8.0 的 `ask`、`answer`、`heard` 都是这样加进去的。但**改字段语义、把可选字段变必填、删字段**必须升 `v` 并写迁移（旧版本遇到新 `v` 要拒，否则静默丢字段）。
 
 ## 6. 改完必须跑全套测试
 
@@ -97,8 +97,8 @@ qq_send_message, qq_get_unread_messages, qq_reply
 三条约束：
 
 - **工具名必须对得上真实 registry**。桥升级改名、用户填错，她就会答「我没法在 QQ 上说话」——这不是插件坏了，是名字没对上。
-- **放行之后要念给她听**。身份文档「我手上有什么」由 `lib/persona.js` 的 `toolBrief(extra)` 生成、`lib/selfdoc.js` 把 `config.tools.allow` 作为 `extraTools` 传进去。看不见一只手，她就不会用。
-- **白名单只做加法**。`config.tools.allow` 与 `HER_TOOLS` 取并集，不要用它去减工具；收窄只走 `lib/restrict.js` 那一套。
+- **放行之后要念给她听**。身份文档「我手上有什么」由 `lib/mind/persona.js` 的 `toolBrief(extra)` 生成、`lib/mind/selfdoc.js` 把 `config.tools.allow` 作为 `extraTools` 传进去。看不见一只手，她就不会用。
+- **白名单只做加法**。`config.tools.allow` 与 `HER_TOOLS` 取并集，不要用它去减工具；收窄只走 `lib/ops/restrict.js` 那一套。
 
 **允许做「起桥」向导**（2026-11-02）：设置页可以填桥的可执行文件路径、由用户点一下 `spawn` 起来（`detached` + `unref`，只 spawn 用户填的那一个文件），也可以做 TCP 连通性探测。**不许**内置任何 QQ 协议、登录、消息解析——那是桥的事，升级也该跟着桥走。
 
@@ -148,7 +148,7 @@ qq_send_message, qq_get_unread_messages, qq_reply
 - **可见性按会话判**：群聊 `visibility:'public'`，私聊 `visibility:'private'`。私聊事件只对该
   `person` 可见，连主人都看不到原文——这是「不看别人私聊」的代码化。
   owner 侧只读接口（`/events` `/status` `/reports` `/channels` `/social`）统一走
-  `lib/privacy.js` 脱敏；`her_recall` 不经过——那是她自己的记忆，不是给主人看的窗口。
+  `lib/core/privacy.js` 脱敏；`her_recall` 不经过——那是她自己的记忆，不是给主人看的窗口。
 - **`heard` 只能由 system 写**（不在 `HER_TYPES` 里），`origin:'guest'`、`influence:'social'`；
   只有主人私聊来的话才配 `origin:'owner'`、`influence:'constitution'`。
 - **群里默认只在她被 @ 时开口**（2026-11-03，用户 m06663）：192 人的群里主人一说话她就回，太吵。
@@ -179,11 +179,11 @@ qq_send_message, qq_get_unread_messages, qq_reply
 ---
 ## 10. 社会层开闸只能她自己按（2026-11-02）
 
-- **能不能开**：`lib/socialgate.js` 的四条闸（阶段 ≥3、立场 ≥6、30 天没整条推翻、活 ≥14 天且稳定度在 0.02–0.35）。**只从事件流算，不落盘、不可配置。**
-- **开不开**：`social_open` 工具（`lib/social.js`），她调用才写 `social-open:<ISO>` 的 meta。**没有任何 HTTP 路由或配置项能替她开**——加了就等于给了主人一次「让她变成另一种人」的权力。
-- **差着的时候**：身份文档一个字都不写（`lib/selfdoc.js` 的 `socialSection` 返回空串）；调用工具也只回一句「还差什么」，绝不写事件。
-- **开过之后**：`lib/derive.js` 才把 `influence:'social'` 的事件放进 `influence.social`（上限 30%），且永远不进 `beliefs`。
-- **开过之后必须真的读到**：身份文档「我在外面学到的」（`lib/selfdoc.js` 的 `socialLines`）与渠道提示词「在外面见过的做法」（`lib/channels/router.js` 的 `buildPrompt`）各一处。只派生不注入，等于没开。
+- **能不能开**：`lib/life/socialgate.js` 的四条闸（阶段 ≥3、立场 ≥6、30 天没整条推翻、活 ≥14 天且稳定度在 0.02–0.35）。**只从事件流算，不落盘、不可配置。**
+- **开不开**：`social_open` 工具（`lib/life/social.js`），她调用才写 `social-open:<ISO>` 的 meta。**没有任何 HTTP 路由或配置项能替她开**——加了就等于给了主人一次「让她变成另一种人」的权力。
+- **差着的时候**：身份文档一个字都不写（`lib/mind/selfdoc.js` 的 `socialSection` 返回空串）；调用工具也只回一句「还差什么」，绝不写事件。
+- **开过之后**：`lib/mind/derive.js` 才把 `influence:'social'` 的事件放进 `influence.social`（上限 30%），且永远不进 `beliefs`。
+- **开过之后必须真的读到**：身份文档「我在外面学到的」（`lib/mind/selfdoc.js` 的 `socialLines`）与渠道提示词「在外面见过的做法」（`lib/channels/router.js` 的 `buildPrompt`）各一处。只派生不注入，等于没开。
 
 ---
 
@@ -192,7 +192,7 @@ qq_send_message, qq_get_unread_messages, qq_reply
 `worldbook.json` 里的是**事实**——她住哪、公司在几楼、你们养过什么猫。它可以导入、可以删，
 但**永远不许**变成「她是什么样的人」。
 
-- **只进提示词的「你知道的事」一节**（`lib/worldbook.js` 的 `knowledgeBlock`），按关键词取，
+- **只进提示词的「你知道的事」一节**（`lib/mind/worldbook.js` 的 `knowledgeBlock`），按关键词取，
   一次最多 5 条、共 1200 字。两处都写成事实清单：渠道回复的「你知道的事」（按关键词取，≤5 条）与身份文档的「我知道的事」（≤24 条、每条 ≤200 字，用户 m01879 要求 DSH 里也知道）。写成「我是一个…」的那一刻才算越界。
 - **不改阶段、不进 `beliefs`、不算事件**：查一条设定不是一段经历。
 - **匹配靠关键词，不靠模型**：她为什么记得这条，要能一句话解释。
@@ -213,10 +213,10 @@ qq_send_message, qq_get_unread_messages, qq_reply
 
 ## 13. 出门/请神的隔离带：能看，不能长（2026-11-02，用户 m03227）
 
-出门（`lib/outing.js`）与请神（`lib/possess.js`）保留，但**它们碰过的一切都不许变成她**。
+出门（`lib/life/outing.js`）与请神（`lib/life/possess.js`）保留，但**它们碰过的一切都不许变成她**。
 用户的原话是「保证让这个功能不影响到人格」，落成两条，缺一条都不算数：
 
-- **写入时盖章**：`lib/store.js` 的 `appendEvent` 是唯一写入口。事件的 `sessionId` 出现在
+- **写入时盖章**：`lib/core/store.js` 的 `appendEvent` 是唯一写入口。事件的 `sessionId` 出现在
   `outings.json` / `possessions.json` 里时，一律定格成 `influence:'none'`。
   **必须放在 `validateEvent` 之后**——`channelFields` 对 `source:'tool'` 会整块丢掉这几个字段，
   而她在外面写的恰恰多是 `growth_commit`。
@@ -308,7 +308,7 @@ qq_send_message, qq_get_unread_messages, qq_reply
 
 ## 18. 链接能打开才叫看过，打不开就说打不开（2026-11-03）
 
-- 任何渠道的文本里出现抖音链接，路由层要先替她去解析（`lib/dylink.js`）：
+- 任何渠道的文本里出现抖音链接，路由层要先替她去解析（`lib/platforms/dylink.js`）：
   短链只跟一次跳转，详情走她自己那个浏览器的页面请求（cookie 才带得上）。
 - **解析成功**：提示词里写事实（文案、作者、时长、互动数、有没有拉到画面），
   并记一条 `meta looked:dy_<id>`。

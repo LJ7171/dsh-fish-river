@@ -17,7 +17,7 @@ import { mkdtemp, rm, readdir, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { writeDaily, readDaily, listDiary, paths, DAILY_JOIN } from '../lib/store.js'
+import { writeDaily, readDaily, listDiary, paths, DAILY_JOIN } from '../lib/core/store.js'
 
 async function tmpRoot() {
   return mkdtemp(join(tmpdir(), 'fish-dailylog-'))

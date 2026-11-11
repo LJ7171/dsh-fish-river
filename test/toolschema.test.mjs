@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { toJsonSchema } from '../lib/toolschema.js'
+import { toJsonSchema } from '../lib/core/toolschema.js'
 
 test('简写 DSL → 标准 JSON Schema：根节点必须是 type:object', () => {
   const out = toJsonSchema({

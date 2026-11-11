@@ -19,11 +19,11 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { lookOnce, registerLook } from '../lib/look.js'
-import { absorb } from '../lib/browse.js'
-import { createClient } from '../lib/bili.js'
-import { normalizeConfig, dateKey } from '../lib/settings.js'
-import { readEvents } from '../lib/store.js'
+import { lookOnce, registerLook } from '../lib/platforms/look.js'
+import { absorb } from '../lib/platforms/browse.js'
+import { createClient } from '../lib/platforms/bili.js'
+import { normalizeConfig, dateKey } from '../lib/core/settings.js'
+import { readEvents } from '../lib/core/store.js'
 
 async function withRoot(fn) {
   const root = await mkdtemp(join(tmpdir(), 'fish-lookvideo-'))

@@ -18,8 +18,8 @@ import {
   releasePossession,
   PERSONA_PREFIX_SECTION,
   POSSESS_SECTION,
-} from '../lib/possess.js'
-import { readPossessions, startPossession, endPossession } from '../lib/outing.js'
+} from '../lib/life/possess.js'
+import { readPossessions, startPossession, endPossession } from '../lib/life/outing.js'
 
 function tmpRoot() {
   return mkdtempSync(join(tmpdir(), 'dsh-fish-possess-'))
@@ -210,7 +210,7 @@ test('releasePossession 先撤挂载，再补交接句，两件事互不连坐',
 })
 
 test('结束请神只补标准交接句：路由不传 farewell，界面也没有那句输入框', () => {
-  const src = readFileSync(new URL('../lib/observe.js', import.meta.url), 'utf8')
+  const src = readFileSync(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')
   assert.ok(!src.includes('farewell'))
   assert.ok(src.includes('note: r.note'))
   assert.ok(src.includes("ctx.get?.('agents')"))

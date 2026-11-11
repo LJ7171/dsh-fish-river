@@ -1,9 +1,9 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
-import { shownCount, buildSections, foldOlderBeliefs, BELIEF_SHOWN } from '../lib/persona.js'
-import { normalizeConfig, DEFAULTS } from '../lib/settings.js'
-import { renderSelfDoc } from '../lib/selfdoc.js'
+import { shownCount, buildSections, foldOlderBeliefs, BELIEF_SHOWN } from '../lib/mind/persona.js'
+import { normalizeConfig, DEFAULTS } from '../lib/core/settings.js'
+import { renderSelfDoc } from '../lib/mind/selfdoc.js'
 
 // 2026-10-25：用户问「想让她记住更多能不能调」。
 // 原来 BELIEF_SHOWN 写死在 persona.js，docBudget 调多大都只摆 3 条。
@@ -97,7 +97,7 @@ test('客户端：设置项、buildConfig、上限表都在', () => {
 })
 
 test('观测台与身份文档同源：/memory 用 shownCount 而不是写死的常量', () => {
-  const src = fs.readFileSync(new URL('../lib/observe.js', import.meta.url), 'utf8')
+  const src = fs.readFileSync(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')
   assert.ok(src.includes('shownCount(config?.memory?.beliefsShown ?? BELIEF_SHOWN)'))
   assert.ok(
     src.includes('personaBudget(model, { budget, withBans: model?.persona?.imported !== true, shown: shownCap })'),

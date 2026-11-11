@@ -128,9 +128,9 @@ test('攒段：同一会话并成一条，点名和图片留着', () => {
 })
 
 test('静默窗不进刷站和看画面', async () => {
-  const browse = await fs.readFile(new URL('../lib/browse.js', import.meta.url), 'utf8')
-  const look = await fs.readFile(new URL('../lib/look.js', import.meta.url), 'utf8')
-  const douyin = await fs.readFile(new URL('../lib/douyinbrowse.js', import.meta.url), 'utf8')
+  const browse = await fs.readFile(new URL('../lib/platforms/browse.js', import.meta.url), 'utf8')
+  const look = await fs.readFile(new URL('../lib/platforms/look.js', import.meta.url), 'utf8')
+  const douyin = await fs.readFile(new URL('../lib/platforms/douyinbrowse.js', import.meta.url), 'utf8')
   for (const src of [browse, look, douyin]) {
     assert.doesNotMatch(src, /silenceMsFor|isAckSegment|inboundSilenceMs/)
   }

@@ -5,12 +5,12 @@ import { writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { registerCapture, debrief } from '../lib/capture.js'
-import { registerWriteDiary } from '../lib/herdiary.js'
-import { readEvents, paths, writeConfig } from '../lib/store.js'
-import { normalizeConfig } from '../lib/settings.js'
-import { deriveSelf } from '../lib/derive.js'
-import { renderSelfDoc } from '../lib/selfdoc.js'
+import { registerCapture, debrief } from '../lib/mind/capture.js'
+import { registerWriteDiary } from '../lib/mind/herdiary.js'
+import { readEvents, paths, writeConfig } from '../lib/core/store.js'
+import { normalizeConfig } from '../lib/core/settings.js'
+import { deriveSelf } from '../lib/mind/derive.js'
+import { renderSelfDoc } from '../lib/mind/selfdoc.js'
 
 async function withRoot(fn) {
   const root = await mkdtemp(join(tmpdir(), 'fish-cap-'))
@@ -267,7 +267,7 @@ test('growth_commit 的 type 里没有 diary 了（判断和日记不再抢同�
     const type = spec.parameters.properties.type
     assert.deepEqual(type.enum, ['utterance', 'revise', 'reunion', 'narration', 'refusal', 'dream'])
     assert.ok(!String(type.description).includes('diary'), 'type 说明里不该再提 diary')
-    // write_diary 不在 capture 里注册（它在 lib/herdiary.js）
+    // write_diary 不在 capture 里注册（它在 lib/mind/herdiary.js）
     assert.equal(ctx.regs.has('write_diary'), false)
   })
 })

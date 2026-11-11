@@ -5,16 +5,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { apply, name, inject } from '../lib/index.js'
-import { readEvents, paths, writeConfig, appendEvent } from '../lib/store.js'
-import { normalizeConfig } from '../lib/settings.js'
-import { deriveSelf } from '../lib/derive.js'
-import { startScheduler, wakeNow, wakeTimeLine, shouldLogSkip } from '../lib/scheduler.js'
-import { rememberKnownTools } from '../lib/restrict.js'
-import { dateKey } from '../lib/settings.js'
-import { writeSelfDoc } from '../lib/selfdoc.js'
-import { clearWakeSection, getWakeSection } from '../lib/identity.js'
-import { WAKE_TRIGGER, OUTING_TRIGGER } from '../lib/wakeconst.js'
-import { logFile, logLine } from '../lib/log.js'
+import { readEvents, paths, writeConfig, appendEvent } from '../lib/core/store.js'
+import { normalizeConfig } from '../lib/core/settings.js'
+import { deriveSelf } from '../lib/mind/derive.js'
+import { startScheduler, wakeNow, wakeTimeLine, shouldLogSkip } from '../lib/life/scheduler.js'
+import { rememberKnownTools } from '../lib/ops/restrict.js'
+import { dateKey } from '../lib/core/settings.js'
+import { writeSelfDoc } from '../lib/mind/selfdoc.js'
+import { clearWakeSection, getWakeSection } from '../lib/mind/identity.js'
+import { WAKE_TRIGGER, OUTING_TRIGGER } from '../lib/life/wakeconst.js'
+import { logFile, logLine } from '../lib/core/log.js'
 
 async function withRoot(fn) {
   const root = await mkdtemp(join(tmpdir(), 'fish-boot-'))
@@ -279,7 +279,7 @@ test('日记默认不可见：只给日期，不给正文', async () => {
     await new Promise((r) => setTimeout(r, 120))
 
     // 手工放一篇日记
-    const { writeDaily } = await import('../lib/store.js')
+    const { writeDaily } = await import('../lib/core/store.js')
     await writeDaily('diaryDir', '2026-10-20', '今天没人来。', root)
 
     const route = await waitFor(() => routes.find((r) => r.path === '/dsh-fish-river/diary'))
@@ -302,7 +302,7 @@ test('日记可见时一天一页：默认只给最新一天，?day= 取指定�
     const h = apply(ctx, { root })
     await new Promise((r) => setTimeout(r, 120))
 
-    const { writeDaily } = await import('../lib/store.js')
+    const { writeDaily } = await import('../lib/core/store.js')
     await writeDaily('diaryDir', '2026-10-19', '前一天写的。', root)
     await writeDaily('diaryDir', '2026-10-20', '今天没人来。', root)
 

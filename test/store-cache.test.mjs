@@ -11,7 +11,7 @@ import { mkdtemp, appendFile, rm, unlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { appendEvent, paths, readEvents } from '../lib/store.js'
+import { appendEvent, paths, readEvents } from '../lib/core/store.js'
 
 const ctx = { day: 1, stage: 1, source: 'system' }
 

@@ -8,7 +8,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { slashed } from '../lib/posix.js'
+import { slashed } from '../lib/core/posix.js'
 
 test('slashed：反斜杠全部换成正斜杠', () => {
   assert.equal(

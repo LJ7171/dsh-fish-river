@@ -2,10 +2,10 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   findTemplate, isSpent, paceScale, scaledEveryDays, absenceThreshold, staleAfter,
-} from '../lib/events.js'
-import { pick } from '../lib/generator.js'
-import { gapSinceLastWake, gapSqueeze } from '../lib/scheduler.js'
-import { CATALOG } from '../lib/events.js'
+} from '../lib/mind/events.js'
+import { pick } from '../lib/mind/generator.js'
+import { gapSinceLastWake, gapSqueeze } from '../lib/life/scheduler.js'
+import { CATALOG } from '../lib/mind/events.js'
 
 const DAY = 86_400_000
 const iso = (msAgo = 0) => new Date(Date.now() - msAgo).toISOString()
@@ -125,9 +125,9 @@ test('gapSqueeze：短空档不补偿，2 天以上减半，4 天以上更狠', 
 
 test('pick 把 growthDays 与 squeeze 传给 isSpent（源码级守门）', async () => {
   const fs = await import('node:fs')
-  const src = fs.readFileSync(new URL('../lib/generator.js', import.meta.url), 'utf8')
+  const src = fs.readFileSync(new URL('../lib/mind/generator.js', import.meta.url), 'utf8')
   assert.match(src, /isSpent\(t, fired, \{ now, growthDays: model\.growthDays, squeeze: opts\.squeeze \}\)/)
-  const sched = fs.readFileSync(new URL('../lib/scheduler.js', import.meta.url), 'utf8')
+  const sched = fs.readFileSync(new URL('../lib/life/scheduler.js', import.meta.url), 'utf8')
   assert.match(sched, /gapSqueeze\(gapSinceLastWake\(events\)\)/)
   // 作息固定后，自动唤醒不再走 plan()（只决定要不要上网、不挑成长卡）；
   // 只剩手动叫醒那一条还按空档补偿。

@@ -12,12 +12,12 @@ import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { setWakeTurn, resetWakeTurnForTests, currentWakeTurn } from '../lib/wakeTurn.js'
+import { setWakeTurn, resetWakeTurnForTests, currentWakeTurn } from '../lib/life/wakeTurn.js'
 import {
   sendOutreach, sentToday, setOutreachSender, resetOutreachForTests, outreachPath,
-} from '../lib/outreach.js'
-import { sendImageOnce } from '../lib/sendImage.js'
-import { normalizeConfig, updateConfig } from '../lib/settings.js'
+} from '../lib/talk/outreach.js'
+import { sendImageOnce } from '../lib/talk/sendImage.js'
+import { normalizeConfig, updateConfig } from '../lib/core/settings.js'
 import { readContextStore, saveContextStore } from '../lib/channels/weixin.js'
 
 const PNG = Buffer.from(
@@ -208,9 +208,9 @@ test('额度台账是 0600 的 outreach-state.json', async () => {
 })
 
 test('主动消息工具名必须避开宿主内置的 send_message', async () => {
-  const { HER_TOOLS } = await import('../lib/restrict.js')
+  const { HER_TOOLS } = await import('../lib/ops/restrict.js')
   assert.ok(HER_TOOLS.includes('send_to_owner'), '白名单要有 send_to_owner')
   assert.ok(!HER_TOOLS.includes('send_message'), '不能再叫 send_message，会被宿主的 agent 工具盖掉')
-  const src = await import('node:fs/promises').then((fs) => fs.readFile(new URL('../lib/sendMessage.js', import.meta.url), 'utf8'))
+  const src = await import('node:fs/promises').then((fs) => fs.readFile(new URL('../lib/talk/sendMessage.js', import.meta.url), 'utf8'))
   assert.match(src, /name: 'send_to_owner'/)
 })

@@ -16,11 +16,11 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { pickHearSentence, hearTurn, HEAR_SNIPPET, HEAR_MIN_CHARS } from '../lib/hear.js'
-import { hearMark, bumpTurns } from '../lib/home.js'
-import { readEvents } from '../lib/store.js'
-import { validateEvent } from '../lib/schema.js'
-import { searchEvents, renderRecall, RECALL_LIMIT, RECALL_DAYS } from '../lib/recall.js'
+import { pickHearSentence, hearTurn, HEAR_SNIPPET, HEAR_MIN_CHARS } from '../lib/mind/hear.js'
+import { hearMark, bumpTurns } from '../lib/house/home.js'
+import { readEvents } from '../lib/core/store.js'
+import { validateEvent } from '../lib/core/schema.js'
+import { searchEvents, renderRecall, RECALL_LIMIT, RECALL_DAYS } from '../lib/mind/recall.js'
 
 const DAY = 86_400_000
 

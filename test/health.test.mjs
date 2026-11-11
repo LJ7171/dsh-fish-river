@@ -14,7 +14,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { examine, STALE_DAYS, HEALTH_TOP, HEALTH_LIST } from '../lib/health.js'
+import { examine, STALE_DAYS, HEALTH_TOP, HEALTH_LIST } from '../lib/mind/health.js'
 
 const DAY = 86_400_000
 

@@ -1,5 +1,5 @@
 /**
- * zhihu.test.mjs —— 知乎素材源（子包 api/auth + 主包 lib/zhihu.js）。
+ * zhihu.test.mjs —— 知乎素材源（子包 api/auth + 主包 lib/platforms/zhihu.js）。
  *
  * 全程不联网：fetch 是假的，子包模块也可以整块注入。
  * 重点验三件事：
@@ -18,13 +18,13 @@ import { fetchHot, fetchFollow } from '../packages/dsh-fish-river-zhihu/api.js'
 import {
   gatherZhihu, loadZhihu, readState, writeState, runsToday, statePath,
   fetchZhihuMaterial, renderMaterial,
-} from '../lib/zhihu.js'
-import { registerZhihuLook, zhihuLookOnce, parseTarget } from '../lib/zhihuLook.js'
+} from '../lib/platforms/zhihu.js'
+import { registerZhihuLook, zhihuLookOnce, parseTarget } from '../lib/platforms/zhihuLook.js'
 import { fetchQuestion, fetchAnswer, fetchComments, htmlToText, extractImages } from '../packages/dsh-fish-river-zhihu/api.js'
-import { saveImages } from '../lib/zhihuLook.js'
-import { dateKey, normalizeConfig } from '../lib/settings.js'
-import { lookBeforeWake } from '../lib/scheduler.js'
-import { readEvents } from '../lib/store.js'
+import { saveImages } from '../lib/platforms/zhihuLook.js'
+import { dateKey, normalizeConfig } from '../lib/core/settings.js'
+import { lookBeforeWake } from '../lib/life/scheduler.js'
+import { readEvents } from '../lib/core/store.js'
 
 function fakeResponse(body, status = 200) {
   return {
@@ -316,7 +316,7 @@ test('读评论暂停：配置写 voices:true 也不再拉评论、不写 voice'
     const r = await fetchZhihuMaterial({ root, cfg, mod, now: new Date('2026-11-04T10:15:00'), fetchImpl: async () => ({ ok: true }) })
     assert.equal(r.ok, true)
     assert.equal(mod.calls.comments, 0)
-    const { events } = await (await import('../lib/store.js')).readEvents(root)
+    const { events } = await (await import('../lib/core/store.js')).readEvents(root)
     assert.equal(events.filter((e) => e.type === 'voice' && e.channel === 'zhihu').length, 0)
   } finally {
     await rm(root, { recursive: true, force: true })

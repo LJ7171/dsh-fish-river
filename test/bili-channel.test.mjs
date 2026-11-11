@@ -8,7 +8,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
 import { create, splitText } from '../lib/channels/bili.js'
-import { createClient, inCooldown, resetRisk } from '../lib/bili.js'
+import { createClient, inCooldown, resetRisk } from '../lib/platforms/bili.js'
 
 const COOKIE = 'SESSDATA=sess; bili_jct=jct-123; DedeUserID=42; buvid3=B3'
 const SELF_UID = '42'
@@ -325,7 +325,7 @@ test('send 带 csrf / wbi 签名 / dev_id，成功返回 id', async () => {
 test('风控冷却中 send 直接返回 cooldown，不发请求', async () => {
   resetRisk()
   const f = makeFetch()
-  // 借 lib/bili.js 的写接口记一次 -412：RISK 是模块级共享的，私信也要吃这份冷却。
+  // 借 lib/platforms/bili.js 的写接口记一次 -412：RISK 是模块级共享的，私信也要吃这份冷却。
   const client = createClient({
     cookie: COOKIE,
     fetchImpl: async () => ({ status: 200, text: async () => JSON.stringify({ code: -412, message: '请求被拦截' }) }),

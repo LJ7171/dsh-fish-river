@@ -7,7 +7,7 @@ import { mkdtemp, rm, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { addReplies, takeReplies, readReplyBox, replyBoxPath } from '../lib/replybox.js'
+import { addReplies, takeReplies, readReplyBox, replyBoxPath } from '../lib/life/replybox.js'
 
 test('回复进盒：按 rpid 去重，取走后清空，0600', async () => {
   const root = await mkdtemp(join(tmpdir(), 'fish-reply-'))
