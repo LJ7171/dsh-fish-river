@@ -12,6 +12,8 @@
  * 所以：能用移动端就用移动端，网页端只拿确实不要签名的那几个。
  */
 
+import { randomUUID } from 'node:crypto'
+
 const WEB = 'https://www.zhihu.com'
 const MOBILE = 'https://api.zhihu.com'
 const UA_MOBILE = 'ZhihuHybrid/7.0'
@@ -202,6 +204,70 @@ export async function fetchRecommend({ cookie = '', limit = 6, pages = 1, fetchI
   } catch (error) {
     return { ok: false, items: [], why: `推荐请求失败：${errorText(error)}` }
   }
+}
+
+/**
+ * 邀请回答里的问题。跳过已经回答过、关闭、删除的。
+ * GET www.zhihu.com/api/v4/notifications/v3/timeline/entry/invite?…
+ */
+export async function fetchQuestionInvites({ cookie = '', limit = 20, fetchImpl = fetch } = {}) {
+  try {
+    const n = clamp(limit, 1, 20)
+    const r = await getJson({
+      fetchImpl,
+      url: `${WEB}/api/v4/notifications/v3/timeline/entry/invite?invite_with_time_slice=1&limit=${n}&offset=0&invite_domain_score_ab=1`,
+      cookie,
+      referer: `${WEB}/`,
+    })
+    const list = Array.isArray(r.json?.data) ? r.json.data : []
+    const out = []
+    for (const x of list) {
+      const q = x?.target ?? x?.extra_action?.data ?? {}
+      const item = questionItem(q, 'invite')
+      if (item) out.push(item)
+    }
+    return { ok: out.length > 0, items: out, why: out.length ? '' : '没有邀请回答' }
+  } catch (error) {
+    return { ok: false, items: [], why: `邀请回答请求失败：${errorText(error)}` }
+  }
+}
+
+/**
+ * 作者相关的问题推荐。
+ * GET www.zhihu.com/api/v4/creators/question_route/author_related/recommend?…
+ */
+export async function fetchQuestionRecommend({ cookie = '', limit = 20, fetchImpl = fetch } = {}) {
+  try {
+    const n = clamp(limit, 1, 20)
+    const r = await getJson({
+      fetchImpl,
+      url: `${WEB}/api/v4/creators/question_route/author_related/recommend?limit=${n}&offset=0&page_source=web_author_recommend&recom_domain_score_ab=1`,
+      cookie,
+      referer: `${WEB}/creators`,
+    })
+    const list = Array.isArray(r.json?.data) ? r.json.data : []
+    const out = []
+    for (const x of list) {
+      if (x?.is_in_draft === true) continue
+      const item = questionItem(x?.question, 'recommend')
+      if (item) out.push(item)
+    }
+    return { ok: out.length > 0, items: out, why: out.length ? '' : '没有问题推荐' }
+  } catch (error) {
+    return { ok: false, items: [], why: `问题推荐请求失败：${errorText(error)}` }
+  }
+}
+
+function questionItem(q, source) {
+  const id = String(q?.id ?? q?.question?.id ?? '').trim()
+  const title = String(q?.title ?? q?.question?.title ?? '').trim()
+  if (!id || !title) return null
+  if (q?.is_deleted === true) return null
+  if (q?.has_answer === true) return null
+  if (q?.status?.is_close === true || q?.status?.is_locked === true) return null
+  const rawUrl = String(q?.url ?? '').trim()
+  const url = rawUrl.replace('https://api.zhihu.com/questions/', 'https://www.zhihu.com/question/')
+  return { id, title, source, url: /^https?:\/\//.test(url) ? url : `https://www.zhihu.com/question/${id}` }
 }
 
 /** 知乎正文是 HTML：去掉标签、解几个实体，留下人能读的段落。 */
@@ -472,7 +538,7 @@ export async function fetchChildComments({ cookie = '', id = '', limit = 20, fet
  * 在一条回答下面写评论，或回复某一条。
  * replyCommentId 空着是主楼；有值是楼中楼（仍挂在这条回答上）。
  */
-export async function createComment({ cookie = '', id = '', content = '', replyCommentId = '', fetchImpl = fetch } = {}) {
+export async function createComment({ cookie = '', id = '', content = '', replyCommentId = '', replyRootCommentId = '', fetchImpl = fetch } = {}) {
   const blocked = zhihuCooldown()
   if (blocked) return blocked
   const rid = String(id ?? '').trim()
@@ -486,8 +552,9 @@ export async function createComment({ cookie = '', id = '', content = '', replyC
       cookie,
       referer: `${WEB}/answer/${rid}`,
       body: {
-        content: text,
-        reply_comment_id: String(replyCommentId ?? ''),
+        content: commentHtml(text),
+        reply_comment_id: replyCommentId ? String(replyCommentId) : '0',
+        ...(replyCommentId ? { reply_root_comment_id: String(replyRootCommentId || replyCommentId) } : {}),
         selected_settings: [],
         unfriendly_check: 'strict',
       },
@@ -505,12 +572,63 @@ export async function createComment({ cookie = '', id = '', content = '', replyC
   }
 }
 
+function commentHtml(text) {
+  const esc = String(text ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  return esc.split(/\n{2,}/).map((part) => `<p>${part.replace(/\n/g, '<br>')}</p>`).join('')
+}
+
 function answerHtml(text) {
   const esc = String(text ?? '')
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
   return esc.split(/\n{2,}/).map((part) => `<p>${part.replace(/\n/g, '<br>')}</p>`).join('')
+}
+
+/** 给一个问题写回答。正文按纯文本转成段落，不接收调用方拼好的 HTML。 */
+const ANSWER_INCLUDE = 'is_contain_ai_content,is_visible,paid_info,paid_info_content,has_column,admin_closed_comment,reward_info,annotation_action,annotation_detail,collapse_reason,is_normal,is_sticky,collapsed_by,suggest_edit,comment_count,thanks_count,favlists_count,can_comment,content,editable_content,voteup_count,reshipment_settings,comment_permission,created_time,updated_time,review_info,relevant_info,question,excerpt,attachment,content_source,is_labeled,endorsements,reaction_instruction,reaction,ip_info,relationship.is_authorized,voting,is_thanked,is_author,is_nothelp,is_favorited;author.vip_info,kvip_info,badge[*].topics;settings.table_of_content.enabled'
+
+const ANSWER_BIZ = Object.freeze({
+  reshipment_settings: 'allowed',
+  comment_permission: 'all',
+  columns: null,
+  reward_setting: { can_reward: false, tagline: '' },
+  disclaimer_status: 'close',
+  disclaimer_type: 'none',
+  commercial_report_info: { is_report: false },
+  commercial_zhitask_bind_info: null,
+  is_report: false,
+  push_activity: true,
+  table_of_contents_enabled: false,
+  thank_inviter_status: 'close',
+  thank_inviter: '',
+})
+
+/**
+ * 写回答前的控制检查：GET api.zhihu.com/content/publish/control/v2?…
+ * 失败就不发。返回 {ok, why}。
+ */
+export async function answerPublishControl({ cookie = '', questionId = '', fetchImpl = fetch } = {}) {
+  const qid = String(questionId ?? '').trim()
+  if (!qid) return { ok: false, why: '缺问题 id' }
+  try {
+    const r = await getJson({
+      fetchImpl,
+      url: `${MOBILE}/content/publish/control/v2?scene=answer&questionToken=${encodeURIComponent(qid)}`,
+      cookie,
+      referer: `${WEB}/question/${encodeURIComponent(qid)}`,
+      mobile: true,
+    })
+    if (r.status >= 400 || Number(r.json?.code) !== 0) {
+      return { ok: false, why: String(r.json?.message ?? `发布检查失败（HTTP ${r.status}）`).slice(0, 80) }
+    }
+    return { ok: true, why: '' }
+  } catch (error) {
+    return { ok: false, why: `发布检查失败：${errorText(error)}` }
+  }
 }
 
 /** 给一个问题写回答。正文按纯文本转成段落，不接收调用方拼好的 HTML。 */
@@ -521,31 +639,51 @@ export async function createAnswer({ cookie = '', questionId = '', content = '',
   const text = String(content ?? '').trim()
   if (!qid || !text) return { ok: false, code: 'EMPTY', why: '空回答不发' }
   if (!xsrfOf(cookie)) return { ok: false, code: 'NO_CSRF', why: 'cookie 不完整' }
+  const ctrl = await answerPublishControl({ cookie, questionId: qid, fetchImpl })
+  if (!ctrl.ok) return { ok: false, code: 'BLOCKED', why: ctrl.why }
+  const html = answerHtml(text)
   try {
+    const body = {
+      action: 'answer',
+      data: {
+        publish: { traceId: `${Date.now()},${randomUUID()}` },
+        hybridInfo: {},
+        draft: { isPublished: false, disabled: 1 },
+        extra_info: {
+          question_id: qid,
+          publisher: 'pc',
+          include: ANSWER_INCLUDE,
+          pc_business_params: JSON.stringify(ANSWER_BIZ),
+        },
+        hybrid: { html, textLength: [...text].length },
+        reprint: { reshipment_settings: 'allowed' },
+        commentsPermission: { comment_permission: 'all' },
+        appreciate: { can_reward: false, tagline: '' },
+        publishSwitch: { draft_type: 'normal' },
+        creationStatement: { disclaimer_status: 'close', disclaimer_type: 'none' },
+        commercialReportInfo: { isReport: 0 },
+        toFollower: {},
+        contentsTables: { table_of_contents_enabled: false },
+        thanksInvitation: { thank_inviter_status: 'close', thank_inviter: '' },
+      },
+    }
     const r = await postJson({
       fetchImpl,
-      url: `${WEB}/api/v4/questions/${encodeURIComponent(qid)}/answers`,
+      url: `${WEB}/api/v4/content/publish`,
       cookie,
       referer: `${WEB}/question/${qid}`,
-      body: {
-        content: answerHtml(text),
-        reward_setting: { can_reward: false, tagline: '' },
-        comment_permission: 'all',
-        reshipment_settings: 'allowed',
-        push_activity: true,
-        disclaimer_status: 'close',
-        disclaimer_type: 'none',
-        table_of_contents_enabled: false,
-        commercial_report_info: { is_report: false },
-        answer_type: 'normal',
-      },
+      body,
     })
     const kind = classifyWrite(r.status, r.json)
     const stopped = stopForRisk(kind)
     if (stopped) return stopped
     if (kind === 'NOT_LOGIN') return { ok: false, code: 'NOT_LOGIN', why: '没登录' }
     if (kind) return { ok: false, code: 'FAIL', why: String(r.json?.error?.message ?? r.json?.message ?? '没发出去').slice(0, 60) }
-    const aid = String(r.json?.id ?? r.json?.data?.id ?? r.json?.answer?.id ?? '')
+    let result = r.json?.data?.result
+    if (typeof result === 'string') {
+      try { result = JSON.parse(result) } catch { result = null }
+    }
+    const aid = String(result?.publish?.id ?? r.json?.id ?? r.json?.data?.answer?.id ?? '')
     if (!aid) return { ok: false, code: 'FAIL', why: '没发出去' }
     return { ok: true, id: aid }
   } catch (error) {
@@ -573,6 +711,6 @@ export async function probe({ cookie = '', fetchImpl = fetch } = {}) {
 
 export const ENDPOINTS = { WEB, MOBILE }
 export default {
-  fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestion, fetchAnswer, fetchComments,
-  fetchChildComments, createComment, createAnswer, htmlToText, extractImages, probe, ENDPOINTS,
+  fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestionInvites, fetchQuestionRecommend, fetchQuestion, fetchAnswer, fetchComments,
+  fetchChildComments, createComment, createAnswer, answerPublishControl, htmlToText, extractImages, probe, ENDPOINTS,
 }

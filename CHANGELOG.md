@@ -1,3 +1,17 @@
+## 0.1.113 — 2026-11-11
+
+- 知乎「允许回答问题」：打开后刷知乎时额外抓邀请回答和作者相关问题推荐，并复用首页推荐里的
+  问题（`kind=question`）；三路去重，最多递 6 条，放在素材「可以回答的问题」一节。
+  回答关着时一个额外请求都不发；问题源不占「刷知乎」次数，也不进 `zhihu:` 刷站记录。
+- 回答发布按真机实测重写：
+  - 先 `GET api.zhihu.com/content/publish/control/v2?scene=answer&questionToken=…`，失败不发；
+  - 再 `POST www.zhihu.com/api/v4/content/publish`，body 用 `action:answer` + `data.hybrid.html`、
+    `extra_info`、`pc_business_params` 等实测字段；
+  - 从 `data.result`（JSON 字符串）里的 `publish.id` 取回答 id。
+- 评论/回复按实测补：正文 HTML、主楼 `reply_comment_id:"0"`、回复带 `reply_root_comment_id`。
+- 贴吧扫回复按登录账号名过滤她自己的回复。
+- 测试：问题源/回答控制与发布/评论参数/问题素材；总 1592 全绿。
+
 ## 0.1.112 — 2026-11-10
 
 - **知乎 / 贴吧可以说话，默认关**。她自己写，代码不代写。
