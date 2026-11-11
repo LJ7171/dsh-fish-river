@@ -226,6 +226,44 @@ test('楼中楼只回自己的评论下；关掉「有人回复时让她回一�
   })
 })
 
+test('回子评论时 reply_root_comment_id 是自己的主楼，reply_comment_id 是那条子评论', async () => {
+  resetZhihuWriteRisk()
+  try {
+    await withRoot(async (root) => {
+      const dk = dateKey()
+      await ready(root, { zhihu: { comment: { enabled: true, replyPerDay: 2 } } })
+      await meta(root, formatZhihuComment(dk, 'ans1', 'rootc', '我说过'))
+      const bodies = []
+      const fetchImpl = async (_url, opts = {}) => {
+        if (opts.body) bodies.push(JSON.parse(opts.body))
+        return { status: 200, text: async () => JSON.stringify({ id: `n${bodies.length}` }) }
+      }
+      const api = {
+        createComment,
+        async fetchChildComments(args) {
+          assert.equal(String(args.id), 'rootc')
+          return { ok: true, comments: [{ id: 'childc', text: '楼下' }] }
+        },
+      }
+      const child = await postZhihuReply({
+        root, api, cookie: '_xsrf=abc; z_c0=1', fetchImpl, answerId: 'ans1', parentId: 'childc', text: '回楼下', dateKey: dk,
+      })
+      assert.equal(child.ok, true, child.why)
+      assert.equal(bodies[0].reply_comment_id, 'childc')
+      assert.equal(bodies[0].reply_root_comment_id, 'rootc')
+
+      const own = await postZhihuReply({
+        root, api, cookie: '_xsrf=abc; z_c0=1', fetchImpl, answerId: 'ans1', parentId: 'rootc', text: '回自己这条', dateKey: dk,
+      })
+      assert.equal(own.ok, true, own.why)
+      assert.equal(bodies[1].reply_comment_id, 'rootc')
+      assert.equal(bodies[1].reply_root_comment_id, 'rootc')
+    })
+  } finally {
+    resetZhihuWriteRisk()
+  }
+})
+
 test('贴吧同样只回自己那一层，主人号也可以发', async () => {
   await withRoot(async (root) => {
     const dk = dateKey()
