@@ -930,3 +930,29 @@ test('buildPrompt：素材再长也截到上限，入站那句话和结尾说明
   assert.match(prompt, /这是要回的那句话/, '入站正文不能被截掉')
   assert.match(prompt, /回不回、说几句/, '结尾的“可以不说话”说明不能被截掉')
 })
+
+test('重要的人私聊写 seen:，近人和群不算「他来过」', async () => {
+  const h = await harness({
+    reply: '在。',
+    config: { im: { inboundSilenceMs: 0, ackSilence: false }, channels: { weixin: { enabled: true, closeIds: 'b' } } },
+    ownerIds: { weixin: 'a' },
+  })
+  const dm = (id, text) => ({
+    channel: 'weixin', kind: 'dm', conversationId: id, personId: id, personName: '甲',
+    text, images: [], mentionedSelf: false, at: 1,
+  })
+  const seenCount = async () => (await readEvents(h.root)).events.filter((e) => e.type === 'meta' && String(e.text).startsWith('seen:')).length
+  try {
+    await h.router.accept(dm('b', '近人说话'))
+    await soon()
+    assert.equal(await seenCount(), 0, '近人不是重要的人')
+    await h.router.accept(dm('a', '重要的人说话'))
+    await soon()
+    assert.ok((await seenCount()) >= 1, '重要的人私聊要写 seen:')
+    await h.router.accept({ ...dm('g', '群里'), kind: 'group', conversationId: 'g' })
+    await soon()
+    assert.equal(await seenCount(), 1, '群聊不算')
+  } finally {
+    await h.router.stop()
+  }
+})

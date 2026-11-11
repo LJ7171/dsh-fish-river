@@ -263,7 +263,7 @@ function questionItem(q, source) {
   const title = String(q?.title ?? q?.question?.title ?? '').trim()
   if (!id || !title) return null
   if (q?.is_deleted === true) return null
-  if (q?.has_answer === true) return null
+  if (q?.has_answer === true || q?.my_answer_url) return null
   if (q?.status?.is_close === true || q?.status?.is_locked === true) return null
   const rawUrl = String(q?.url ?? '').trim()
   const url = rawUrl.replace('https://api.zhihu.com/questions/', 'https://www.zhihu.com/question/')

@@ -85,7 +85,8 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fetchZhihuMaterial } from '../lib/zhihu.js'
-import { normalizeConfig } from '../lib/settings.js'
+import { normalizeConfig, DEFAULTS } from '../lib/settings.js'
+import { ZHIHU_DEFAULTS } from '../packages/dsh-fish-river-zhihu/config.js'
 
 test('刷知乎：开着回答才抓邀请/推荐，并把首页问题一起递给她', async () => {
   const root = await mkdtemp(join(tmpdir(), 'fish-zq-'))
@@ -117,4 +118,62 @@ test('刷知乎：开着回答才抓邀请/推荐，并把首页问题一起递�
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+
+test('素材全关、只开回答：仍然抓问题源', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-zq-only-'))
+  try {
+    const calls = []
+    const mod = {
+      readAuth: async () => ({ cookie: 'c' }),
+      fetchHot: async () => ({ ok: true, items: [] }),
+      fetchFollow: async () => ({ ok: true, items: [] }),
+      fetchHistory: async () => ({ ok: true, items: [] }),
+      fetchRecommend: async () => ({ ok: true, items: [] }),
+      fetchQuestionInvites: async () => { calls.push('invite'); return { ok: true, items: [{ id: 'qonly', title: '只回答也不该漏', source: 'invite' }] } },
+      fetchQuestionRecommend: async () => { calls.push('recommend'); return { ok: true, items: [] } },
+    }
+    const cfg = normalizeConfig({
+      zhihu: {
+        enabled: true, hot: { enabled: false }, follow: { enabled: false }, recommend: { enabled: false }, history: { enabled: false },
+        answer: { enabled: true, perDay: 1 },
+      },
+    })
+    const r = await fetchZhihuMaterial({ root, cfg, mod, now: new Date('2026-11-11T10:00:00+08:00') })
+    assert.match(r.text, /只回答也不该漏/)
+    assert.deepEqual(calls.sort(), ['invite', 'recommend'])
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test('问题候选当天只递一次；回答额度为 0 不抓', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-zq-dedupe-'))
+  try {
+    let calls = 0
+    const mod = {
+      readAuth: async () => ({ cookie: 'c' }),
+      fetchHot: async () => ({ ok: true, items: [] }),
+      fetchFollow: async () => ({ ok: true, items: [] }),
+      fetchHistory: async () => ({ ok: true, items: [] }),
+      fetchRecommend: async () => ({ ok: true, items: [] }),
+      fetchQuestionInvites: async () => { calls += 1; return { ok: true, items: [{ id: 'qdup', title: '同一个问题', source: 'invite' }] } },
+      fetchQuestionRecommend: async () => ({ ok: true, items: [] }),
+    }
+    const cfg = normalizeConfig({ zhihu: { enabled: true, answer: { enabled: true, perDay: 1 } } })
+    const now = new Date('2026-11-11T10:00:00+08:00')
+    const a = await fetchZhihuMaterial({ root, cfg, mod, now })
+    assert.match(a.text, /同一个问题/)
+    const b = await fetchZhihuMaterial({ root, cfg, mod, now: new Date('2026-11-11T11:00:00+08:00') })
+    assert.doesNotMatch(b.text, /同一个问题/)
+    assert.equal(calls, 2)
+
+    const zero = normalizeConfig({ zhihu: { enabled: true, answer: { enabled: true, perDay: 0 } } })
+    calls = 0
+    await fetchZhihuMaterial({ root, cfg: zero, mod, now: new Date('2026-11-11T12:00:00+08:00') })
+    assert.equal(calls, 0, '每天 0 条就不抓')
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test('主包 DEFAULTS.zhihu 和子包 ZHIHU_DEFAULTS 不漂移', () => {
+  assert.deepEqual(DEFAULTS.zhihu, ZHIHU_DEFAULTS)
 })

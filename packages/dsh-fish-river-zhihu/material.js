@@ -120,7 +120,9 @@ export async function fetchZhihuMaterial({ root, cfg, now = new Date(), fetchImp
   const followOn = z.follow?.enabled !== false
   const recOn = z.recommend?.enabled !== false
   const histOn = z.history?.enabled !== false
-  if (!hotOn && !followOn && !recOn && !histOn) return { ...EMPTY, why: 'nothing-selected' }
+  // 回答问题也算一种素材来源：素材全关、但允许回答且有额度时，仍要抓问题。
+  const answerOn = z.answer?.enabled === true && Number(z.answer?.perDay) > 0
+  if (!hotOn && !followOn && !recOn && !histOn && !answerOn) return { ...EMPTY, why: 'nothing-selected' }
 
   const paced = fetchImpl ?? h.pacedFetch()
   const seen = { ...(state.seen ?? {}) }
@@ -163,7 +165,7 @@ export async function fetchZhihuMaterial({ root, cfg, now = new Date(), fetchImp
   }
 
   const questions = []
-  if (z.answer?.enabled === true) {
+  if (answerOn) {
     try {
       const [inv, qrec] = await Promise.all([
         module.fetchQuestionInvites ? module.fetchQuestionInvites({ cookie: auth.cookie, limit: 20, fetchImpl: paced }).catch(() => null) : null,
@@ -174,7 +176,9 @@ export async function fetchZhihuMaterial({ root, cfg, now = new Date(), fetchImp
       for (const list of [inv?.items, qrec?.items, home]) {
         for (const q of list ?? []) {
           if (!q?.id || !q?.title) continue
-          if (questions.some((x) => x.id === q.id)) continue
+          const seenKey = `q:${dk}:${q.id}`
+          if (seen[seenKey] || questions.some((x) => x.id === q.id)) continue
+          seen[seenKey] = Date.now()
           questions.push({ id: String(q.id), title: String(q.title).trim(), source: q.source ?? 'recommend', url: q.url ?? '' })
           if (questions.length >= 6) break
         }
