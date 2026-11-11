@@ -1,0 +1,315 @@
+/**
+ * look.js —— `zhihu_look`：她自己决定看什么。
+ *
+ * 只读。不回显「还剩几次」。开关关着只说「现在看不了」。
+ * 点进去记 `zhihu-open:`，刷热榜 / 推荐记 `zhihu:`。前缀由宿主的动作表格式化，这里不另造。
+ */
+
+import { mkdir, readdir, stat, unlink, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { errorText, hostOf, localApi } from './runtime.js'
+
+const LIST_KINDS = ['all', 'hot', 'recommend', 'follow', 'history']
+const DETAIL_KINDS = ['question', 'answer', 'comments']
+const KINDS = [...LIST_KINDS, ...DETAIL_KINDS]
+const BROWSE_KINDS = new Set(['all', 'hot', 'recommend'])
+
+const MEDIA_DIR = 'zhihu-media'
+const IMG_MAX_DEFAULT = 2
+const IMG_MAX_BYTES = 8 * 1024 * 1024
+const IMG_TTL_MS = 7 * 86_400_000
+const IMG_KEEP = 30
+
+/** 链接 / 裸 id → { questionId, answerId, articleId, raw }。 */
+export function parseTarget(value) {
+  const s = String(value ?? '').trim()
+  if (!s) return {}
+  const out = {}
+  const q = /\/question\/(\d+)/.exec(s)
+  if (q) out.questionId = q[1]
+  const a = /\/answer\/(\d+)/.exec(s)
+  if (a) out.answerId = a[1]
+  const p = /(?:zhuanlan\.zhihu\.com\/p|\/p)\/(\d+)/.exec(s)
+  if (p) out.articleId = p[1]
+  if (!out.questionId && !out.answerId && !out.articleId && /^\d+$/.test(s)) out.raw = s
+  return out
+}
+
+function materialScene(config, host) {
+  return host.ownerLine('知乎', config?.zhihu?.owner)
+}
+
+function renderList(items, config, host) {
+  const groups = [
+    ['hot', '热榜'],
+    ['recommend', '首页推给你的'],
+    ['follow', '你关注的人在说'],
+    ['history', '重要的人最近看过的'],
+  ]
+  const out = []
+  for (const [kind, title] of groups) {
+    const list = items.filter((x) => x.kind === kind)
+    if (!list.length) continue
+    out.push(`### ${title}`)
+    for (const it of list) {
+      const who = it.author ? `${it.author}：` : ''
+      const heat = it.heat ? `（${it.heat}）` : ''
+      const link = it.url ? ` ${it.url}` : ''
+      out.push(`- ${who}${it.title}${heat}${link}`)
+    }
+    if (kind === 'history') out.push('（这一段是重要的人看的，不是你经历的。）')
+  }
+  if (!out.length) return ''
+  return [materialScene(config, host), ...out].join('\n')
+}
+
+function imagesCap(cfg) {
+  const n = Number(cfg?.zhihu?.images?.max)
+  return Number.isFinite(n) ? Math.max(1, Math.min(6, Math.round(n))) : IMG_MAX_DEFAULT
+}
+
+function imagesOn(cfg) {
+  return cfg?.zhihu?.images?.enabled !== false
+}
+
+async function sweep(root) {
+  try {
+    const dir = join(root, MEDIA_DIR)
+    const names = await readdir(dir).catch(() => [])
+    const rows = []
+    for (const name of names) {
+      const full = join(dir, name)
+      const st = await stat(full).catch(() => null)
+      if (!st) continue
+      if (Date.now() - st.mtimeMs > IMG_TTL_MS) await unlink(full).catch(() => {})
+      else rows.push({ full, mtime: st.mtimeMs })
+    }
+    rows.sort((a, b) => a.mtime - b.mtime)
+    for (const row of rows.slice(0, Math.max(0, rows.length - IMG_KEEP))) await unlink(row.full).catch(() => {})
+  } catch { /* 清理失败不影响这次阅读 */ }
+}
+
+/** 把正文里的图下载到本机。失败就少一张，不影响文字。 */
+export async function saveImages({ root, urls = [], tag = 'zhihu', fetchImpl = null, max = IMG_MAX_DEFAULT, host } = {}) {
+  const h = hostOf(host)
+  const doFetch = fetchImpl ?? h.pacedFetch()
+  const cap = Math.max(0, Math.min(6, Number(max) || 0))
+  const out = []
+  for (const [i, raw] of urls.slice(0, cap).entries()) {
+    try {
+      const url = h.fetchableImageUrl(raw)
+      if (!url) continue
+      const signal = typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(15000) : undefined
+      const res = await doFetch(url, { headers: { 'user-agent': 'Mozilla/5.0', referer: 'https://www.zhihu.com/' }, signal })
+      if (!res?.ok) continue
+      const buf = Buffer.from(await res.arrayBuffer())
+      if (!buf.length || buf.length > IMG_MAX_BYTES) continue
+      const ext = h.sniffImageExt(buf)
+      if (!ext) continue
+      const dir = join(root, MEDIA_DIR)
+      await mkdir(dir, { recursive: true, mode: 0o700 }).catch(() => {})
+      const safe = String(tag).replace(/[^0-9A-Za-z_-]/g, '').slice(0, 40) || 'zhihu'
+      const file = join(dir, `${safe}-${i}.${ext}`)
+      await writeFile(file, buf, { mode: 0o600 })
+      out.push(h.slashed(file))
+    } catch { /* 单张失败不影响其它 */ }
+  }
+  if (out.length) void sweep(root)
+  return out
+}
+
+function imageLines(paths, host) {
+  return paths.length ? ['', ...paths.map((p) => `（有图存在 ${host.slashed(p)}，想看就用 read_image。）`)] : []
+}
+
+async function noteAct(root, text, sessionId, host) {
+  const line = String(text ?? '')
+  if (!line) return
+  await host.recordAct(root, line, sessionId)
+}
+
+function renderQuestion(q, config, host) {
+  const out = [materialScene(config, host), `### 问题：${q.question.title || '（没读到标题）'}`]
+  if (q.question.answerCount) out.push(`（共 ${q.question.answerCount} 个回答，这里是最靠前的几条）`)
+  for (const a of q.answers) {
+    out.push('', `**${a.author || '匿名'}**（赞 ${a.votes} · 评论 ${a.comments}）`, a.text, a.url)
+  }
+  return out.join('\n')
+}
+
+function renderAnswer(a, config, host) {
+  const out = [materialScene(config, host), `### ${a.question.title || '一条回答'}`]
+  out.push(`**${a.author || '匿名'}**（赞 ${a.votes} · 评论 ${a.comments}）`, '', a.text)
+  if (a.url) out.push('', a.url)
+  return out.join('\n')
+}
+
+function renderComments(c, host) {
+  const scene = host.commentScene()
+  const out = [scene, `### 评论${c.total ? `（共 ${c.total} 条，这里按分数取前 ${c.comments.length} 条）` : ''}`]
+  for (const x of c.comments) {
+    out.push(`- ${x.author || '匿名'}（赞 ${x.likes}${x.replies ? ` · 回复 ${x.replies}` : ''}）：${x.text}`)
+  }
+  return out.join('\n')
+}
+
+export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', target = '', topN, orderBy = 'score', mod, fetchImpl, sessionId = '', host } = {}) {
+  const h = hostOf(host)
+  if (!cfg?.zhihu?.enabled) return { ok: false, text: '', picks: [], note: '现在看不了。' }
+  const module = mod ?? localApi()
+  const auth = await module.readAuth(root).catch(() => null)
+  if (!auth?.cookie) return { ok: false, text: '', picks: [], note: '现在看不了。' }
+
+  const n = Math.max(1, Math.min(20, Number(topN) || 0)) || null
+  const parsed = parseTarget(id || '')
+
+  try {
+    if (kind === 'question') {
+      const qid = parsed.questionId || parsed.raw || ''
+      if (!qid) return { ok: false, text: '', picks: [], note: '要给问题号，或者一条带 /question/ 的链接。' }
+      const r = await module.fetchQuestion({ cookie: auth.cookie, id: qid, limit: n ?? 5, fetchImpl })
+      if (!r.ok) return { ok: false, text: '', picks: [], note: r.why }
+      const cap = imagesCap(cfg)
+      const urls = imagesOn(cfg) ? (r.answers ?? []).flatMap((a) => a.images ?? []).slice(0, cap) : []
+      const pics = urls.length ? await saveImages({ root, urls, tag: `q-${qid}`, fetchImpl, max: cap, host: h }) : []
+      const text = [h.sanitize(renderQuestion(r, cfg, h)).text, ...imageLines(pics, h)].join('\n')
+      await noteAct(root, h.formatOpen(h.dateKey(), qid, r.question?.title), sessionId, h)
+      return { ok: true, text, picks: r.answers, note: '' }
+    }
+    if (kind === 'answer') {
+      const aid = parsed.answerId || parsed.raw || ''
+      if (!aid) return { ok: false, text: '', picks: [], note: '要给回答号，或者一条带 /answer/ 的链接。' }
+      const r = await module.fetchAnswer({ cookie: auth.cookie, id: aid, fetchImpl })
+      if (!r.ok) return { ok: false, text: '', picks: [], note: r.why }
+      const cap = imagesCap(cfg)
+      const urls = imagesOn(cfg) ? (r.answer.images ?? []).slice(0, cap) : []
+      const pics = urls.length ? await saveImages({ root, urls, tag: `a-${aid}`, fetchImpl, max: cap, host: h }) : []
+      const text = [h.sanitize(renderAnswer(r.answer, cfg, h)).text, ...imageLines(pics, h)].join('\n')
+      await noteAct(root, h.formatOpen(h.dateKey(), aid, r.answer?.question?.title || r.answer?.text, { question: r.answer?.question?.id }), sessionId, h)
+      return { ok: true, text, picks: [r.answer], note: '' }
+    }
+    if (kind === 'comments') {
+      const which = target === 'article' || parsed.articleId
+        ? 'article'
+        : target === 'question' || (parsed.questionId && !parsed.answerId)
+          ? 'question'
+          : 'answer'
+      const rid = which === 'article'
+        ? (parsed.articleId || parsed.raw || '')
+        : which === 'question'
+          ? (parsed.questionId || parsed.raw || '')
+          : (parsed.answerId || parsed.raw || '')
+      if (!rid) return { ok: false, text: '', picks: [], note: '要给讨论号，或者带 /answer/、/question/、/p/ 的链接。' }
+      const r = await module.fetchComments({ cookie: auth.cookie, target: which, id: rid, limit: n ?? 20, orderBy, fetchImpl })
+      if (!r.ok) return { ok: false, text: '', picks: [], note: r.why }
+      const cap = imagesCap(cfg)
+      const urls = imagesOn(cfg) ? (r.comments ?? []).flatMap((c) => c.images ?? []).slice(0, cap) : []
+      const pics = urls.length ? await saveImages({ root, urls, tag: `c-${rid}`, fetchImpl, max: cap, host: h }) : []
+      const text = [h.sanitize(renderComments(r, h)).text, ...imageLines(pics, h)].join('\n')
+      const questionOnAnswer = which === 'answer' ? (parsed.questionId || '') : ''
+      await noteAct(root, h.formatOpen(h.dateKey(), rid, '', questionOnAnswer && questionOnAnswer !== rid ? { question: questionOnAnswer } : {}), sessionId, h)
+      await h.recordVoice({
+        comments: r.comments,
+        ref: `zh:${which}:${rid}`,
+        root,
+        cfg,
+        sessionId,
+      })
+      return { ok: true, text, picks: r.comments, note: '' }
+    }
+
+    const items = []
+    const want = (k) => kind === 'all' || kind === k
+    const push = (k, raw) => {
+      for (const x of raw ?? []) {
+        items.push({
+          kind: k,
+          id: String(x?.id ?? ''),
+          title: String(x?.title ?? '').trim(),
+          author: String(x?.author ?? '').trim(),
+          heat: String(x?.heat ?? '').trim(),
+          url: String(x?.url ?? '').trim(),
+        })
+      }
+    }
+    if (want('hot')) push('hot', (await module.fetchHot({ cookie: auth.cookie, limit: n ?? 8, fetchImpl }).catch(() => ({ items: [] }))).items)
+    if (want('recommend')) push('recommend', (await module.fetchRecommend({ cookie: auth.cookie, limit: n ?? 6, fetchImpl }).catch(() => ({ items: [] }))).items)
+    if (want('follow')) push('follow', (await module.fetchFollow({ cookie: auth.cookie, limit: n ?? 8, fetchImpl }).catch(() => ({ items: [] }))).items)
+    if (want('history')) push('history', (await module.fetchHistory({ cookie: auth.cookie, limit: n ?? 10, fetchImpl }).catch(() => ({ items: [] }))).items)
+
+    const fresh = items.filter((x) => x.title)
+    if (!fresh.length) return { ok: false, text: '', picks: [], note: '这次没看到什么。' }
+    if (BROWSE_KINDS.has(kind)) await noteAct(root, h.formatBrowse(h.dateKey(), fresh), sessionId, h)
+    return { ok: true, text: renderList(fresh, cfg, h), picks: fresh, note: '' }
+  } catch (error) {
+    return { ok: false, text: '', picks: [], note: `这次没看到：${errorText(error).slice(0, 120)}` }
+  }
+}
+
+export function registerZhihuLook(ctx, deps = {}) {
+  const host = hostOf(deps.host)
+  const root = deps.root ?? host.rootDir()
+  const tenancy = { root, herDir: String(deps.tenant?.herDir ?? ''), tenant: deps.tenant?.tenant ?? { ok: true } }
+
+  return ctx.tools.register(
+    host.defineTool({
+      name: 'zhihu_look',
+      description:
+        '看知乎。列表：热榜 / 首页推荐 / 你关注的人在说什么 / 重要的人最近看过什么（kind=all 或那几个名字）。' +
+        '也可以点进去看一页：kind=question 看一个问题下面的回答，kind=answer 看一条回答的全文，' +
+        'kind=comments 看一条回答/文章/问题下面的评论；这时要带 id——给链接也行' +
+        '（比如 https://www.zhihu.com/question/123/answer/456）。回答和评论里的图会下载到本机并告诉你路径，用 read_image 看。只读，不会在账号上留下痕迹。',
+      parameters: {
+        type: 'object',
+        properties: {
+          kind: {
+            type: 'string',
+            enum: KINDS,
+            description: '看什么：all / hot / recommend / follow / history / question / answer / comments。默认 all。',
+          },
+          id: { type: 'string', description: '问题号、回答号，或者直接贴链接（question/answer/comments 时用）。' },
+          target: {
+            type: 'string',
+            enum: ['answer', 'article', 'question'],
+            description: 'comments 专用：这是谁的评论。不给就按链接里的推断（默认 answer）。',
+          },
+          orderBy: { type: 'string', enum: ['score', 'time'], description: 'comments 的排序：score（默认）或 time。' },
+          topN: { type: 'number', description: '最多几条（1–20，默认按各类自己的设置）。' },
+        },
+        additionalProperties: false,
+      },
+      output: {
+        schema: {
+          type: 'object',
+          properties: {
+            ok: { type: 'boolean' },
+            text: { type: 'string' },
+            note: { type: 'string' },
+          },
+          required: ['ok', 'text', 'note'],
+        },
+        render: (_args, out) => [{ type: 'text', text: out.ok ? out.text : `这次没看到：${out.note}` }],
+      },
+      async execute(args, exec) {
+        const who = host.guardWrite(tenancy, exec, 'zhihu_look')
+        if (!who.ok) return { ok: false, text: '', note: who.note }
+        const { config } = await host.loadConfig(root)
+        const kind = KINDS.includes(String(args?.kind ?? '')) ? String(args.kind) : 'all'
+        const r = await zhihuLookOnce({
+          root,
+          cfg: config,
+          kind,
+          id: args?.id,
+          target: args?.target,
+          topN: args?.topN,
+          orderBy: args?.orderBy,
+          sessionId: who.sessionId,
+          host,
+        })
+        return { ok: r.ok, text: r.text, note: r.note }
+      },
+    }),
+  )
+}
+
+export default { registerZhihuLook, zhihuLookOnce, parseTarget, saveImages }

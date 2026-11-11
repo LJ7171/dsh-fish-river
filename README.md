@@ -494,7 +494,8 @@ lib/
   album.js       相册台账（keep_image）
   meme.js        按画面上的词挑表情包
   subtitle.js    视频字幕读取
-  zhihu.js / zhihuLook.js / tieba.js / tiebaLook.js  知乎、贴吧只读素材与工具
+  zhihu.js / zhihuLook.js / zhihuComment.js / zhihuSpeak.js  知乎子包的加载与宿主注入（规则在 packages/dsh-fish-river-zhihu）
+  tieba.js / tiebaLook.js  贴吧素材与工具
   lookmeta.js    素材落盘时的 meta 记账
   pacing.js      所有平台共用的请求节奏
   commentpics.js / replybox.js   评论图落盘 / 回复暂存

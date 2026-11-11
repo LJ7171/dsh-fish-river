@@ -1,17 +1,25 @@
 {
   "name": "dsh-fish-river-zhihu",
-  "version": "0.1.0",
-  "description": "知乎素材，以及评论 / 楼中楼 / 写回答—— dsh-fish-river 的可选子包",
+  "version": "0.2.0",
+  "description": "知乎素材、点开、评论、楼中楼和写回答—— dsh-fish-river 的可选子包",
   "type": "module",
   "main": "index.js",
   "exports": {
     ".": "./index.js",
+    "./config.js": "./config.js",
     "./package.json": "./package.json"
   },
   "files": [
     "index.js",
     "api.js",
     "auth.js",
+    "config.js",
+    "runtime.js",
+    "state.js",
+    "material.js",
+    "look.js",
+    "comment.js",
+    "speak.js",
     "README.md"
   ],
   "keywords": [

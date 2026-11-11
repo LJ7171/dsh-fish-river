@@ -1,41 +1,67 @@
 /**
- * index.js —— 知乎子包的出口
+ * index.js —— 知乎子包的出口。
  *
- * 主包只认这几个函数；子包自己管「怎么登录、怎么请求、怎么解析」。
- * 这样知乎改接口 / 加签名时，改动都留在这个目录里。
+ * 主包只通过这里拿函数：登录、请求、解析、素材、点开、说话、工具注册、设置归一。
+ * 宿主政策由 bindHost 注进来，本包不 import 主包的 lib/。
  */
 
 export {
-  fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestion, fetchAnswer, fetchComments,
-  fetchChildComments, createComment, createAnswer, resetZhihuWriteRisk, htmlToText, extractImages, probe, ENDPOINTS,
+  fetchHot, fetchFollow, fetchHistory, fetchRecommend,
+  fetchQuestionInvites, fetchQuestionRecommend,
+  fetchQuestion, fetchAnswer, fetchComments, fetchChildComments,
+  createComment, createAnswer, answerPublishControl,
+  resetZhihuWriteRisk, htmlToText, extractImages, probe, ENDPOINTS,
 } from './api.js'
+
 export {
-  createQr,
-  pollQr,
-  saveCookie,
-  readAuth,
-  loadCookie,
-  clearAuth,
-  credentialPath,
+  createQr, pollQr, saveCookie, readAuth, loadCookie, clearAuth, credentialPath,
 } from './auth.js'
 
+export { ZHIHU_DEFAULTS, ZHIHU_FIELDS, ZHIHU_COPY, normalizeZhihu } from './config.js'
+export { statePath, readState, writeState, runsToday } from './state.js'
+export {
+  fetchMainBatch, fetchRecommendBatch, renderQuestions, renderMaterial,
+  fetchZhihuMaterial, gatherZhihu, zhihuStatus,
+} from './material.js'
+export { parseTarget, saveImages, zhihuLookOnce, registerZhihuLook } from './look.js'
+export {
+  MAX_COMMENT, MAX_ANSWER, REPLY_LOOKBACK_DAYS, MAX_SCAN_ROOTS,
+  opensToday, commentCountToday, replyCountToday, answerCountToday,
+  herComments, herCommentsRecent, seenReplies,
+  scanReplies, scanIfAwake, renderReplies, postComment, postReply, postAnswer,
+} from './comment.js'
+export { noteZhihuSpeak, zhihuSpeakOnce, registerZhihuSpeak } from './speak.js'
+export { bindHost } from './runtime.js'
+
 import {
-  fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestion, fetchAnswer, fetchComments,
-  fetchChildComments, createComment, createAnswer, resetZhihuWriteRisk, htmlToText, extractImages, probe,
+  fetchHot, fetchFollow, fetchHistory, fetchRecommend,
+  fetchQuestionInvites, fetchQuestionRecommend,
+  fetchQuestion, fetchAnswer, fetchComments, fetchChildComments,
+  createComment, createAnswer, answerPublishControl,
+  resetZhihuWriteRisk, htmlToText, extractImages, probe,
 } from './api.js'
 import { createQr, pollQr, saveCookie, readAuth, loadCookie, clearAuth, credentialPath } from './auth.js'
+import { normalizeZhihu } from './config.js'
+import { fetchZhihuMaterial, gatherZhihu, renderMaterial, renderQuestions } from './material.js'
+import { registerZhihuLook, zhihuLookOnce, parseTarget } from './look.js'
+import { postAnswer, postComment, postReply, scanIfAwake, renderReplies } from './comment.js'
+import { registerZhihuSpeak, zhihuSpeakOnce, noteZhihuSpeak } from './speak.js'
+import { bindHost } from './runtime.js'
 
 export default {
   fetchHot,
   fetchFollow,
   fetchHistory,
   fetchRecommend,
+  fetchQuestionInvites,
+  fetchQuestionRecommend,
   fetchQuestion,
   fetchAnswer,
   fetchComments,
   fetchChildComments,
   createComment,
   createAnswer,
+  answerPublishControl,
   resetZhihuWriteRisk,
   htmlToText,
   extractImages,
@@ -47,4 +73,21 @@ export default {
   loadCookie,
   clearAuth,
   credentialPath,
+  normalizeZhihu,
+  fetchZhihuMaterial,
+  gatherZhihu,
+  renderMaterial,
+  renderQuestions,
+  registerZhihuLook,
+  zhihuLookOnce,
+  parseTarget,
+  postAnswer,
+  postComment,
+  postReply,
+  scanIfAwake,
+  renderReplies,
+  registerZhihuSpeak,
+  zhihuSpeakOnce,
+  noteZhihuSpeak,
+  bindHost,
 }

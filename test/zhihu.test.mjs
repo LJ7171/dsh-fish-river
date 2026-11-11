@@ -188,6 +188,17 @@ test('loadZhihu：没装就返回 null', async () => {
   assert.equal(mod, null)
 })
 
+test('loadZhihu：装了的话领域入口在子包上，不在主包里重写', async () => {
+  const mod = await loadZhihu()
+  assert.equal(typeof mod.fetchQuestionInvites, 'function')
+  assert.equal(typeof mod.answerPublishControl, 'function')
+  assert.equal(typeof mod.normalizeZhihu, 'function')
+  assert.equal(typeof mod.registerZhihuLook, 'function')
+  assert.equal(typeof mod.registerZhihuSpeak, 'function')
+  assert.equal(typeof mod.postAnswer, 'function')
+  assert.equal(typeof mod.bindHost, 'function')
+})
+
 /* ---------------------------- 配置 ---------------------------- */
 
 test('默认配置：关着、配额按「次」进作息、推荐只是逛的内容之一', () => {
