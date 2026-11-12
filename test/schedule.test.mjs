@@ -17,7 +17,7 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 
-import { HER_TOOLS, SCHEDULE_TOOLS, toolSurfaceText } from '../lib/ops/restrict.js'
+import { HER_TOOLS, SCHEDULE_TOOLS, toolSurfaceText } from '../lib/ops/dev/restrict.js'
 import { SCHEDULE_BRIEF } from '../lib/mind/persona.js'
 import { classifyMessage } from '../lib/talk/turns.js'
 

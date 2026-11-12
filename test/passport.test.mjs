@@ -14,9 +14,9 @@ import {
   resolveOccasion, occasionLine, contextLinesFor, queueRank, nextQueueIndex,
   HOME_CONTEXT_LINES,
 } from '../lib/channels/passport.js'
-import { renderMaterial as renderZhihu } from '../lib/platforms/zhihu.js'
-import { renderMaterial as renderBili } from '../lib/platforms/browse.js'
-import { renderDouyin } from '../lib/platforms/douyinbrowse.js'
+import { renderMaterial as renderZhihu } from '../lib/platforms/zhihu/zhihu.js'
+import { renderMaterial as renderBili } from '../lib/platforms/bili/browse.js'
+import { renderDouyin } from '../lib/platforms/douyin/douyinbrowse.js'
 
 const cfg = () => normalizeConfig({ channels: { bili: { closeIds: '200' } } })
 

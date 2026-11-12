@@ -14,8 +14,8 @@ import {
   SIGN_SECRET, bdussFromBody, cookieFromSetCookie, parseJsonp, pickCookie, postsFrom,
   extractPostImages, renderMaterial, signParams, threadsFrom, fetchTiebaMaterial, createQr, pollQr, readAuth,
   savePastedCookie, tiebaStatus,
-} from '../lib/platforms/tieba.js'
-import { registerTiebaLook, tiebaLookOnce, parseThreadId } from '../lib/platforms/tiebaLook.js'
+} from '../lib/platforms/tieba/tieba.js'
+import { registerTiebaLook, tiebaLookOnce, parseThreadId } from '../lib/platforms/tieba/tiebaLook.js'
 
 const FEED = {
   page_data: {

@@ -34,7 +34,7 @@ import {
 } from '../lib/talk/proactive.js'
 import { dateKey } from '../lib/core/settings.js'
 import { readEvents } from '../lib/core/store.js'
-import { HER_TOOLS } from '../lib/ops/restrict.js'
+import { HER_TOOLS } from '../lib/ops/dev/restrict.js'
 
 async function withRoot(fn) {
   const root = mkdtempSync(join(tmpdir(), 'fish-proactive-'))

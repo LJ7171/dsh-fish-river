@@ -12,7 +12,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { currentOffer, recordGrant } from '../lib/mind/grant.js'
+import { currentOffer, recordGrant } from '../lib/mind/growth/grant.js'
 import { readEvents } from '../lib/core/store.js'
 
 /**

@@ -16,11 +16,12 @@ import { join } from 'node:path'
 
 import { registerCapture } from '../lib/mind/capture.js'
 import { registerWriteDiary } from '../lib/mind/herdiary.js'
-import { readEvents, paths, writeConfig, rebuild, readState } from '../lib/core/store.js'
+import { readEvents, paths, writeConfig, readState } from '../lib/core/store.js'
+import { rebuild } from '../lib/mind/rebuild.js'
 import { normalizeConfig, dateKey } from '../lib/core/settings.js'
 import { deriveSelf } from '../lib/mind/derive.js'
 import { assess, detectAbsence, lastSeenAt, lastAbsenceEvent } from '../lib/mind/absence.js'
-import { withWake, enterWake, leaveWake, inWake } from '../lib/life/wakewin.js'
+import { withWake, enterWake, leaveWake, inWake } from '../lib/life/schedule/wakewin.js'
 
 const DAY = 86_400_000
 

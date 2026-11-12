@@ -20,9 +20,9 @@ import { join } from 'node:path'
 import {
   avoidHit, scoreOf, rankVideos, fmtCount, absorb, renderItem, renderMaterial,
   seenBvids, browseCountToday, itemsFromEvents, recordBrowse, candidates, gather,
-} from '../lib/platforms/browse.js'
+} from '../lib/platforms/bili/browse.js'
 import { normalizeConfig, dateKey } from '../lib/core/settings.js'
-import { lookOnce } from '../lib/platforms/look.js'
+import { lookOnce } from '../lib/platforms/bili/look.js'
 import { readEvents, appendEvent } from '../lib/core/store.js'
 import { buildReport, flushReport, quotesOf, listReports } from '../lib/life/report.js'
 

@@ -13,7 +13,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { HER_TOOLS, currentToolSurface, isHerAgent, knownToolNames, ownLayerNames, registerToolRestrict, rememberFromView, rememberKnownTools, readRestrictState, describeRestrict, toolSurfaceText, toolSurfaceFor, outsideSurfaceText, visibleToolsOf } from '../lib/ops/restrict.js'
+import { HER_TOOLS, currentToolSurface, isHerAgent, knownToolNames, ownLayerNames, registerToolRestrict, rememberFromView, rememberKnownTools, readRestrictState, describeRestrict, toolSurfaceText, toolSurfaceFor, outsideSurfaceText, visibleToolsOf } from '../lib/ops/dev/restrict.js'
 
 /** 一个够用的假插件 ctx：能 on('agent/created')，也能被我们主动触发。 */
 function fakeCtx() {

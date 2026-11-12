@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { watchedToday, registerWatch } from '../lib/platforms/watch.js'
+import { watchedToday, registerWatch } from '../lib/platforms/bili/watch.js'
 import { logFile } from '../lib/core/log.js'
 import { appendEvent } from '../lib/core/store.js'
 import { updateConfig } from '../lib/core/settings.js'

@@ -21,14 +21,14 @@ import { keepImage, registerKeepImage, readAlbum, browseImageKeepAllowed, ALBUM_
 import { sweepMedia } from '../lib/core/media.js'
 import { normalizeConfig, updateConfig } from '../lib/core/settings.js'
 import { readEvents } from '../lib/core/store.js'
-import { commentImageUrls } from '../lib/platforms/bili.js'
-import { absorb, renderItem } from '../lib/platforms/browse.js'
-import { lookOnce } from '../lib/platforms/look.js'
-import { landCommentImages } from '../lib/platforms/commentpics.js'
-import { renderReplies } from '../lib/platforms/comment.js'
+import { commentImageUrls } from '../lib/platforms/bili/bili.js'
+import { absorb, renderItem } from '../lib/platforms/bili/browse.js'
+import { lookOnce } from '../lib/platforms/bili/look.js'
+import { landCommentImages } from '../lib/platforms/bili/commentpics.js'
+import { renderReplies } from '../lib/platforms/bili/comment.js'
 import { fetchComments } from '../packages/dsh-fish-river-zhihu/api.js'
-import { zhihuLookOnce } from '../lib/platforms/zhihuLook.js'
-import { HER_TOOLS } from '../lib/ops/restrict.js'
+import { zhihuLookOnce } from '../lib/platforms/zhihu/zhihuLook.js'
+import { HER_TOOLS } from '../lib/ops/dev/restrict.js'
 
 const PNG_B64 =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
@@ -195,7 +195,7 @@ test('B 站评论图：点开才下载；深读本身不落盘', async () => {
 })
 
 test('她选中的 B 站浏览会下评论图（看图开关控制）', () => {
-  const browse = readFileSync(new URL('../lib/platforms/browse.js', import.meta.url), 'utf8')
+  const browse = readFileSync(new URL('../lib/platforms/bili/browse.js', import.meta.url), 'utf8')
   assert.match(browse, /landCommentImages/)
   assert.ok(browse.includes('browse?.images?.enabled'), '下载受 browse.images 控制')
 })

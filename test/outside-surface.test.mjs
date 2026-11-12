@@ -23,7 +23,7 @@ import os from 'node:os'
 import { join } from 'node:path'
 
 import { attachIdentity, IDENTITY_SECTION, TOOLS_SECTION } from '../lib/mind/identity.js'
-import { registerToolRestrict, currentToolSurface } from '../lib/ops/restrict.js'
+import { registerToolRestrict, currentToolSurface } from '../lib/ops/dev/restrict.js'
 import { resetIdentityCache } from '../lib/mind/identity.js'
 
 const tmp = () => fs.mkdtempSync(join(os.tmpdir(), 'fish-outside-'))

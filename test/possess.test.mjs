@@ -18,8 +18,8 @@ import {
   releasePossession,
   PERSONA_PREFIX_SECTION,
   POSSESS_SECTION,
-} from '../lib/life/possess.js'
-import { readPossessions, startPossession, endPossession } from '../lib/life/outing.js'
+} from '../lib/life/outing/possess.js'
+import { readPossessions, startPossession, endPossession } from '../lib/life/outing/outing.js'
 
 function tmpRoot() {
   return mkdtempSync(join(tmpdir(), 'dsh-fish-possess-'))

@@ -14,7 +14,7 @@ import { personaLine, HARD_BANS } from '../lib/mind/persona.js'
 import { deriveSelf } from '../lib/mind/derive.js'
 import {
   assess, offerDueDay, pendingOffer, offerHistory, activeGrants, grantableRules, EVIDENCE,
-} from '../lib/mind/unlock.js'
+} from '../lib/mind/growth/unlock.js'
 
 const NOW = Date.parse('2026-10-24T12:00:00+08:00')
 

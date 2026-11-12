@@ -12,7 +12,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { createClient, resetRisk } from '../lib/platforms/bili.js'
+import { createClient, resetRisk } from '../lib/platforms/bili/bili.js'
 
 const SPI = { code: 0, data: { b_3: 'BUVID3-TEST', b_4: 'BUVID4-TEST' } }
 const VIEW = { code: 0, data: { bvid: 'BV1xx411c7mD', aid: 1, cid: 2, title: 't', owner: { name: 'up' } } }

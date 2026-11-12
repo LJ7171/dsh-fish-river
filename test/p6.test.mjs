@@ -14,10 +14,10 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { videoUrl, historyFromEvents, renderWatchList } from '../lib/life/history.js'
-import { riskState, noteRisk, clearRisk, browsePlan, STRIKES_MIN } from '../lib/platforms/risk.js'
-import { runChecks, peersOnMachine } from '../lib/ops/selfcheck.js'
-import { lookBeforeWake } from '../lib/life/scheduler.js'
-import { FISH_TOOLS } from '../lib/ops/restrict.js'
+import { riskState, noteRisk, clearRisk, browsePlan, STRIKES_MIN } from '../lib/platforms/bili/risk.js'
+import { runChecks, peersOnMachine } from '../lib/ops/dev/selfcheck.js'
+import { lookBeforeWake } from '../lib/life/schedule/scheduler.js'
+import { FISH_TOOLS } from '../lib/ops/dev/restrict.js'
 
 const M = (text) => ({ type: 'meta', text })
 

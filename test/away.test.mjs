@@ -7,7 +7,7 @@ import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { attachIdentity, attachAwayGuard, awayBlockedPaths, flatPath, detachOutside, mountedCount } from '../lib/mind/identity.js'
-import { startOuting, endOuting, readOutings } from '../lib/life/outing.js'
+import { startOuting, endOuting, readOutings } from '../lib/life/outing/outing.js'
 import { registerIdentity } from '../lib/mind/identity.js'
 
 const BS = String.fromCharCode(92)

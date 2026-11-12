@@ -14,9 +14,9 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { lookBeforeWake } from '../lib/life/scheduler.js'
+import { lookBeforeWake } from '../lib/life/schedule/scheduler.js'
 import { normalizeConfig } from '../lib/core/settings.js'
-import { devMode } from '../lib/ops/devmode.js'
+import { devMode } from '../lib/ops/dev/devmode.js'
 
 const cleanup = async (root) => rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
 

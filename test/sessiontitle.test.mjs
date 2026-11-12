@@ -63,6 +63,6 @@ test('请神下拉的标签不再回退到会话 id 尾巴', () => {
   assert.ok(observe.includes("from '../mind/sessiontitle.js'"), '服务端要复用同一个取名函数')
   assert.ok(observe.includes('titleOfAgent(ctx, a)'), '/possession 返回的名字来自 session/title')
 
-  const possess = readFileSync(new URL('../lib/life/possess.js', import.meta.url), 'utf8')
+  const possess = readFileSync(new URL('../lib/life/outing/possess.js', import.meta.url), 'utf8')
   assert.ok(possess.includes('titleOfAgent(ctx, agent)'), '请神台账里也存真名字')
 })

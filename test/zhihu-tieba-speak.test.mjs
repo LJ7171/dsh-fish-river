@@ -10,7 +10,7 @@ import { join } from 'node:path'
 
 import { normalizeConfig, dateKey } from '../lib/core/settings.js'
 import { appendEvent, readEvents, writeConfig } from '../lib/core/store.js'
-import { sleepPath } from '../lib/life/sleep.js'
+import { sleepPath } from '../lib/life/schedule/sleep.js'
 import {
   formatTiebaForum,
   formatTiebaThread,
@@ -18,15 +18,15 @@ import {
   formatZhihuOpen,
   parseAct,
 } from '../lib/core/acts.js'
-import { postAnswer, postComment as postZhihuComment, postReply as postZhihuReply, scanIfAwake as scanZhihuIfAwake, renderReplies as renderZhihuReplies } from '../lib/platforms/zhihuComment.js'
-import { postComment as postTiebaComment, postReply as postTiebaReply, scanIfAwake as scanTiebaIfAwake, renderReplies as renderTiebaReplies } from '../lib/platforms/tiebaComment.js'
-import { zhihuSpeakOnce, registerZhihuSpeak, noteZhihuSpeak } from '../lib/platforms/zhihuSpeak.js'
-import { tiebaSpeakOnce, registerTiebaSpeak, noteTiebaSpeak } from '../lib/platforms/tiebaSpeak.js'
+import { postAnswer, postComment as postZhihuComment, postReply as postZhihuReply, scanIfAwake as scanZhihuIfAwake, renderReplies as renderZhihuReplies } from '../lib/platforms/zhihu/zhihuComment.js'
+import { postComment as postTiebaComment, postReply as postTiebaReply, scanIfAwake as scanTiebaIfAwake, renderReplies as renderTiebaReplies } from '../lib/platforms/tieba/tiebaComment.js'
+import { zhihuSpeakOnce, registerZhihuSpeak, noteZhihuSpeak } from '../lib/platforms/zhihu/zhihuSpeak.js'
+import { tiebaSpeakOnce, registerTiebaSpeak, noteTiebaSpeak } from '../lib/platforms/tieba/tiebaSpeak.js'
 import { renderSelfDoc } from '../lib/mind/selfdoc.js'
 import { modelOf } from '../lib/mind/derive.js'
 import { scanDue } from '../lib/life/replyScan.js'
-import { resetSpeakRisk } from '../lib/platforms/speakRisk.js'
-import { addThreadPost, floorRepliesFrom } from '../lib/platforms/tieba.js'
+import { resetSpeakRisk } from '../lib/platforms/common/speakRisk.js'
+import { addThreadPost, floorRepliesFrom } from '../lib/platforms/tieba/tieba.js'
 import { createComment, fetchChildComments, resetZhihuWriteRisk } from '../packages/dsh-fish-river-zhihu/api.js'
 
 async function withRoot(fn) {
@@ -372,7 +372,7 @@ test('扫回复不看掷骰；睡着不打请求；递给她时写清是谁的�
     const hers = renderTiebaReplies([{ rpid: '2', tid: 't', user: '路人', text: '也说了' }], 'her')
     assert.match(hers, /她自己的贴吧号/)
   })
-  const src = await readFile(new URL('../lib/life/scheduler.js', import.meta.url), 'utf8')
+  const src = await readFile(new URL('../lib/life/schedule/scheduler.js', import.meta.url), 'utf8')
   const body = src.slice(src.indexOf('async function runOutingChoice'), src.indexOf('出门路线只用模块级'))
   assert.equal(body.includes('scanZhihuIfAwake'), false)
   assert.equal(body.includes('scanTiebaIfAwake'), false)

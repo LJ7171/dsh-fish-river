@@ -23,7 +23,7 @@ import {
   restoreBackup,
   backupFileName,
   quarantineDirFor,
-} from '../lib/ops/backup.js'
+} from '../lib/ops/maintenance/backup.js'
 import { readEvents, appendEvent } from '../lib/core/store.js'
 import { validateEvent, EVENT_SCHEMA_VERSION } from '../lib/core/schema.js'
 

@@ -22,11 +22,11 @@ import {
   targetsToday, commentCountToday, replyCountToday, herComments, herCommentsRecent,
   seenReplies, scanReplies, renderReplies, postComment, postReply,
   REPLY_LOOKBACK_DAYS, MAX_SCAN_ROOTS,
-} from '../lib/platforms/comment.js'
-import { speakOnce, registerSpeak, noteSpeakEnabled } from '../lib/platforms/speak.js'
+} from '../lib/platforms/bili/comment.js'
+import { speakOnce, registerSpeak, noteSpeakEnabled } from '../lib/platforms/bili/speak.js'
 import { normalizeConfig, dateKey } from '../lib/core/settings.js'
 import { readEvents, appendEvent, paths, writeConfig } from '../lib/core/store.js'
-import { describeState, resetAll, backupDirFor } from '../lib/ops/reset.js'
+import { describeState, resetAll, backupDirFor } from '../lib/ops/maintenance/reset.js'
 
 async function withRoot(fn) {
   const root = await mkdtemp(join(tmpdir(), 'fish-p4-'))

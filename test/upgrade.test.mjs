@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import { checkUpgrade, compareVersion, fileDepDir, profileDirs, runningPkgFile } from '../lib/ops/upgrade.js'
+import { checkUpgrade, compareVersion, fileDepDir, profileDirs, runningPkgFile } from '../lib/ops/update/upgrade.js'
 
 async function sandbox() {
   const dir = await mkdtemp(join(tmpdir(), 'fish-upg-'))

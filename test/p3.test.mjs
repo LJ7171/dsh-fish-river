@@ -21,7 +21,7 @@ import { appendEvent, readEvents, readDaily, paths } from '../lib/core/store.js'
 import { buildInbox, readInbox, markRead, writeInboxFile, newHerEventsSince } from '../lib/house/inbox.js'
 import { sayToHer } from '../lib/talk/say.js'
 import { leaveLetter } from '../lib/house/letter.js'
-import { enterWake, leaveWake } from '../lib/life/wakewin.js'
+import { enterWake, leaveWake } from '../lib/life/schedule/wakewin.js'
 
 async function tmpRoot() {
   return mkdtemp(join(tmpdir(), 'fish-p3-'))

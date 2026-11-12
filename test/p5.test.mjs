@@ -19,9 +19,9 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 
 import { normalizeConfig, inWindow, DEFAULTS } from '../lib/core/settings.js'
-import { lookBeforeWake } from '../lib/life/scheduler.js'
+import { lookBeforeWake } from '../lib/life/schedule/scheduler.js'
 import { registerObserve } from '../lib/ui/observe.js'
-import { HER_TOOLS, rememberFromView } from '../lib/ops/restrict.js'
+import { HER_TOOLS, rememberFromView } from '../lib/ops/dev/restrict.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const CLIENT = join(HERE, '..', 'lib', 'client.js')

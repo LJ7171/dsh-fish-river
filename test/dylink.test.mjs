@@ -16,7 +16,7 @@ import {
   findDouyinLinks,
   normalizeAweme,
   resolveAwemeId,
-} from '../lib/platforms/dylink.js'
+} from '../lib/platforms/douyin/dylink.js'
 
 const DETAIL = {
   aweme_detail: {
@@ -137,7 +137,7 @@ test('抽帧拼图有上限：留最新的 20 张，残留视频顺手清掉', a
   const { mkdtemp, writeFile, readdir, utimes } = await import('node:fs/promises')
   const os = await import('node:os')
   const pathMod = await import('node:path')
-  const { pruneMedia } = await import('../lib/platforms/dylink.js')
+  const { pruneMedia } = await import('../lib/platforms/douyin/dylink.js')
   const dir = await mkdtemp(pathMod.join(os.tmpdir(), 'dyprune-'))
   for (let i = 0; i < 25; i++) {
     const f = pathMod.join(dir, `dy-sheet-${i}.png`)
@@ -163,7 +163,7 @@ test('抽帧拼图有上限：留最新的 20 张，残留视频顺手清掉', a
 
 test('下视频要带 Referer：抖音 CDN 不带就是 403', async () => {
   const os = await import('node:os')
-  const { framesOf } = await import('../lib/platforms/dylink.js')
+  const { framesOf } = await import('../lib/platforms/douyin/dylink.js')
   let seen = null
   const fetchImpl = async (url, opts) => { seen = opts?.headers ?? {}; return { ok: false, status: 403 } }
   const r = await framesOf({ id: '1', playUrl: 'https://v26-web.douyinvod.com/x.mp4', duration: 10 }, { root: os.tmpdir(), fetchImpl })

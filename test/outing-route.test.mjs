@@ -20,7 +20,7 @@ import { join } from 'node:path'
 import { Readable } from 'node:stream'
 
 import { registerObserve } from '../lib/ui/observe.js'
-import { snapshotEvents, startOuting, readOutings } from '../lib/life/outing.js'
+import { snapshotEvents, startOuting, readOutings } from '../lib/life/outing/outing.js'
 
 function harness(root, { agents = {} } = {}) {
   const routes = new Map()

@@ -1,3 +1,18 @@
+## 0.1.118 — 2026-11-12
+
+- 目录整理第二层：
+  - `platforms/` 按平台分 `bili/`、`zhihu/`、`tieba/`、`douyin/`、`common/`；
+  - 宿主门面移到 `host/platformHost.js`；
+  - `life/` 拆出 `schedule/`、`outing/`、`social/`；
+  - `mind/` 拆出 `growth/`；
+  - `ops/` 拆出 `maintenance/`、`update/`、`dev/`。
+- 修 `core` 反向依赖：
+  - `maintenance`、`refuse`、`cookie` 解析、知乎配置读入、确认短句常量移入/收口到 `core`；
+  - `settings` 用 `onConfigLoaded` 回调注入 B 站节奏，不再 import 平台；
+  - `store.rebuild` 移到 `mind/rebuild.js`，store 不再 import derive。
+- 新增 `test/layout-paths.test.mjs`：守平台目录、子包 fallback、静态资源路径和 core 分层。
+- 测试：1607 全绿。
+
 ## 0.1.117 — 2026-11-11
 
 - 纯目录整理：主包 `lib/` 根上的文件按领域收进子目录，只改路径和 import，不改行为。
@@ -25,7 +40,7 @@
 ## 0.1.115 — 2026-11-11
 
 - 知乎领域逻辑从主包挪进 `packages/dsh-fish-river-zhihu`：素材、点开、评论 / 楼中楼 / 写回答、扫回复、`zhihu_look` / `zhihu_speak`，以及这一组设置的默认值、夹紧和文案。
-  主包只留加载（已安装的包，否则仓库里这一份）和宿主门面 `lib/platformHost.js`：醒着没有、出站筛、社会层、记动作、读事件、这个号是谁的、作息配额。
+  主包只留加载（已安装的包，否则仓库里这一份）和宿主门面 `lib/host/platformHost.js`：醒着没有、出站筛、社会层、记动作、读事件、这个号是谁的、作息配额。
   子包不 import `lib/`。事件前缀不变。设置页仍由 `lib/client.js` 画。
   贴吧和 B 站没动。没有新功能。
 - 子包出口补上邀请回答、问题推荐和回答发布控制（`api.js` 里已有，`index.js` 之前没导出）。

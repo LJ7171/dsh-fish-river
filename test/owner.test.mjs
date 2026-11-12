@@ -20,7 +20,7 @@ import { looksLikeLeak, screenOutgoing } from '../lib/core/guard.js'
 import { parseCookieInput, mentionPrefix, publicOwner, saveOwner, saveAccount } from '../lib/core/owner.js'
 import { readOwner, appendEvent, writeConfig } from '../lib/core/store.js'
 import { registerObserve } from '../lib/ui/observe.js'
-import { loginMid } from '../lib/platforms/comment.js'
+import { loginMid } from '../lib/platforms/bili/comment.js'
 import { normalizeConfig } from '../lib/core/settings.js'
 import { PRIVATE_REDACTED } from '../lib/core/privacy.js'
 

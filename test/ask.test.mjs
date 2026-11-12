@@ -29,7 +29,7 @@ import { dateKey, loadConfig } from '../lib/core/settings.js'
 import { readConfig, readEvents } from '../lib/core/store.js'
 import { validateEvent } from '../lib/core/schema.js'
 import { registerObserve } from '../lib/ui/observe.js'
-import { HER_TOOLS, currentToolSurface } from '../lib/ops/restrict.js'
+import { HER_TOOLS, currentToolSurface } from '../lib/ops/dev/restrict.js'
 import { ASK_BRIEF } from '../lib/mind/persona.js'
 
 async function withRoot(fn) {

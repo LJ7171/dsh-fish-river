@@ -20,7 +20,7 @@ import { Readable } from 'node:stream'
 
 import { registerObserve } from '../lib/ui/observe.js'
 import { attachIdentity } from '../lib/mind/identity.js'
-import { readOutings, readPossessions, snapshotEvents, startOuting, endOuting, startPossession } from '../lib/life/outing.js'
+import { readOutings, readPossessions, snapshotEvents, startOuting, endOuting, startPossession } from '../lib/life/outing/outing.js'
 
 function fakeAgent(id, cwd) {
   const sections = []

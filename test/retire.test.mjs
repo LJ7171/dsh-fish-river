@@ -17,7 +17,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { retireHomeSessions, readHomeRecord } from '../lib/ops/retire.js'
+import { retireHomeSessions, readHomeRecord } from '../lib/ops/maintenance/retire.js'
 
 async function tmpRoot() {
   return mkdtemp(join(tmpdir(), 'fish-retire-'))

@@ -15,7 +15,7 @@ import { mkdtemp, mkdir, writeFile, readFile, readdir, stat, rm } from 'node:fs/
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
 
-import { planMove, moveRoot, moveStatus } from '../lib/ops/move.js'
+import { planMove, moveRoot, moveStatus } from '../lib/ops/maintenance/move.js'
 import { readLocationSync, invalidateLocation, locationFile, defaultRoot } from '../lib/core/locate.js'
 
 async function withEnv(fn) {

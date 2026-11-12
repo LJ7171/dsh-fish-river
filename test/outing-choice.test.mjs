@@ -12,13 +12,13 @@ import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { WAKE_TRIGGER, OUTING_TRIGGER, wakeTriggerFor } from '../lib/life/wakeconst.js'
-import { registerChooseOuting, setOutingExecutor, resetOutingForTests } from '../lib/life/outingChoice.js'
-import { setWakeTurn, resetWakeTurnForTests } from '../lib/life/wakeTurn.js'
-import { startScheduler, wakeNow } from '../lib/life/scheduler.js'
+import { WAKE_TRIGGER, OUTING_TRIGGER, wakeTriggerFor } from '../lib/life/schedule/wakeconst.js'
+import { registerChooseOuting, setOutingExecutor, resetOutingForTests } from '../lib/life/outing/outingChoice.js'
+import { setWakeTurn, resetWakeTurnForTests } from '../lib/life/schedule/wakeTurn.js'
+import { startScheduler, wakeNow } from '../lib/life/schedule/scheduler.js'
 import { normalizeConfig } from '../lib/core/settings.js'
 import { writeConfig, readEvents } from '../lib/core/store.js'
-import { writeSleep, readSleep, blankState } from '../lib/life/sleep.js'
+import { writeSleep, readSleep, blankState } from '../lib/life/schedule/sleep.js'
 
 const pad = (n) => String((n + 24) % 24).padStart(2, '0')
 const now = new Date()

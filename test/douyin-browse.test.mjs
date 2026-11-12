@@ -18,7 +18,7 @@ import {
   recordDouyinBrowse,
   gatherDouyin,
   loadDouyin,
-} from '../lib/platforms/douyinbrowse.js'
+} from '../lib/platforms/douyin/douyinbrowse.js'
 import { appendEvent, readEvents } from '../lib/core/store.js'
 
 async function tmpRoot() {

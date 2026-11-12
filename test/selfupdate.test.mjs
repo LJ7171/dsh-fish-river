@@ -33,7 +33,7 @@ import {
   runtimeBins,
   profileDirOf,
   createSelfUpdater,
-} from '../lib/ops/selfupdate.js'
+} from '../lib/ops/update/selfupdate.js'
 import { registerObserve } from '../lib/ui/observe.js'
 
 // ---------------------------------------------------------------- tar 工具

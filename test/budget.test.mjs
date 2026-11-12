@@ -41,8 +41,8 @@ test('配置层：chat.replyChars 有夹值，ui.ownerHintDismissed 布尔化', 
 })
 
 test('generator：唤醒消息按配置带上预算', () => {
-  const src = SRC('../lib/mind/generator.js')
-  assert.ok(src.includes("import { lengthBudget } from '../core/budget.js'"))
+  const src = SRC('../lib/mind/growth/generator.js')
+  assert.ok(src.includes("import { lengthBudget } from '../../core/budget.js'"))
   assert.ok(src.includes('budget: cfg?.chat?.replyChars'), 'pick 要把预算传进 safePrompt')
   assert.ok(src.includes('lengthBudget(ctx.budget)'), 'safePrompt 要自己判断有没有预算')
 })

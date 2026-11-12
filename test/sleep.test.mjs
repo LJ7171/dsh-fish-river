@@ -12,15 +12,15 @@ import { join } from 'node:path'
 
 import { normalizeConfig } from '../lib/core/settings.js'
 import { writeConfig } from '../lib/core/store.js'
-import { startScheduler } from '../lib/life/scheduler.js'
-import { postComment, scanIfAwake } from '../lib/platforms/comment.js'
+import { startScheduler } from '../lib/life/schedule/scheduler.js'
+import { postComment, scanIfAwake } from '../lib/platforms/bili/comment.js'
 import {
   advance, armRoll, blankState, diceOpen, dueRolls, markAct, markBlocked, rollSegment,
   inActiveWindow, nextActiveStart, noteWeixin, readDailySpent, readSleep, sleepEnabled, writeSleep,
-} from '../lib/life/sleep.js'
+} from '../lib/life/schedule/sleep.js'
 import { appendEvent } from '../lib/core/store.js'
 import { dateKey } from '../lib/core/settings.js'
-import { writeState as writeZhihuState } from '../lib/platforms/zhihu.js'
+import { writeState as writeZhihuState } from '../lib/platforms/zhihu/zhihu.js'
 
 const at = (y, mo, d, h, mi = 0) => new Date(y, mo - 1, d, h, mi, 0, 0).getTime()
 const cfg = normalizeConfig({

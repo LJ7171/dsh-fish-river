@@ -22,7 +22,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { dirname } from 'node:path'
 
-import { runChecks } from '../lib/ops/selfcheck.js'
+import { runChecks } from '../lib/ops/dev/selfcheck.js'
 import { writeOwner } from '../lib/core/store.js'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -96,14 +96,14 @@ test('真的没内容时，仍然报「有响应但没有内容」', async () =>
 })
 
 test('源码守门：三处 readOwner 都必须 await（漏了就是上面那两条假红）', async () => {
-  const sc = await readFile(join(ROOT, 'lib', 'ops', 'selfcheck.js'), 'utf8')
+  const sc = await readFile(join(ROOT, 'lib', 'ops', 'dev', 'selfcheck.js'), 'utf8')
   assert.ok(sc.includes('const ow = await readOwner(root)'), '自检里读 owner 要 await')
 
   const ob = await readFile(join(ROOT, 'lib', 'ui', 'observe.js'), 'utf8')
   assert.ok(ob.includes('(await readOwner(root))?.cookie'), '/selfcheck 建 client 时要用真 cookie')
   assert.ok(!/cookie: readOwner\(root\)\?\.cookie/.test(ob), '不许留下没 await 的旧写法')
 
-  const vd = await readFile(join(ROOT, 'lib', 'platforms', 'video.js'), 'utf8')
+  const vd = await readFile(join(ROOT, 'lib', 'platforms', 'bili', 'video.js'), 'utf8')
   assert.ok(vd.includes('(await readOwner(root))?.cookie'), '看画面取 cookie 也要 await')
 })
 

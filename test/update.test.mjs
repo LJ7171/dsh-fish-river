@@ -14,7 +14,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { checkUpdate, compareVersion, normalizeVersion, REPO, REPO_URL, RELEASES_URL } from '../lib/ops/update.js'
+import { checkUpdate, compareVersion, normalizeVersion, REPO, REPO_URL, RELEASES_URL } from '../lib/ops/update/update.js'
 
 /** 造一个假响应 */
 function resp(json, { ok = true, status = 200 } = {}) {

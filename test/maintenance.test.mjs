@@ -7,7 +7,7 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { beginMaintenance, endMaintenance, resetMaintenanceForTests } from '../lib/ops/maintenance.js'
+import { beginMaintenance, endMaintenance, resetMaintenanceForTests } from '../lib/core/maintenance.js'
 import { appendEvent, writeAtomic, readEvents } from '../lib/core/store.js'
 
 test('维护中 writeAtomic / appendEvent 被拒，结束后恢复', async () => {

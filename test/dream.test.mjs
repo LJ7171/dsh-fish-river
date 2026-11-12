@@ -23,7 +23,7 @@ import { dateKey } from '../lib/core/settings.js'
 import { readEvents } from '../lib/core/store.js'
 import { validateEvent } from '../lib/core/schema.js'
 import { registerObserve } from '../lib/ui/observe.js'
-import { HER_TOOLS } from '../lib/ops/restrict.js'
+import { HER_TOOLS } from '../lib/ops/dev/restrict.js'
 import { DREAM_BRIEF } from '../lib/mind/persona.js'
 
 async function withRoot(fn) {

@@ -84,7 +84,7 @@ test('评论主楼 reply_comment_id=0；回复带 reply_root_comment_id', async 
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { fetchZhihuMaterial } from '../lib/platforms/zhihu.js'
+import { fetchZhihuMaterial } from '../lib/platforms/zhihu/zhihu.js'
 import { normalizeConfig, DEFAULTS } from '../lib/core/settings.js'
 import { ZHIHU_DEFAULTS } from '../packages/dsh-fish-river-zhihu/config.js'
 

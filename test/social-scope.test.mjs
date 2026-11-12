@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { registerSpeak } from '../lib/platforms/speak.js'
+import { registerSpeak } from '../lib/platforms/bili/speak.js'
 import { updateConfig } from '../lib/core/settings.js'
 import { appendEvent } from '../lib/core/store.js'
 

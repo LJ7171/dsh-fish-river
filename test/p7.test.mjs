@@ -12,8 +12,8 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { summarizeAway, lastSeenMs, awaySince, readAway } from '../lib/ui/away.js'
-import { isBvid, normPic, coverPath, coverLines, coverDir, fetchCover } from '../lib/platforms/cover.js'
-import { itemsFromEvents, recordBrowse } from '../lib/platforms/browse.js'
+import { isBvid, normPic, coverPath, coverLines, coverDir, fetchCover } from '../lib/platforms/bili/cover.js'
+import { itemsFromEvents, recordBrowse } from '../lib/platforms/bili/browse.js'
 import { paths } from '../lib/core/store.js'
 
 const BV1 = 'BV1MN4y177PB'

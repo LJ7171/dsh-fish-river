@@ -7,7 +7,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { formatStamp, pickSubtitleLines, subtitleFor } from '../lib/platforms/subtitle.js'
+import { formatStamp, pickSubtitleLines, subtitleFor } from '../lib/platforms/bili/subtitle.js'
 
 test('formatStamp：秒 → mm:ss，超过一小时带小时位', () => {
   assert.equal(formatStamp(0), '00:00')

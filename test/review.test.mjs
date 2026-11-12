@@ -11,7 +11,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { eventsSince } from '../lib/life/outing.js'
+import { eventsSince } from '../lib/life/outing/outing.js'
 import { deriveSelf } from '../lib/mind/derive.js'
 
 function tmp() {

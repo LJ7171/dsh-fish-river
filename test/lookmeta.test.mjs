@@ -4,7 +4,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { zhihuLookMeta, tiebaLookMeta, MAX_ITEMS, MAX_TITLE } from '../lib/life/lookmeta.js'
+import { zhihuLookMeta, tiebaLookMeta, MAX_ITEMS, MAX_TITLE } from '../lib/platforms/common/lookmeta.js'
 import { formatZhihuBrowse, formatTiebaBrowse } from '../lib/core/acts.js'
 
 test('转发动作表：知乎前缀是 zhihu:，贴吧前缀是 tieba:', () => {

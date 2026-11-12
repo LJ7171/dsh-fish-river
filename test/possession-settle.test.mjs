@@ -26,7 +26,7 @@ import { registerObserve } from '../lib/ui/observe.js'
 import { checkCaller } from '../lib/house/tenant.js'
 import { deriveSelf } from '../lib/mind/derive.js'
 import { readEvents } from '../lib/core/store.js'
-import { eventsSince, readPossessions, snapshotEvents, startPossession } from '../lib/life/outing.js'
+import { eventsSince, readPossessions, snapshotEvents, startPossession } from '../lib/life/outing/outing.js'
 
 const line = (id, ts, type = 'utterance', text = '在家') =>
   JSON.stringify({ id, v: 1, ts, day: 1, stage: 1, type, source: 'her', text, refs: [], verdict: null, confidence: 0.5, flags: [] }) + '\n'

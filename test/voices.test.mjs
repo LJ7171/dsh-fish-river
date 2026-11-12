@@ -3,10 +3,10 @@ import assert from 'node:assert/strict'
 import {
   normVoice, voiceKey, commentsFrom, chooseVoice, recentVoiceKeys, recordVoice, findEcho,
   VOICE_MAX, VOICE_MIN_LIKE, VOICE_RANDOM, VOICE_TTL_DAYS, ECHO_MIN_SIM,
-} from '../lib/platforms/voices.js'
+} from '../lib/platforms/common/voices.js'
 import { deriveSelf, DAY_MS } from '../lib/mind/derive.js'
 import { personaLine } from '../lib/mind/persona.js'
-import { CATALOG, availableFor } from '../lib/mind/events.js'
+import { CATALOG, availableFor } from '../lib/mind/growth/events.js'
 import { validateEvent } from '../lib/core/schema.js'
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'

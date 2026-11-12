@@ -18,12 +18,12 @@ import { fetchHot, fetchFollow } from '../packages/dsh-fish-river-zhihu/api.js'
 import {
   gatherZhihu, loadZhihu, readState, writeState, runsToday, statePath,
   fetchZhihuMaterial, renderMaterial,
-} from '../lib/platforms/zhihu.js'
-import { registerZhihuLook, zhihuLookOnce, parseTarget } from '../lib/platforms/zhihuLook.js'
+} from '../lib/platforms/zhihu/zhihu.js'
+import { registerZhihuLook, zhihuLookOnce, parseTarget } from '../lib/platforms/zhihu/zhihuLook.js'
 import { fetchQuestion, fetchAnswer, fetchComments, htmlToText, extractImages } from '../packages/dsh-fish-river-zhihu/api.js'
-import { saveImages } from '../lib/platforms/zhihuLook.js'
+import { saveImages } from '../lib/platforms/zhihu/zhihuLook.js'
 import { dateKey, normalizeConfig } from '../lib/core/settings.js'
-import { lookBeforeWake } from '../lib/life/scheduler.js'
+import { lookBeforeWake } from '../lib/life/schedule/scheduler.js'
 import { readEvents } from '../lib/core/store.js'
 
 function fakeResponse(body, status = 200) {

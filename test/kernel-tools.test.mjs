@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { adoptKnownFromError, knownToolNames, rememberKnownTools } from '../lib/ops/restrict.js'
+import { adoptKnownFromError, knownToolNames, rememberKnownTools } from '../lib/ops/dev/restrict.js'
 
 // 2026-10-24（DSH 升级到 0.2.1-rc.3 之后）：白名单校验需要一份「宿主认得哪些工具名」的快照。
 // 快照取不到时（她还没在这个进程里开过会话）只能查拼写，用户会以为「过了校验 = 名字一定存在」。

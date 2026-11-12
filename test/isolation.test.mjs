@@ -18,7 +18,7 @@ import { tmpdir } from 'node:os'
 
 import { appendEvent, readEvents } from '../lib/core/store.js'
 import { deriveSelf } from '../lib/mind/derive.js'
-import { evaluateSocialGate } from '../lib/life/socialgate.js'
+import { evaluateSocialGate } from '../lib/life/social/socialgate.js'
 
 async function tmpRoot() {
   return mkdtemp(join(tmpdir(), 'fish-isolation-'))

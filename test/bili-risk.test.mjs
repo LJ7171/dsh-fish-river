@@ -24,7 +24,7 @@ import {
   memoryCooldown,
   setPacing,
   getPacing,
-} from '../lib/platforms/bili.js'
+} from '../lib/platforms/bili/bili.js'
 
 const WBI = {
   code: 0,
