@@ -14,7 +14,7 @@ import { mkdtemp, rm, readFile, writeFile, rm as rmf } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { registerCapture } from '../lib/mind/capture.js'
+import { registerCapture } from '../lib/mind/growthCommit.js'
 import { registerWriteDiary } from '../lib/mind/herdiary.js'
 import { readEvents, paths, writeConfig, readState } from '../lib/core/store.js'
 import { rebuild } from '../lib/mind/rebuild.js'

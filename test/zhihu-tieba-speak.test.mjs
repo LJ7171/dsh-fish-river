@@ -18,15 +18,15 @@ import {
   formatZhihuOpen,
   parseAct,
 } from '../lib/core/acts.js'
-import { postAnswer, postComment as postZhihuComment, postReply as postZhihuReply, scanIfAwake as scanZhihuIfAwake, renderReplies as renderZhihuReplies } from '../lib/platforms/zhihu/zhihuComment.js'
-import { postComment as postTiebaComment, postReply as postTiebaReply, scanIfAwake as scanTiebaIfAwake, renderReplies as renderTiebaReplies } from '../lib/platforms/tieba/tiebaComment.js'
-import { zhihuSpeakOnce, registerZhihuSpeak, noteZhihuSpeak } from '../lib/platforms/zhihu/zhihuSpeak.js'
-import { tiebaSpeakOnce, registerTiebaSpeak, noteTiebaSpeak } from '../lib/platforms/tieba/tiebaSpeak.js'
+import { postAnswer, postComment as postZhihuComment, postReply as postZhihuReply, scanIfAwake as scanZhihuIfAwake, renderReplies as renderZhihuReplies } from '../lib/platforms/zhihu/comment.js'
+import { postComment as postTiebaComment, postReply as postTiebaReply, scanIfAwake as scanTiebaIfAwake, renderReplies as renderTiebaReplies } from '../lib/platforms/tieba/comment.js'
+import { zhihuSpeakOnce, registerZhihuSpeak, noteZhihuSpeak } from '../lib/platforms/zhihu/speak.js'
+import { tiebaSpeakOnce, registerTiebaSpeak, noteTiebaSpeak } from '../lib/platforms/tieba/speak.js'
 import { renderSelfDoc } from '../lib/mind/selfdoc.js'
 import { modelOf } from '../lib/mind/derive.js'
 import { scanDue } from '../lib/life/replyScan.js'
-import { resetSpeakRisk } from '../lib/platforms/common/speakRisk.js'
-import { addThreadPost, floorRepliesFrom } from '../lib/platforms/tieba/tieba.js'
+import { resetSpeakRisk } from '../lib/platforms/common/writeRisk.js'
+import { addThreadPost, floorRepliesFrom } from '../lib/platforms/tieba/client.js'
 import { createComment, fetchChildComments, resetZhihuWriteRisk } from '../packages/dsh-fish-river-zhihu/api.js'
 
 async function withRoot(fn) {

@@ -13,8 +13,8 @@ import { validateEvent } from '../lib/core/schema.js'
 import {
   resolveOccasion, occasionLine, contextLinesFor, queueRank, nextQueueIndex,
   HOME_CONTEXT_LINES,
-} from '../lib/channels/passport.js'
-import { renderMaterial as renderZhihu } from '../lib/platforms/zhihu/zhihu.js'
+} from '../lib/channels/occasion.js'
+import { renderMaterial as renderZhihu } from '../lib/platforms/zhihu/client.js'
 import { renderMaterial as renderBili } from '../lib/platforms/bili/browse.js'
 import { renderDouyin } from '../lib/platforms/douyin/douyinbrowse.js'
 

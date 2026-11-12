@@ -6,7 +6,7 @@ import {
 } from '../lib/platforms/common/voices.js'
 import { deriveSelf, DAY_MS } from '../lib/mind/derive.js'
 import { personaLine } from '../lib/mind/persona.js'
-import { CATALOG, availableFor } from '../lib/mind/growth/events.js'
+import { CATALOG, availableFor } from '../lib/mind/growth/cardCatalog.js'
 import { validateEvent } from '../lib/core/schema.js'
 import { mkdtemp, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'

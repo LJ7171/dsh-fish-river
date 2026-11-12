@@ -7,8 +7,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-import { create, splitText } from '../lib/channels/bili.js'
-import { createClient, inCooldown, resetRisk } from '../lib/platforms/bili/bili.js'
+import { create, splitText } from '../lib/channels/biliDm.js'
+import { createClient, inCooldown, resetRisk } from '../lib/platforms/bili/client.js'
 
 const COOKIE = 'SESSDATA=sess; bili_jct=jct-123; DedeUserID=42; buvid3=B3'
 const SELF_UID = '42'

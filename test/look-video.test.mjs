@@ -21,7 +21,7 @@ import { join } from 'node:path'
 
 import { lookOnce, registerLook } from '../lib/platforms/bili/look.js'
 import { absorb } from '../lib/platforms/bili/browse.js'
-import { createClient } from '../lib/platforms/bili/bili.js'
+import { createClient } from '../lib/platforms/bili/client.js'
 import { normalizeConfig, dateKey } from '../lib/core/settings.js'
 import { readEvents } from '../lib/core/store.js'
 

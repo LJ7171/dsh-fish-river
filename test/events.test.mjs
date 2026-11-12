@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { CATALOG, availableFor, firedIds, firedLog, isSpent, findTemplate } from '../lib/mind/growth/events.js'
+import { CATALOG, availableFor, firedIds, firedLog, isSpent, findTemplate } from '../lib/mind/growth/cardCatalog.js'
 import { pick, plan } from '../lib/mind/growth/generator.js'
 import { normalizeConfig } from '../lib/core/settings.js'
 import { personaLine, HARD_BANS, PRESCRIPTION_BANS } from '../lib/mind/persona.js'

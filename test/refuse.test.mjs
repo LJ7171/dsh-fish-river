@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { parseRefusal, classifyReaction, REACTIONS, REACTION_HURTS } from '../lib/core/refuse.js'
+import { parseRefusal, classifyReaction, REACTIONS, REACTION_HURTS } from '../lib/core/refusal.js'
 import { validateEvent } from '../lib/core/schema.js'
 import { deriveSelf, DAY_MS } from '../lib/mind/derive.js'
 import { personaLine } from '../lib/mind/persona.js'

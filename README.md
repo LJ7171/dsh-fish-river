@@ -475,14 +475,14 @@ lib/
   tool.js       插件自己注册工具时用的定义函数
   toolschema.js 简写参数 DSL → 标准 JSON Schema
   # 渠道层（0.1.55 之后合并版新增）
-  channels/host.js      渠道装配：全关时不建文件、不连网
+  channels/runtime.js      渠道装配：全关时不建文件、不连网
   channels/router.js    收到 → 记账 → 判断 → 叫醒 → 发送（队列 / 静默窗 / 分段 / 出站闸）
   channels/gate.js      该不该接这句话
-  channels/qq.js / bili.js / douyin.js / weixin.js   渠道适配器
-  channels/sub.js       可选子包（抖音）懒加载
+  channels/qq.js / biliDm.js / douyin.js / weixin.js   渠道适配器
+  channels/subpackage.js       可选子包（抖音）懒加载
   channels/pace.js      进站静默窗 + 纯确认识别
-  channels/passport.js  场合（重要的人 / 近人 / 陌生人 / 群 / 评论）
-  channels/casual.js    口语标点轻整理
+  channels/occasion.js  场合（重要的人 / 近人 / 陌生人 / 群 / 评论）
+  channels/punctuation.js    口语标点轻整理
   # 0.1.55 之后新增的模块（同一层）
   sleep.js       作息状态机：睡 / 会话醒 / 可掷骰醒
   growthcards.js 成长卡的触发、冷却与当日台账
@@ -575,7 +575,7 @@ powershell -ExecutionPolicy Bypass -File .\install.ps1 -DryRun
 
 ### 抖音不用单独装
 
-子包就在这个仓库的 `packages/dsh-fish-river-douyin/` 里，主包先找已安装的 `dsh-fish-river-douyin`，找不到就直接加载仓库里那一份（`lib/channels/sub.js`）。GitHub 装、压缩包装、`link:` 装都用得上抖音；真正用到浏览器时才登录、才建 `douyin-profile`，没开这个渠道时不连网、不建文件夹。
+子包就在这个仓库的 `packages/dsh-fish-river-douyin/` 里，主包先找已安装的 `dsh-fish-river-douyin`，找不到就直接加载仓库里那一份（`lib/channels/subpackage.js`）。GitHub 装、压缩包装、`link:` 装都用得上抖音；真正用到浏览器时才登录、才建 `douyin-profile`，没开这个渠道时不连网、不建文件夹。
 
 ### 让大肥鱼看知乎（可选，只读）
 
@@ -639,7 +639,7 @@ node tools/probe-qq.mjs --ws ws://127.0.0.1:3001 --send-dm 123456 --text 在吗
 
 刷视频的「看画面」要 ffmpeg（抽九帧拼一张图）。没有它也能用，只是这一步降级成只看文字（标题、简介、热评、弹幕）。
 
-看画面顺带读字幕：有 CC / AI 字幕的视频，会把字幕按时间轴抽最多 60 行、1400 字交给她（`lib/platforms/subtitle.js`）。字幕接口要 B 站登录态——「上网 → 刷 B 站」扫码登录之后才有；没有字幕轨就只给画面。
+看画面顺带读字幕：有 CC / AI 字幕的视频，会把字幕按时间轴抽最多 60 行、1400 字交给她（`lib/platforms/bili/subtitle.js`）。字幕接口要 B 站登录态——「上网 → 刷 B 站」扫码登录之后才有；没有字幕轨就只给画面。
 
 **它该放在哪**：插件只认自己目录下的这一个位置——
 

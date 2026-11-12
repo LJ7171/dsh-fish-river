@@ -1,3 +1,19 @@
+## 0.1.119 — 2026-11-12
+
+- 文件命名收口（只改名，不改行为）：
+  - `platforms/*/` 内去掉重复平台前缀：`bili.js → client.js`、`zhihuComment.js → comment.js`
+    等；`biliqr.js → qr.js`、`commentpics.js → commentImages.js`、`dylink.js → links.js`。
+  - `channels/`：`bili.js → biliDm.js`、`sub.js → subpackage.js`、`extturn.js → externalTurn.js`、
+    `channelTurn.js → currentTurn.js`、`casual.js → punctuation.js`、`passport.js → occasion.js`、
+    `bridge.js → qqBridge.js`、`host.js → runtime.js`。
+  - `core/`：`owner.js → ownerAccount.js`、`ownership.js → ownerLabel.js`、
+    `ack.js → ackPhrases.js`、`refuse.js → refusal.js`。
+  - `house/homes.js → rootRegistry.js`、`life/keep.js → bringBack.js`、
+    `mind/events.js → cardCatalog.js`、`mind/capture.js → growthCommit.js`、
+    `ops/dev/readme.js → dataReadme.js`、`ops/update/hostver.js → hostVersion.js`。
+- 文档里的旧路径同步更新。
+- 测试：1607 项（本机缺 ffmpeg 时 1 项环境红）。
+
 ## 0.1.118 — 2026-11-12
 
 - 目录整理第二层：

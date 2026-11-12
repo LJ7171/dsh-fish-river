@@ -12,7 +12,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { registerSendImage, sendImageOnce } from '../lib/talk/sendImage.js'
-import { setChannelTurn, clearChannelTurn, setChannelSender, resetChannelTurnForTests, currentChannelTurn } from '../lib/channels/channelTurn.js'
+import { setChannelTurn, clearChannelTurn, setChannelSender, resetChannelTurnForTests, currentChannelTurn } from '../lib/channels/currentTurn.js'
 
 const PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',

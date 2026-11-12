@@ -16,7 +16,7 @@ import { sniffMime } from '../lib/core/media.js'
 import { HER_TOOLS } from '../lib/ops/dev/restrict.js'
 import { MEME_BRIEF } from '../lib/mind/persona.js'
 import { renderSelfDoc } from '../lib/mind/selfdoc.js'
-import { setChannelTurn, resetChannelTurnForTests } from '../lib/channels/channelTurn.js'
+import { setChannelTurn, resetChannelTurnForTests } from '../lib/channels/currentTurn.js'
 import { deriveSelf } from '../lib/mind/derive.js'
 
 async function tempRoot() {

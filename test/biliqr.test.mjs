@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   createQr, pollQr, qrSvg, cookieFromSetCookie, cookieFromUrl, pickCookie, POLL_STATUS, QR_TTL_MS,
-} from '../lib/platforms/bili/biliqr.js'
+} from '../lib/platforms/bili/qr.js'
 
 /** 假 fetch：按 URL 分流，返回 B 站那两种响应之一。 */
 function fakeFetch({ generate, poll, setCookie = [], status = 200 } = {}) {

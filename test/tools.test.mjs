@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
 
 import { defineTool } from '../lib/core/tool.js'
-import { registerCapture } from '../lib/mind/capture.js'
+import { registerCapture } from '../lib/mind/growthCommit.js'
 import { registerLetter } from '../lib/house/letter.js'
 import { registerLook } from '../lib/platforms/bili/look.js'
 import { registerRecall } from '../lib/mind/recall.js'

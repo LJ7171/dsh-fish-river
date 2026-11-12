@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { CATALOG, findTemplate } from '../lib/mind/growth/events.js'
+import { CATALOG, findTemplate } from '../lib/mind/growth/cardCatalog.js'
 import { pick, topicEcho } from '../lib/mind/growth/generator.js'
 import { todayCounts } from '../lib/life/schedule/scheduler.js'
 import { normalizeConfig, DEFAULTS } from '../lib/core/settings.js'

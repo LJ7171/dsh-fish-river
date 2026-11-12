@@ -2,7 +2,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { deriveSelf, DAY_MS } from '../lib/mind/derive.js'
 import { personaLine, SELF_DOC_BUDGET } from '../lib/mind/persona.js'
-import { isConcede, CONCEDE_WINDOW_MS } from '../lib/core/refuse.js'
+import { isConcede, CONCEDE_WINDOW_MS } from '../lib/core/refusal.js'
 import { scarHint, PRESSURE } from '../lib/mind/growth/generator.js'
 import { validateEvent } from '../lib/core/schema.js'
 

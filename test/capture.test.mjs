@@ -5,7 +5,7 @@ import { writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { registerCapture, debrief } from '../lib/mind/capture.js'
+import { registerCapture, debrief } from '../lib/mind/growthCommit.js'
 import { registerWriteDiary } from '../lib/mind/herdiary.js'
 import { readEvents, paths, writeConfig } from '../lib/core/store.js'
 import { normalizeConfig } from '../lib/core/settings.js'

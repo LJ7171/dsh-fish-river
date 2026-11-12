@@ -16,9 +16,9 @@ const read = (rel) => readFileSync(join(ROOT, rel), 'utf8')
 test('平台目录按平台分开，宿主门面不在 platforms 下', () => {
   for (const rel of [
     'lib/platforms/bili/look.js',
-    'lib/platforms/zhihu/zhihuLook.js',
-    'lib/platforms/tieba/tiebaLook.js',
-    'lib/platforms/douyin/dylink.js',
+    'lib/platforms/zhihu/look.js',
+    'lib/platforms/tieba/look.js',
+    'lib/platforms/douyin/links.js',
     'lib/platforms/common/voices.js',
     'lib/host/platformHost.js',
   ]) assert.equal(existsSync(join(ROOT, rel)), true, rel)
@@ -26,10 +26,10 @@ test('平台目录按平台分开，宿主门面不在 platforms 下', () => {
 })
 
 test('仓库里可选子包的 fallback 路径仍然存在', () => {
-  const zh = read('lib/platforms/zhihu/zhihuLoad.js')
+  const zh = read('lib/platforms/zhihu/load.js')
   assert.match(zh, /\.\.\/\.\.\/\.\.\/packages\/dsh-fish-river-zhihu\/index\.js/)
   assert.equal(existsSync(join(ROOT, 'packages/dsh-fish-river-zhihu/index.js')), true)
-  const dy = read('lib/channels/sub.js')
+  const dy = read('lib/channels/subpackage.js')
   assert.match(dy, /\.\.\/\.\.\/packages\/dsh-fish-river-douyin\/index\.js/)
   assert.equal(existsSync(join(ROOT, 'packages/dsh-fish-river-douyin/index.js')), true)
 })
@@ -41,7 +41,7 @@ test('静态资源路径在移动后仍然指向包里的 media', () => {
 })
 
 test('core 不再反向 import 上层领域', () => {
-  for (const rel of ['lib/core/settings.js', 'lib/core/store.js', 'lib/core/schema.js', 'lib/core/owner.js']) {
+  for (const rel of ['lib/core/settings.js', 'lib/core/store.js', 'lib/core/schema.js', 'lib/core/ownerAccount.js']) {
     const src = read(rel)
     assert.doesNotMatch(src, /from\s+['"]\.\.\/(platforms|channels|life|mind|house|talk|ops|host)\//, rel)
     assert.doesNotMatch(src, /import\(\s*['"]\.\.\/(platforms|channels|life|mind|house|talk|ops|host)\//, rel)

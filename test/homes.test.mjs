@@ -13,7 +13,7 @@ import { mkdtemp, rm, readFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 
-import { noteRoot, readHomesSync, normRoot, homesFile } from '../lib/house/homes.js'
+import { noteRoot, readHomesSync, normRoot, homesFile } from '../lib/house/rootRegistry.js'
 
 async function tmpDir() {
   return mkdtemp(join(tmpdir(), 'fish-homes-'))

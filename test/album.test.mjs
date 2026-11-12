@@ -21,13 +21,13 @@ import { keepImage, registerKeepImage, readAlbum, browseImageKeepAllowed, ALBUM_
 import { sweepMedia } from '../lib/core/media.js'
 import { normalizeConfig, updateConfig } from '../lib/core/settings.js'
 import { readEvents } from '../lib/core/store.js'
-import { commentImageUrls } from '../lib/platforms/bili/bili.js'
+import { commentImageUrls } from '../lib/platforms/bili/client.js'
 import { absorb, renderItem } from '../lib/platforms/bili/browse.js'
 import { lookOnce } from '../lib/platforms/bili/look.js'
-import { landCommentImages } from '../lib/platforms/bili/commentpics.js'
+import { landCommentImages } from '../lib/platforms/bili/commentImages.js'
 import { renderReplies } from '../lib/platforms/bili/comment.js'
 import { fetchComments } from '../packages/dsh-fish-river-zhihu/api.js'
-import { zhihuLookOnce } from '../lib/platforms/zhihu/zhihuLook.js'
+import { zhihuLookOnce } from '../lib/platforms/zhihu/look.js'
 import { HER_TOOLS } from '../lib/ops/dev/restrict.js'
 
 const PNG_B64 =

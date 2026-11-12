@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import { SUPPORTED_RANGE, readHostVersion, parseRange, checkHost } from '../lib/ops/update/hostver.js'
+import { SUPPORTED_RANGE, readHostVersion, parseRange, checkHost } from '../lib/ops/update/hostVersion.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const pkgFile = join(here, '..', 'package.json')

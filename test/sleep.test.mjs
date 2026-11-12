@@ -20,7 +20,7 @@ import {
 } from '../lib/life/schedule/sleep.js'
 import { appendEvent } from '../lib/core/store.js'
 import { dateKey } from '../lib/core/settings.js'
-import { writeState as writeZhihuState } from '../lib/platforms/zhihu/zhihu.js'
+import { writeState as writeZhihuState } from '../lib/platforms/zhihu/client.js'
 
 const at = (y, mo, d, h, mi = 0) => new Date(y, mo - 1, d, h, mi, 0, 0).getTime()
 const cfg = normalizeConfig({

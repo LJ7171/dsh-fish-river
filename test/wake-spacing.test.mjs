@@ -18,7 +18,7 @@ import { startScheduler } from '../lib/life/schedule/scheduler.js'
 import { appendEvent, readEvents, writeConfig } from '../lib/core/store.js'
 import { normalizeConfig, dateKey } from '../lib/core/settings.js'
 import { getWakeSection, clearWakeSection } from '../lib/mind/identity.js'
-import { registerCapture } from '../lib/mind/capture.js'
+import { registerCapture } from '../lib/mind/growthCommit.js'
 import { inWake } from '../lib/life/schedule/wakewin.js'
 
 const at = (h, m, day = 29) => new Date(2026, 9, day, h, m).getTime()

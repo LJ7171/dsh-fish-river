@@ -21,7 +21,7 @@ import { parseHandover, applyHandover, IMPORT_TEMPLATE } from '../lib/ops/dev/im
 import { readEvents } from '../lib/core/store.js'
 import { loadConfig, updateConfig } from '../lib/core/settings.js'
 import { deriveSelf, IMPORT_MARK_PREFIX } from '../lib/mind/derive.js'
-import { CATALOG } from '../lib/mind/growth/events.js'
+import { CATALOG } from '../lib/mind/growth/cardCatalog.js'
 import { resetAll } from '../lib/ops/maintenance/reset.js'
 
 async function withRoot(fn) {

@@ -324,7 +324,7 @@ test('登录：没扫 / 数字校验 / 过期三种状态都原样交回，不�
 })
 
 test('host：微信开着但还没扫码时，渠道层照样起得来（不崩、不连网），扫码后同一条适配器就能上线', async () => {
-  const { startChannels } = await import('../lib/channels/host.js')
+  const { startChannels } = await import('../lib/channels/runtime.js')
   const root = await tempRoot()
   try {
     const h = startChannels({

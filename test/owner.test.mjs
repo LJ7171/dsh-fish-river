@@ -17,7 +17,7 @@ import { join } from 'node:path'
 import { Readable } from 'node:stream'
 
 import { looksLikeLeak, screenOutgoing } from '../lib/core/guard.js'
-import { parseCookieInput, mentionPrefix, publicOwner, saveOwner, saveAccount } from '../lib/core/owner.js'
+import { parseCookieInput, mentionPrefix, publicOwner, saveOwner, saveAccount } from '../lib/core/ownerAccount.js'
 import { readOwner, appendEvent, writeConfig } from '../lib/core/store.js'
 import { registerObserve } from '../lib/ui/observe.js'
 import { loginMid } from '../lib/platforms/bili/comment.js'

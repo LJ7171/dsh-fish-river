@@ -11,7 +11,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { startChannels } from '../lib/channels/host.js'
+import { startChannels } from '../lib/channels/runtime.js'
 
 class FakeWS {
   static urls = []
@@ -81,7 +81,7 @@ test('host：一个渠道都没开时，不建目录、不连网', async () => {
 })
 
 test('渠道层把 adapters 露出来：刷站要借它的登录态', async () => {
-  const { startChannels } = await import('../lib/channels/host.js')
+  const { startChannels } = await import('../lib/channels/runtime.js')
   const r = startChannels({ ctx: { on() { return () => {} } }, root: 'C:/no-such-root', config: { channels: {} }, log: () => {} })
   assert.equal(typeof r.adapters, 'object')
   assert.equal(typeof r.adapters.get, 'function')

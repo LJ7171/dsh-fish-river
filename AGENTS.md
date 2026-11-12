@@ -37,7 +37,7 @@
 | 不撒娇卖萌（写成「还不会」，不是「不许」） | `lib/mind/rules.js` 的 `learn-affection` | `test/rules.test.mjs`（断言含「还不会」且不含「不可以」） |
 | 没有好感度/亲密度数字 | `lib/mind/rules.js` 的 `no-relational-score` | `test/rules.test.mjs`（提示词里 `cannot` 只剩这一条） |
 | 不能读自己的数值与设定（能看自己说过什么） | `lib/mind/rules.js` 的 `no-read-self`（物理层，`section: null`，**不进提示词**）；工具侧由 `lib/ops/restrict.js` 的 `HER_TOOLS` 收窄 | `test/rules.test.mjs` + `test/restrict.test.mjs` |
-| 不能调工具改自己 | `lib/mind/rules.js` 的 `no-self-modify`（物理层，同样不进提示词）；写入侧入口是 `lib/mind/capture.js` 的 `growth_commit`（判断）与 `lib/mind/herdiary.js` 的 `write_diary`（日记） | `test/rules.test.mjs` + `test/capture.test.mjs` |
+| 不能调工具改自己 | `lib/mind/rules.js` 的 `no-self-modify`（物理层，同样不进提示词）；写入侧入口是 `lib/mind/growthCommit.js` 的 `growth_commit`（判断）与 `lib/mind/herdiary.js` 的 `write_diary`（日记） | `test/rules.test.mjs` + `test/capture.test.mjs` |
 
 两条实现原则，改代码时别破坏：
 
@@ -163,7 +163,7 @@ qq_send_message, qq_get_unread_messages, qq_reply
 - **适配器永不抛**：`start/stop/send/status` 一律 `{ ok, why }`；凭据不进 `status()`、不进日志。
 - **协议不进主包**：主包只有 QQ 的 OneBot 桥、B 站私信，和微信官方 ClawBot（iLink，HTTPS
   长轮询、零依赖、不需要浏览器）；抖音这类需要真浏览器的，放 `packages/dsh-fish-river-douyin/`，
-  由 `lib/channels/sub.js` 懒加载——**代码分开，但随仓库一起分发**
+  由 `lib/channels/subpackage.js` 懒加载——**代码分开，但随仓库一起分发**
   （2026-11-03 起：先找已安装的 `dsh-fish-river-douyin`，找不到就用仓库里那一份；只从 GitHub 装也能用抖音）。
   可选性由「渠道开不开」+「模块懒加载」体现：不开就不 `import`、不拉浏览器、不建 `douyin-profile`。
   「协议不进主包」挡的是**逆向个人号协议 / 需要桥或浏览器的实现**，不是挡官方 HTTPS 接口。
@@ -308,7 +308,7 @@ qq_send_message, qq_get_unread_messages, qq_reply
 
 ## 18. 链接能打开才叫看过，打不开就说打不开（2026-11-03）
 
-- 任何渠道的文本里出现抖音链接，路由层要先替她去解析（`lib/platforms/dylink.js`）：
+- 任何渠道的文本里出现抖音链接，路由层要先替她去解析（`lib/platforms/douyin/links.js`）：
   短链只跟一次跳转，详情走她自己那个浏览器的页面请求（cookie 才带得上）。
 - **解析成功**：提示词里写事实（文案、作者、时长、互动数、有没有拉到画面），
   并记一条 `meta looked:dy_<id>`。

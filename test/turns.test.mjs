@@ -20,7 +20,7 @@ import { classifyMessage, messageText, assistantText, registerTurns } from '../l
 import { homeStatus } from '../lib/house/home.js'
 import { appendEvent, readEvents, writeAtomic, paths } from '../lib/core/store.js'
 import { recentExchanges } from '../lib/mind/talkmem.js'
-import { beginExternalTurn, endExternalTurn, _resetExternalTurn } from '../lib/channels/extturn.js'
+import { beginExternalTurn, endExternalTurn, _resetExternalTurn } from '../lib/channels/externalTurn.js'
 
 const HER_SESSION = 's-her'
 

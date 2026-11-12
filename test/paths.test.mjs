@@ -12,7 +12,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import { join } from 'node:path'
-import { README_MARK, README_NAME, README_TEXT, ensureDataReadme } from '../lib/ops/dev/readme.js'
+import { README_MARK, README_NAME, README_TEXT, ensureDataReadme } from '../lib/ops/dev/dataReadme.js'
 
 const CLIENT = fs.readFileSync(new URL('../lib/client.js', import.meta.url), 'utf8')
 const OBSERVE = fs.readFileSync(new URL('../lib/ui/observe.js', import.meta.url), 'utf8')

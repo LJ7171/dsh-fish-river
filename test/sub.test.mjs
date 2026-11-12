@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { createSubAdapter, SUB_CANDIDATES } from '../lib/channels/sub.js'
+import { createSubAdapter, SUB_CANDIDATES } from '../lib/channels/subpackage.js'
 
 test('抖音子包：仓库里那一份能被直接加载（不要求 npm 装过）', async () => {
   const factory = await createSubAdapter()

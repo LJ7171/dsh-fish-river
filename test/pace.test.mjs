@@ -20,7 +20,7 @@ import {
   sessionKey,
   silenceMsFor,
 } from '../lib/channels/pace.js'
-import { resolveOccasion } from '../lib/channels/passport.js'
+import { resolveOccasion } from '../lib/channels/occasion.js'
 
 const ownerClose = resolveOccasion({
   channel: 'qq',

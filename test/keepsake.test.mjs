@@ -32,7 +32,7 @@ import {
   readKeepsakes,
   tripKey,
 } from '../lib/life/keepsake.js'
-import { registerBringBack } from '../lib/life/keep.js'
+import { registerBringBack } from '../lib/life/bringBack.js'
 
 function withRoot(fn) {
   const root = mkdtempSync(join(tmpdir(), 'fish-keep-'))

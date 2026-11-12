@@ -2,10 +2,10 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
   findTemplate, isSpent, paceScale, scaledEveryDays, absenceThreshold, staleAfter,
-} from '../lib/mind/growth/events.js'
+} from '../lib/mind/growth/cardCatalog.js'
 import { pick } from '../lib/mind/growth/generator.js'
 import { gapSinceLastWake, gapSqueeze } from '../lib/life/schedule/scheduler.js'
-import { CATALOG } from '../lib/mind/growth/events.js'
+import { CATALOG } from '../lib/mind/growth/cardCatalog.js'
 
 const DAY = 86_400_000
 const iso = (msAgo = 0) => new Date(Date.now() - msAgo).toISOString()

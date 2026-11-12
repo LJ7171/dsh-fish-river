@@ -8,7 +8,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { casualizePunctuation, casualPunctuationOn } from '../lib/channels/casual.js'
+import { casualizePunctuation, casualPunctuationOn } from '../lib/channels/punctuation.js'
 import { splitBubbles } from '../lib/channels/router.js'
 
 test('句末句号留着，问号感叹号和逗号也留着', () => {
