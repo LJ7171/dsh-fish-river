@@ -35,3 +35,16 @@ test('知乎 scan_info 的 z_c0 字段也能确认', async () => {
   assert.equal(r.status, 'confirmed')
   assert.match(r.cookie, /z_c0=z2/)
 })
+
+test('扫描轮询带上 _xsrf 头', async () => {
+  let headers = null
+  await pollQr({
+    token: 't',
+    jar: { _xsrf: 'x1' },
+    fetchImpl: async (_url, opts = {}) => {
+      headers = opts.headers
+      return res({ status: 0 })
+    },
+  })
+  assert.equal(headers['x-xsrftoken'], 'x1')
+})

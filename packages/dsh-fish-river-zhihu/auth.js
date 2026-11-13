@@ -116,16 +116,21 @@ export async function pollQr({ token, jar, fetchImpl = fetch } = {}) {
   if (!id) return { ok: false, status: 'error', why: '缺 token' }
   const j = createJar(jar ?? {})
   try {
+    const scanHeaders = {
+      referer: `${WEB}/signin?next=%2F`,
+      origin: WEB,
+      accept: '*/*',
+      'sec-fetch-dest': 'empty',
+      'sec-fetch-mode': 'cors',
+      'sec-fetch-site': 'same-origin',
+      'x-requested-with': 'fetch',
+      'x-zse-93': '101_3_3.0',
+    }
+    // 知乎的 scan_info 也认 _xsrf：缺这个头会被当成未登录/未确认。
+    const xsrf = j.get('_xsrf')
+    if (xsrf) scanHeaders['x-xsrftoken'] = xsrf
     const res = await request(j, `${WEB}/api/v3/account/api/login/qrcode/${id}/scan_info`, {
-      headers: {
-        referer: `${WEB}/signin?next=%2F`,
-        accept: '*/*',
-        'sec-fetch-dest': 'empty',
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'same-origin',
-        'x-requested-with': 'fetch',
-        'x-zse-93': '101_3_3.0',
-      },
+      headers: scanHeaders,
     }, fetchImpl)
     const text = await res.text()
     let info = null
