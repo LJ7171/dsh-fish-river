@@ -127,17 +127,16 @@ test('落盘迁移只动 cookie，手填的 mid / 昵称留着，清一个槽不
   }
 })
 
-test('同一个 uid 再存进另一个槽会被拒绝，cookie 不回显', async () => {
+test('同一个 uid 再扫到另一个槽会自动移槽，cookie 不回显', async () => {
   const dir = await root()
   try {
     await saveOwner({ cookie: COOKIE_A, slot: 'a' }, dir)
     const r = await saveOwner({ cookie: 'SESSDATA=secret-a2; bili_jct=jct-a; DedeUserID=111', slot: 'b' }, dir)
-    assert.equal(r.ok, false)
-    assert.match(r.note, /另一个位置/)
+    assert.equal(r.ok, true, r.note)
     assert.equal(JSON.stringify(r).includes('SESSDATA'), false)
     const ow = await readOwner(dir)
-    assert.equal(ow.accounts[0].cookie.includes('secret-a'), true)
-    assert.equal(ow.accounts[1].cookie, '')
+    assert.equal(ow.accounts[0].cookie, '', '旧槽自动清掉')
+    assert.equal(ow.accounts[1].cookie.includes('secret-a2'), true, '新槽拿到凭据')
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
@@ -238,14 +237,14 @@ test('贴吧和知乎也是两个槽：迁一个、存另一个、清一个不�
     const one = await readAuth(dir)
     assert.equal(one.cookie.includes('tieba-secret-a'), true)
     await writeAuth(dir, { cookie: 'BDUSS=tieba-secret-b; STOKEN=s', account: { name: '人', mid: '9' }, slot: 'b', owner: 'her' })
-    const clash = await writeAuth(dir, { cookie: 'BDUSS=tieba-secret-c', account: { name: '人', mid: '9' }, slot: 'a' })
-    assert.equal(clash.ok, false)
+    const moved = await writeAuth(dir, { cookie: 'BDUSS=tieba-secret-c', account: { name: '人', mid: '9' }, slot: 'a' })
+    assert.equal(moved.ok, true, moved.why)
+    assert.equal((await readAuth(dir, 'a')).cookie.includes('tieba-secret-c'), true)
+    assert.equal(await readAuth(dir, 'b'), null, '旧槽自动清掉')
     await clearAuth(dir, 'a')
-    const left = await readAuth(dir, 'b')
-    assert.equal(left.cookie.includes('tieba-secret-b'), true)
-    assert.equal((await readAuth(dir, 'a')), null)
+    assert.equal(await readAuth(dir, 'a'), null)
     const raw = await readFile(join(dir, 'tieba.json'), 'utf8')
-    assert.equal(raw.includes('tieba-secret-b'), true)
+    assert.equal(raw.includes('tieba-secret-c'), false)
 
     await saveCookie(dir, { cookie: 'z_c0=zhihu-secret-a', account: { name: '知鱼', id: 'za' }, slot: 'a', owner: 'owner' })
     await saveCookie(dir, { cookie: 'z_c0=zhihu-secret-b', account: { name: '知人', id: 'zb' }, slot: 'b', owner: 'her' })
@@ -344,4 +343,18 @@ test('知乎/贴吧说话工具也接受 account', () => {
   const t = registerTiebaSpeak(ctx, { root: '/tmp/nope' })
   assert.equal(z.parameters.properties.account.type, 'string')
   assert.equal(t.parameters.properties.account.type, 'string')
+})
+
+test('知乎同一个号再扫到 a，会从 b 自动移过来', async () => {
+  const dir = await root()
+  try {
+    await saveCookie(dir, { cookie: 'z_c0=old-a', account: { id: 'za', name: '甲' }, slot: 'a' })
+    await saveCookie(dir, { cookie: 'z_c0=old-b', account: { id: 'zb', name: '乙' }, slot: 'b' })
+    const moved = await saveCookie(dir, { cookie: 'z_c0=old-b2', account: { id: 'zb', name: '乙' }, slot: 'a' })
+    assert.equal(moved.ok, true, moved.why)
+    assert.equal((await readZhihu(dir, 'a')).cookie, 'z_c0=old-b2')
+    assert.equal(await readZhihu(dir, 'b'), null)
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
 })

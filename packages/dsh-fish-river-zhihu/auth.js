@@ -258,11 +258,13 @@ export async function saveCookie(root, { cookie, account = null, slot, owner, al
   const value = String(cookie ?? '').trim()
   if (!value) return { ok: false, why: '空 cookie' }
   try {
-    const accounts = await readAccounts(root, ownerLabel)
+    let accounts = await readAccounts(root, ownerLabel)
     const id = slot === 'b' ? 'b' : 'a'
     const ident = String(account?.id ?? account?.mid ?? '').trim()
-    if (ident && accounts.some((s) => s.id !== id && identityOf(s) === ident)) {
-      return { ok: false, why: '这个号已经登在另一个位置了。' }
+    // 同一个号扫到另一个槽：自动从旧槽移走，不拒绝（2026-11-13 用户确认）。
+    if (ident) {
+      const other = accounts.find((s) => s.id !== id && identityOf(s) === ident)
+      if (other) accounts = accounts.map((s) => (s.id === other.id ? emptyZhihuSlot(other.id, other.owner) : s))
     }
     const cur = accounts.find((s) => s.id === id) ?? emptyZhihuSlot(id, ownerLabel)
     const next = accounts.map((s) => (s.id === id ? {
