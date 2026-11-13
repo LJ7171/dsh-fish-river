@@ -358,3 +358,19 @@ test('知乎同一个号再扫到 a，会从 b 自动移过来', async () => {
     await rm(dir, { recursive: true, force: true })
   }
 })
+
+test('zhihuStatus 从两个槽读登录态（重开设置不丢）', async () => {
+  const dir = await root()
+  try {
+    await saveCookie(dir, { cookie: 'z_c0=status-a', account: { id: 'za', name: '甲' }, slot: 'a' })
+    const { zhihuStatus } = await import('../lib/platforms/zhihu/client.js')
+    const { loadConfig } = await import('../lib/core/settings.js')
+    const { config } = await loadConfig(dir)
+    const st = await zhihuStatus(dir, config)
+    assert.equal(st.loggedIn, true)
+    assert.equal(st.accounts.find((x) => x.id === 'a').hasCookie, true)
+    assert.equal(st.accounts.find((x) => x.id === 'a').name, '甲')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})

@@ -46,6 +46,7 @@ export function localApi() {
     createAnswer: api.createAnswer,
     probe: api.probe,
     readAuth: auth.readAuth,
+    readAccounts: auth.readAccounts,
     resetZhihuWriteRisk: api.resetZhihuWriteRisk,
   }
 }
