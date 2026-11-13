@@ -153,11 +153,12 @@ function renderComments(c, host) {
   return out.join('\n')
 }
 
-export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', target = '', topN, orderBy = 'score', mod, fetchImpl, sessionId = '', host } = {}) {
+export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', target = '', topN, orderBy = 'score', mod, fetchImpl, sessionId = '', host, account, slot } = {}) {
   const h = hostOf(host)
   if (!cfg?.zhihu?.enabled) return { ok: false, text: '', picks: [], note: '现在看不了。' }
   const module = mod ?? localApi()
-  const auth = await module.readAuth(root).catch(() => null)
+  const auth = await module.readAuth(root, slot || account || '').catch(() => null)
+  if (auth?.needChoice) return { ok: false, text: '', picks: [], note: '知乎有两个可以出门的号。这次先不替你选。想用哪个，account 里写 a 或 b。' }
   if (!auth?.cookie) return { ok: false, text: '', picks: [], note: '现在看不了。' }
 
   const n = Math.max(1, Math.min(20, Number(topN) || 0)) || null
@@ -173,7 +174,7 @@ export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', target =
       const urls = imagesOn(cfg) ? (r.answers ?? []).flatMap((a) => a.images ?? []).slice(0, cap) : []
       const pics = urls.length ? await saveImages({ root, urls, tag: `q-${qid}`, fetchImpl, max: cap, host: h }) : []
       const text = [h.sanitize(renderQuestion(r, cfg, h)).text, ...imageLines(pics, h)].join('\n')
-      await noteAct(root, h.formatOpen(h.dateKey(), qid, r.question?.title), sessionId, h)
+      await noteAct(root, h.formatOpen(h.dateKey(), qid, r.question?.title, { slot: auth.id, owner: auth.owner, name: auth.account?.name }), sessionId, h)
       return { ok: true, text, picks: r.answers, note: '' }
     }
     if (kind === 'answer') {

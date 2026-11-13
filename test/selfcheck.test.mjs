@@ -109,7 +109,7 @@ test('源码守门：三处 readOwner 都必须 await（漏了就是上面那两
 
 test('源码守门：/owner POST 只认登录账号，不许覆盖领养人', async () => {
   const ob = await readFile(join(ROOT, 'lib', 'ui', 'observe.js'), 'utf8')
-  assert.ok(ob.includes('await saveAccount(me, root)'), '「测试登录」成功时要记下登录账号')
+  assert.ok(ob.includes('await saveAccount(me, root'), '「测试登录」成功时要记下登录账号')
   assert.ok(ob.includes('登录的是'), '存 cookie 之后要认一次，并在回执里说登录的是谁')
   assert.equal(
     /saveOwner\(\{\s*mid:\s*String\(me\.mid\)/.test(ob),

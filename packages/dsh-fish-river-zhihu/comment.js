@@ -55,7 +55,8 @@ export function opensToday(events, dk, host) {
     const id = tokens[0] ?? ''
     if (!id) continue
     const question = json && typeof json === 'object' && !Array.isArray(json) ? String(json.question ?? '') : ''
-    out.push({ id, question })
+    const slot = json?.slot === 'b' ? 'b' : (json?.slot === 'a' ? 'a' : '')
+    out.push({ id, question, ...(slot ? { slot } : {}) })
   }
   return out
 }
@@ -79,11 +80,12 @@ function commentsIn(events, keep) {
     if (sp < 0) continue
     const dk = line.slice('zhihu-comment:'.length, sp)
     if (keep && !keep.has(dk)) continue
-    const { tokens } = headAndJson(line.slice(sp + 1))
+    const { tokens, json } = headAndJson(line.slice(sp + 1))
     const answerId = tokens[0] ?? ''
     const commentId = tokens[1] ?? ''
     if (!answerId || !commentId || commentId === '0') continue
-    out.push({ answerId, commentId, dk, i: out.length })
+    const slot = json?.slot === 'b' ? 'b' : (json?.slot === 'a' ? 'a' : '')
+    out.push({ answerId, commentId, dk, i: out.length, ...(slot ? { slot } : {}) })
   }
   return out
 }
@@ -97,7 +99,7 @@ export function herCommentsRecent(events, days = REPLY_LOOKBACK_DAYS, now = Date
   const keep = recentDays(days, now, h)
   const out = commentsIn(events, keep)
   out.sort((a, b) => (a.dk === b.dk ? b.i - a.i : a.dk < b.dk ? 1 : -1))
-  return out.map(({ answerId, commentId, dk }) => ({ answerId, commentId, dk }))
+  return out.map(({ answerId, commentId, dk, slot }) => ({ answerId, commentId, dk, ...(slot ? { slot } : {}) }))
 }
 
 export function seenReplies(events) {
@@ -115,13 +117,33 @@ function apiOf(o) {
   return localApi()
 }
 
-async function cookieOf(o, api, root) {
-  if (o.cookie) return String(o.cookie)
+function sameZhihuSlot(stamped, want) {
+  const s = stamped === 'b' ? 'b' : (stamped === 'a' ? 'a' : '')
+  const w = want === 'b' ? 'b' : (want === 'a' ? 'a' : '')
+  if (!s && !w) return true
+  if (!s) return w === 'a'
+  if (!w) return s === 'a'
+  return s === w
+}
+
+async function authOf(o, api, root) {
+  if (o.cookie) return { cookie: String(o.cookie), id: o.slot === 'b' ? 'b' : (o.slot === 'a' ? 'a' : ''), owner: o.owner || '', name: o.name || '' }
   if (typeof api?.readAuth === 'function') {
-    const auth = await api.readAuth(root).catch(() => null)
-    return String(auth?.cookie ?? '')
+    const auth = await api.readAuth(root, o.slot || o.account || '').catch(() => null)
+    if (auth?.needChoice) return { needChoice: true, choices: auth.choices }
+    return {
+      cookie: String(auth?.cookie ?? ''),
+      id: auth?.id === 'b' ? 'b' : (auth?.id === 'a' ? 'a' : ''),
+      owner: auth?.owner || '',
+      name: String(auth?.account?.name ?? ''),
+    }
   }
-  return ''
+  return { cookie: '' }
+}
+
+async function cookieOf(o, api, root) {
+  const auth = await authOf(o, api, root)
+  return auth.needChoice ? '' : auth.cookie
 }
 
 async function selfIdOf(o, api, root, cookie) {
@@ -144,12 +166,22 @@ export async function scanReplies(o = {}) {
   const api = apiOf(o)
   const events = o.events ?? await host.readEvents(root)
   if (!api?.fetchChildComments) return []
-  const cookie = await cookieOf(o, api, root)
+  if (!o._scoped && !o.slot && !o.account && !o.cookie && typeof api.readAccounts === 'function') {
+    const accounts = await api.readAccounts(root).catch(() => [])
+    const usable = (accounts ?? []).filter((s) => s.cookie && s.allowed)
+    if (usable.length > 1) {
+      const all = []
+      for (const s of usable) all.push(...await scanReplies({ ...o, slot: s.id, _scoped: true, events }))
+      return all.sort((a, b) => a.ctime - b.ctime)
+    }
+  }
+  const auth = await authOf(o, api, root)
+  const cookie = auth.cookie
   if (!cookie) return []
   const mine = await selfIdOf(o, api, root, cookie)
   const seen = seenReplies(events)
   const out = []
-  for (const c of herCommentsRecent(events, REPLY_LOOKBACK_DAYS, Date.now(), host).slice(0, MAX_SCAN_ROOTS)) {
+  for (const c of herCommentsRecent(events, REPLY_LOOKBACK_DAYS, Date.now(), host).filter((row) => sameZhihuSlot(row.slot, auth.id)).slice(0, MAX_SCAN_ROOTS)) {
     const r = await api.fetchChildComments({ cookie, id: c.commentId, limit: 20 }).catch(() => null)
     if (!r?.ok) continue
     for (const s of r.comments ?? []) {
@@ -266,18 +298,23 @@ export async function postComment(o = {}) {
   const dk = o.dateKey ?? host.dateKey()
   if (commentCountToday(events, dk, host) >= Math.max(0, Number(c.perDay ?? 0))) return { ok: false, why: '今天说够了' }
 
+  const api = apiOf(o)
+  const auth = await authOf(o, api, root)
+  if (auth.needChoice) return { ok: false, why: '先选定一个号' }
   const answerId = String(o.answerId ?? o.id ?? '').trim()
-  if (!opensToday(events, dk, host).some((row) => row.id === answerId)) {
+  if (!opensToday(events, dk, host).some((row) => row.id === answerId && sameZhihuSlot(row.slot, auth.id))) {
     return { ok: false, why: '这个回答你今天没打开' }
   }
 
-  const api = apiOf(o)
   if (typeof api?.createComment !== 'function') return { ok: false, why: '没登录' }
-  const cookie = await cookieOf(o, api, root)
+  const cookie = auth.cookie
   if (!cookie) return { ok: false, why: '没登录' }
   const r = await api.createComment({ cookie, id: answerId, content: gate.text, fetchImpl: o.fetchImpl })
-  if (!r?.ok) return { ok: false, why: describe(r) }
-  await note(root, host.formatComment(dk, answerId, r.id, gate.text), o.sessionId, host)
+  if (!r?.ok) {
+    if ((r?.code === 'NOT_LOGIN' || r?.code === 'NO_CSRF') && auth.id && typeof api.clearAuth === 'function') await api.clearAuth(root, auth.id).catch(() => {})
+    return { ok: false, why: describe(r) }
+  }
+  await note(root, host.formatComment(dk, answerId, r.id, gate.text, { slot: auth.id, owner: auth.owner, name: auth.name }), o.sessionId, host)
   return { ok: true, id: String(r.id ?? '') }
 }
 

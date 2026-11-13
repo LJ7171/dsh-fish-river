@@ -15,6 +15,7 @@ export {
 
 export {
   createQr, pollQr, saveCookie, readAuth, loadCookie, clearAuth, credentialPath,
+  readAccounts, patchZhihuSlot, publicZhihu, accountsFromAuth,
 } from './auth.js'
 
 export { ZHIHU_DEFAULTS, ZHIHU_FIELDS, ZHIHU_COPY, normalizeZhihu } from './config.js'
@@ -40,7 +41,7 @@ import {
   createComment, createAnswer, answerPublishControl,
   resetZhihuWriteRisk, htmlToText, extractImages, probe,
 } from './api.js'
-import { createQr, pollQr, saveCookie, readAuth, loadCookie, clearAuth, credentialPath } from './auth.js'
+import { createQr, pollQr, saveCookie, readAuth, loadCookie, clearAuth, credentialPath, readAccounts, patchZhihuSlot } from './auth.js'
 import { normalizeZhihu } from './config.js'
 import { fetchZhihuMaterial, gatherZhihu, renderMaterial, renderQuestions } from './material.js'
 import { registerZhihuLook, zhihuLookOnce, parseTarget } from './look.js'
@@ -73,6 +74,8 @@ export default {
   loadCookie,
   clearAuth,
   credentialPath,
+  readAccounts,
+  patchZhihuSlot,
   normalizeZhihu,
   fetchZhihuMaterial,
   gatherZhihu,

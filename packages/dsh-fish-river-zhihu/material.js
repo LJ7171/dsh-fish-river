@@ -80,7 +80,7 @@ export function renderMaterial(items = [], config, host) {
   const h = hostOf(host)
   const by = { hot: [], recommend: [], follow: [], history: [] }
   for (const it of items) if (by[it.kind]) by[it.kind].push(it)
-  const scene = h.ownerLine('知乎', config?.zhihu?.owner)
+  const scene = h.ownerLine('知乎', config?.accountOwner ?? config?.zhihu?.owner)
   const out = [scene, '## 今天外面在说这些']
   let any = false
   if (by.hot.length) { any = true; out.push('### 热榜', ...by.hot.map(lineOf)) }
@@ -101,12 +101,13 @@ const EMPTY = { ok: false, text: '', picks: [], acted: false, blocked: true, why
  * 现场抓一次知乎。按勾选的来源各抓一份；id 去过重（300 个 / 7 天）。
  * 会先把今天的 runs 加一。配额满了直接 blocked，不会空手假装抓过。
  */
-export async function fetchZhihuMaterial({ root, cfg, now = new Date(), fetchImpl, mod, log, host } = {}) {
+export async function fetchZhihuMaterial({ root, cfg, now = new Date(), fetchImpl, mod, log, host, slot, account } = {}) {
   const h = hostOf(host)
   const z = cfg?.zhihu
   if (!z || z.enabled !== true) return { ...EMPTY, why: 'disabled' }
   const module = mod ?? localApi()
-  const auth = await module.readAuth(root).catch(() => null)
+  const auth = await module.readAuth(root, slot || account || '').catch(() => null)
+  if (auth?.needChoice) return { ...EMPTY, blocked: false, acted: false, why: 'choice', needChoice: true, choices: auth.choices }
   if (!auth?.cookie) return { ...EMPTY, why: 'login-required' }
 
   const cap = h.dailyQuota(cfg, 'zhihu')
@@ -188,10 +189,22 @@ export async function fetchZhihuMaterial({ root, cfg, now = new Date(), fetchImp
   }
 
   await writeState(root, { dateKey: dk, runs: runs + 1, seen }, h)
-  const listText = items.length ? renderMaterial(items, cfg, h) : ''
+  const shown = auth?.owner ? { ...cfg, accountOwner: auth.owner } : cfg
+  const listText = items.length ? renderMaterial(items, shown, h) : ''
   const qText = renderQuestions(questions)
   const text = [listText, qText].filter(Boolean).join('\n\n')
-  return { ok: Boolean(text), text, picks: items, questions, acted: true, blocked: false, why: text ? '' : 'empty' }
+  return {
+    ok: Boolean(text),
+    text,
+    picks: items,
+    questions,
+    acted: true,
+    blocked: false,
+    why: text ? '' : 'empty',
+    slot: auth?.id || '',
+    owner: auth?.owner || '',
+    name: String(auth?.account?.name ?? ''),
+  }
 }
 
 /** 一轮采集：拉热榜 + 关注动态（+历史），去掉已经递过的。留给「现在去看一眼」和测试。 */
@@ -218,14 +231,30 @@ export async function zhihuStatus(root, cfg, host) {
   const h = hostOf(host)
   const state = await readState(root)
   const dk = h.dateKey()
-  const auth = await localApi().readAuth(root).catch(() => null)
+  const api = localApi()
+  const label = cfg?.zhihu?.owner === 'her' ? 'her' : 'owner'
+  const accounts = typeof api.readAccounts === 'function'
+    ? await api.readAccounts(root, label).catch(() => [])
+    : []
+  const pub = accounts.map((s) => ({
+    id: s.id === 'b' ? 'b' : 'a',
+    owner: s.owner === 'her' ? 'her' : 'owner',
+    allowed: Boolean(s.cookie && s.allowed),
+    hasCookie: Boolean(s.cookie),
+    name: String(s.account?.name ?? ''),
+    mid: String(s.account?.id ?? s.account?.mid ?? ''),
+    savedAt: String(s.savedAt ?? ''),
+  }))
+  const logged = pub.filter((s) => s.hasCookie)
+  const sole = logged.length === 1 ? logged[0] : null
   return {
     installed: true,
     enabled: cfg?.zhihu?.enabled === true,
-    loggedIn: Boolean(auth?.cookie),
-    account: auth?.account ?? null,
+    loggedIn: logged.length > 0,
+    account: sole ? { name: sole.name, id: sole.mid } : null,
+    accounts: pub,
     runsToday: state.dateKey === dk ? Number(state.runs) || 0 : 0,
-    savedAt: auth?.savedAt ?? '',
+    savedAt: sole?.savedAt ?? '',
   }
 }
 

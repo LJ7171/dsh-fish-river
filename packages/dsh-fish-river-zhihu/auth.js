@@ -140,48 +140,186 @@ export function credentialPath(root) {
   return join(String(root ?? ''), 'zhihu-auth.json')
 }
 
-/** 存 cookie（0600 原子写）。account 只用于界面显示。 */
-export async function saveCookie(root, { cookie, account = null } = {}) {
-  const value = String(cookie ?? '').trim()
-  if (!value) return { ok: false, why: '空 cookie' }
-  const file = credentialPath(root)
-  try {
-    await mkdir(dirname(file), { recursive: true })
-    const tmp = `${file}.${process.pid}.tmp`
-    await writeFile(tmp, JSON.stringify({ cookie: value, account, savedAt: new Date().toISOString() }, null, 2), 'utf8')
-    await chmod(tmp, 0o600).catch(() => {})
-    await rename(tmp, file)
-    return { ok: true }
-  } catch (error) {
-    return { ok: false, why: `凭据没写进去：${errorText(error)}` }
+function slotOwner(value, fallback) {
+  return value === 'her' || value === 'owner' ? value : fallback
+}
+
+function emptyZhihuSlot(id, owner) {
+  return { id, cookie: '', owner, allowed: false, account: null, savedAt: '' }
+}
+
+function publicZhihu(slot) {
+  const cookie = String(slot?.cookie ?? '')
+  const account = slot?.account && typeof slot.account === 'object' ? slot.account : null
+  return {
+    id: slot?.id === 'b' ? 'b' : 'a',
+    owner: slot?.owner === 'her' ? 'her' : 'owner',
+    allowed: Boolean(slot?.allowed) && Boolean(cookie),
+    hasCookie: Boolean(cookie),
+    name: String(account?.name ?? ''),
+    mid: String(account?.id ?? account?.mid ?? ''),
+    savedAt: String(slot?.savedAt ?? ''),
   }
 }
 
-/** 读凭据；没有 / 坏了都返回 null。 */
-export async function readAuth(root) {
+/** 旧的单条 cookie 进槽 a。ownerLabel 由调用方传入，缺省按知乎现在的默认（重要的人）。 */
+export function accountsFromAuth(parsed, ownerLabel = 'owner') {
+  const label = slotOwner(ownerLabel, 'owner')
+  const other = label === 'her' ? 'owner' : 'her'
+  if (Array.isArray(parsed?.accounts)) {
+    const byId = new Map()
+    for (const raw of parsed.accounts) {
+      const id = raw?.id === 'b' ? 'b' : 'a'
+      if (byId.has(id)) continue
+      const cookie = String(raw?.cookie ?? '').trim()
+      byId.set(id, {
+        id,
+        cookie,
+        owner: slotOwner(raw?.owner, id === 'a' ? label : other),
+        allowed: cookie ? raw?.allowed !== false : false,
+        account: raw?.account ?? null,
+        savedAt: String(raw?.savedAt ?? ''),
+      })
+    }
+    return ['a', 'b'].map((id) => byId.get(id) ?? emptyZhihuSlot(id, id === 'a' ? label : other))
+  }
+  const cookie = String(parsed?.cookie ?? '').trim()
+  return [
+    {
+      id: 'a',
+      cookie,
+      owner: label,
+      allowed: Boolean(cookie),
+      account: parsed?.account ?? null,
+      savedAt: String(parsed?.savedAt ?? ''),
+    },
+    emptyZhihuSlot('b', other),
+  ]
+}
+
+async function readParsed(root) {
   try {
-    const raw = await readFile(credentialPath(root), 'utf8')
-    const parsed = JSON.parse(raw)
-    const cookie = String(parsed?.cookie ?? '').trim()
-    if (!cookie) return null
-    return { cookie, account: parsed?.account ?? null, savedAt: String(parsed?.savedAt ?? '') }
+    return JSON.parse(await readFile(credentialPath(root), 'utf8'))
   } catch {
     return null
   }
 }
 
-export async function loadCookie(root) {
-  return (await readAuth(root))?.cookie ?? ''
+async function writeDoc(root, doc) {
+  const file = credentialPath(root)
+  await mkdir(dirname(file), { recursive: true })
+  const tmp = `${file}.${process.pid}.tmp`
+  await writeFile(tmp, JSON.stringify(doc, null, 2), 'utf8')
+  await chmod(tmp, 0o600).catch(() => {})
+  await rename(tmp, file)
 }
 
-export async function clearAuth(root) {
+function identityOf(slot) {
+  const account = slot?.account
+  return String(account?.id ?? account?.mid ?? '').trim()
+}
+
+export async function readAccounts(root, ownerLabel = 'owner') {
+  const parsed = await readParsed(root)
+  const accounts = accountsFromAuth(parsed, ownerLabel)
+  if (parsed && !Array.isArray(parsed.accounts) && (parsed.cookie || parsed.account)) {
+    try { await writeDoc(root, { v: 2, accounts }) } catch { /* 迁不了也不挡这次读取 */ }
+  }
+  return accounts
+}
+
+function legacyOf(slot) {
+  if (!slot?.cookie) return null
+  return {
+    cookie: slot.cookie,
+    account: slot.account ?? null,
+    savedAt: String(slot.savedAt ?? ''),
+    id: slot.id,
+    owner: slot.owner,
+    allowed: slot.allowed === true,
+  }
+}
+
+/**
+ * 不指定槽时：恰好一个可用号就返回它（旧调用方不用改）。
+ * 两个都可用时不挑，返回 needChoice，调用方自己问她。
+ */
+export async function readAuth(root, slotId = '', ownerLabel = 'owner') {
+  const accounts = await readAccounts(root, ownerLabel)
+  if (slotId === 'a' || slotId === 'b') return legacyOf(accounts.find((s) => s.id === slotId))
+  const usable = accounts.filter((s) => s.cookie && s.allowed)
+  if (usable.length === 1) return legacyOf(usable[0])
+  if (usable.length > 1) return { needChoice: true, choices: usable.map(publicZhihu) }
+  return null
+}
+
+/** 存 cookie（0600 原子写）。account 只用于界面显示。slot 缺省写槽 a，不动另一槽。 */
+export async function saveCookie(root, { cookie, account = null, slot, owner, allowed, ownerLabel = 'owner' } = {}) {
+  const value = String(cookie ?? '').trim()
+  if (!value) return { ok: false, why: '空 cookie' }
   try {
-    await unlink(credentialPath(root))
+    const accounts = await readAccounts(root, ownerLabel)
+    const id = slot === 'b' ? 'b' : 'a'
+    const ident = String(account?.id ?? account?.mid ?? '').trim()
+    if (ident && accounts.some((s) => s.id !== id && identityOf(s) === ident)) {
+      return { ok: false, why: '这个号已经登在另一个位置了。' }
+    }
+    const cur = accounts.find((s) => s.id === id) ?? emptyZhihuSlot(id, ownerLabel)
+    const next = accounts.map((s) => (s.id === id ? {
+      id,
+      cookie: value,
+      owner: slotOwner(owner, cur.owner || (id === 'a' ? ownerLabel : (ownerLabel === 'her' ? 'owner' : 'her'))),
+      allowed: allowed === undefined ? true : allowed === true,
+      account,
+      savedAt: new Date().toISOString(),
+    } : s))
+    await writeDoc(root, { v: 2, accounts: next })
+    return { ok: true, id }
+  } catch (error) {
+    return { ok: false, why: `凭据没写进去：${errorText(error)}` }
+  }
+}
+
+export async function loadCookie(root, slotId = '') {
+  return (await readAuth(root, slotId))?.cookie ?? ''
+}
+
+export async function clearAuth(root, slotId = '') {
+  if (slotId !== 'a' && slotId !== 'b') {
+    try {
+      await unlink(credentialPath(root))
+      return { ok: true }
+    } catch (error) {
+      if (String(error?.code ?? '') === 'ENOENT') return { ok: true }
+      return { ok: false, why: errorText(error) }
+    }
+  }
+  try {
+    const accounts = await readAccounts(root)
+    const next = accounts.map((s) => (s.id === slotId ? emptyZhihuSlot(slotId, s.owner) : s))
+    await writeDoc(root, { v: 2, accounts: next })
     return { ok: true }
   } catch (error) {
-    if (String(error?.code ?? '') === 'ENOENT') return { ok: true }
     return { ok: false, why: errorText(error) }
   }
 }
 
-export default { createQr, pollQr, saveCookie, readAuth, loadCookie, clearAuth, credentialPath }
+export async function patchZhihuSlot(root, slotId, patch = {}, ownerLabel = 'owner') {
+  const id = slotId === 'b' ? 'b' : 'a'
+  const accounts = await readAccounts(root, ownerLabel)
+  const next = accounts.map((s) => {
+    if (s.id !== id) return s
+    const owner = patch.owner !== undefined ? slotOwner(patch.owner, s.owner) : s.owner
+    const allowed = !s.cookie ? false : (patch.allowed !== undefined ? patch.allowed === true : s.allowed)
+    return { ...s, owner, allowed }
+  })
+  await writeDoc(root, { v: 2, accounts: next })
+  return { ok: true, accounts: next.map(publicZhihu) }
+}
+
+export { publicZhihu }
+
+export default {
+  createQr, pollQr, saveCookie, readAuth, loadCookie, clearAuth, credentialPath,
+  readAccounts, patchZhihuSlot, publicZhihu, accountsFromAuth,
+}

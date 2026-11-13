@@ -112,7 +112,9 @@ test('saveOwner 落盘 0600，且只存白名单里的键', async () => {
     const r = await saveOwner({ mid: '42', nickname: '我', cookie: 'SESSDATA=s1; bili_jct=j1; _ga=x' }, root)
     assert.equal(r.ok, true)
     const ow = await readOwner(root)
-    assert.equal(ow.cookie, 'SESSDATA=s1; bili_jct=j1')
+    assert.equal(ow.cookie, undefined)
+    assert.equal(ow.accounts[0].cookie, 'SESSDATA=s1; bili_jct=j1')
+    assert.equal(ow.accounts[1].cookie, '')
     const st = await stat(join(root, 'owner.json'))
     // Windows 上 chmod 只影响只读位，允许 0o600 或 0o666 两种结果，但绝不能是 0o644 之外的"谁都能读"语义
     assert.ok((st.mode & 0o777) === 0o600 || (st.mode & 0o777) === 0o666, `mode=${(st.mode & 0o777).toString(8)}`)
@@ -144,6 +146,7 @@ test('saveOwner 传空 cookie 是「清除」，不是「没传」', async () =>
     const r = await saveOwner({ cookie: '' }, root)
     assert.equal(r.ok, true)
     const ow = await readOwner(root)
+    assert.equal(ow.accounts?.[0]?.cookie ?? '', '')
     assert.equal(ow.cookie, undefined)
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
@@ -245,12 +248,13 @@ test('saveAccount 只记登录账号，不覆盖领养人', async () => {
     const ow = await readOwner(root)
     assert.equal(ow.mid, '42', '领养人 uid 不许被登录账号冲掉')
     assert.equal(ow.nickname, '大号', '领养人昵称不许被登录账号冲掉')
-    assert.equal(ow.account.mid, '777')
-    assert.equal(ow.account.name, '小号')
-    assert.ok(ow.account.savedAt)
+    assert.equal(ow.accounts[0].account.mid, '777')
+    assert.equal(ow.accounts[0].account.name, '小号')
+    assert.ok(ow.accounts[0].savedAt)
+    assert.equal(ow.mid, '42')
     // 反向：改领养人也不动登录账号
     await saveOwner({ nickname: '改个名' }, root)
-    assert.equal((await readOwner(root)).account.mid, '777')
+    assert.equal((await readOwner(root)).accounts[0].account.mid, '777')
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
   }
