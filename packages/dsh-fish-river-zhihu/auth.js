@@ -37,7 +37,12 @@ export function createJar(cookies = {}) {
     all() { return { ...jar } },
     header() { return Object.entries(jar).map(([k, v]) => `${k}=${v}`).join('; ') },
     absorb(res) {
-      const list = typeof res?.headers?.getSetCookie === 'function' ? res.headers.getSetCookie() : []
+      let list = typeof res?.headers?.getSetCookie === 'function' ? res.headers.getSetCookie() : []
+      if (!Array.isArray(list) || !list.length) {
+        // 某些 fetch 实现只暴露合并后的 set-cookie 字符串。
+        const raw = typeof res?.headers?.get === 'function' ? res.headers.get('set-cookie') : ''
+        if (raw) list = String(raw).split(/,(?=[^;=]+=)/g)
+      }
       for (const sc of list) {
         const pair = String(sc).split(';')[0]
         const i = pair.indexOf('=')
