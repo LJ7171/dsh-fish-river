@@ -128,13 +128,34 @@ export async function pollQr({ token, jar, fetchImpl = fetch } = {}) {
       },
     }, fetchImpl)
     const text = await res.text()
+    let info = null
+    try { info = JSON.parse(text) } catch { /* 可能是空 body */ }
+    const data = info && typeof info === 'object' && info.data && typeof info.data === 'object' ? info.data : info
+
+    // 知乎有时把登录 cookie 放在响应 body 里，而不是只在 Set-Cookie：
+    // {"cookie":"z_c0=...; _xsrf=...", "z_c0":"...", "cookies":{...}}
+    const bodyCookie = data?.cookie ?? data?.cookies
+    if (typeof bodyCookie === 'string' && bodyCookie.includes('z_c0')) {
+      for (const part of bodyCookie.split(';')) {
+        const i = part.indexOf('=')
+        if (i > 0) j.set(part.slice(0, i).trim(), part.slice(i + 1).trim())
+      }
+    } else if (bodyCookie && typeof bodyCookie === 'object' && !Array.isArray(bodyCookie) && bodyCookie.z_c0) {
+      for (const [k, v] of Object.entries(bodyCookie)) j.set(k, v)
+    }
+    if (data?.z_c0) j.set('z_c0', data.z_c0)
+
     const cookies = j.all()
-    if (cookies.z_c0) {
+    const confirmed = Boolean(cookies.z_c0)
+      || Boolean(data?.access_token)
+      || (data && data.user_id !== undefined && data.user_id !== null)
+      || ['CONFIRMED', 'LOGIN_SUCCESS', 'SUCCESS', 'OK', 'LOGGED_IN'].includes(String(data?.login_status ?? '').toUpperCase())
+      || data?.success === true
+      || data?.logged_in === true
+    if (confirmed) {
       return { ok: true, status: 'confirmed', cookie: j.header(), jar: cookies }
     }
-    if (res.status === 200 && /access_token/.test(text)) {
-      return { ok: true, status: 'confirmed', cookie: j.header(), jar: cookies }
-    }
+    // status 0 = 未扫，1 = 已扫未确认；其它形状一律继续等。
     return { ok: true, status: 'wait', jar: cookies }
   } catch (error) {
     return { ok: false, status: 'error', why: errorText(error) }

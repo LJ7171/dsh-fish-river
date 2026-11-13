@@ -1,3 +1,11 @@
+## 0.1.125 — 2026-11-13
+
+- 知乎扫码确认响应兼容更多形状：`user_id`、`access_token`、`z_c0` 字段、
+  body 里的 `cookie`/`cookies` 字符串或对象都算确认；`status: 0/1` 仍继续等待。
+- 之前的实现只看 Set-Cookie 的 z_c0 或文本里的 access_token，知乎返回
+  `user_id + cookies` 时会被误判为“没确认”，这是扫码一直 wait 的主要原因。
+- 新增 `test/zhihu-qr.test.mjs` 覆盖三种响应；总 1627 项。
+
 ## 0.1.124 — 2026-11-13
 
 - 知乎扫码保存链路诊断：confirmed 时记录 cookie 长度，saveCookie 成功/失败各记一条日志
