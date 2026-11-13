@@ -96,6 +96,8 @@ export async function zhihuSpeakOnce(o = {}) {
       sessionId: o.sessionId,
       dateKey: o.dateKey,
       selfId: o.selfId,
+      account: o.account,
+      slot: o.slot,
       host,
     }
     const r = kind === 'answer'
@@ -129,6 +131,7 @@ export function registerZhihuSpeak(ctx, deps = {}) {
         id: { type: 'string', required: true, description: '回答号（comment/reply）或问题号（answer）。' },
         text: { type: 'string', required: true, description: '要说的话。说人话。' },
         parentId: { type: 'string', required: false, description: 'kind=reply 时，你要回的是哪一条。' },
+        account: { type: 'string', required: false, description: '两个号都在的时候写 a 或 b。只有一个号就不用写。' },
       }),
       output: {
         schema: {
@@ -166,6 +169,7 @@ export function registerZhihuSpeak(ctx, deps = {}) {
           id: args?.id,
           text: args?.text,
           parentId: args?.parentId,
+          account: args?.account,
           root,
           api: deps.api,
           sessionId: who.sessionId,

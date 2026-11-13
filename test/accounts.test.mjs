@@ -23,6 +23,10 @@ import { ownerLine, whoseAccount } from '../lib/core/ownerLabel.js'
 import { scrub } from '../lib/core/log.js'
 import { writeAuth, readAuth, clearAuth } from '../lib/platforms/tieba/client.js'
 import { saveCookie, readAuth as readZhihu, clearAuth as clearZhihu } from '../packages/dsh-fish-river-zhihu/auth.js'
+import { registerTiebaLook, tiebaLookOnce } from '../lib/platforms/tieba/look.js'
+import { registerZhihuLook, zhihuLookOnce } from '../lib/platforms/zhihu/look.js'
+import { registerZhihuSpeak } from '../lib/platforms/zhihu/speak.js'
+import { registerTiebaSpeak } from '../lib/platforms/tieba/speak.js'
 
 const COOKIE_A = 'SESSDATA=secret-a; bili_jct=jct-a; DedeUserID=111'
 const COOKIE_B = 'SESSDATA=secret-b; bili_jct=jct-b; DedeUserID=222'
@@ -277,4 +281,67 @@ test('一个槽过期或风控，另一个槽还在', async () => {
   } finally {
     await rm(dir, { recursive: true, force: true })
   }
+})
+
+
+test('知乎/贴吧工具都接受 account；贴吧按槽发请求', async () => {
+  const ctx = { tools: { register: (s) => s } }
+  const t = registerTiebaLook(ctx, { root: '/tmp/nope' })
+  assert.equal(t.parameters.properties.account.type, 'string')
+  const z = registerZhihuLook(ctx, { root: '/tmp/nope' })
+  assert.equal(z.parameters.properties.account.type, 'string')
+
+  const dir = await root()
+  try {
+    await writeConfig(normalizeConfig({ tieba: { enabled: true } }), dir)
+    await writeAuth(dir, { cookie: 'BDUSS=tieba-a; STOKEN=s', account: { name: '甲', mid: '1' }, slot: 'a' })
+    await writeAuth(dir, { cookie: 'BDUSS=tieba-b; STOKEN=s', account: { name: '乙', mid: '2' }, slot: 'b' })
+    const seen = []
+    const r = await tiebaLookOnce({
+      root: dir,
+      cfg: normalizeConfig({ tieba: { enabled: true } }),
+      kind: 'recommend',
+      account: 'b',
+      fetchImpl: async (_url, opts = {}) => {
+        seen.push(String(opts.headers?.cookie ?? ''))
+        return { ok: true, status: 200, text: async () => JSON.stringify({ error_code: 0, data: {} }) }
+      },
+    })
+    assert.ok(seen.length > 0)
+    assert.ok(seen.every((c) => c.includes('tieba-b') && !c.includes('tieba-a')), seen.join('\n'))
+    assert.ok(r, '请求路径走通，cookie 走 b 槽')
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+test('zhihuLookOnce 的 account 会传到 readAuth', async () => {
+  const dir = await root()
+  try {
+    const seen = []
+    const mod = {
+      readAuth: async (_root, slot) => ({ cookie: slot === 'b' ? 'z_b' : 'z_a', id: slot, owner: 'her', account: { name: '甲' } }),
+      fetchHot: async ({ cookie }) => { seen.push(cookie); return { ok: true, items: [{ id: 'hot:1', title: '一条' }] } },
+    }
+    const r = await zhihuLookOnce({
+      root: dir,
+      cfg: normalizeConfig({ zhihu: { enabled: true } }),
+      kind: 'hot',
+      account: 'b',
+      mod,
+    })
+    assert.equal(r.ok, true, r.note)
+    assert.deepEqual(seen, ['z_b'])
+  } finally {
+    await rm(dir, { recursive: true, force: true })
+  }
+})
+
+
+test('知乎/贴吧说话工具也接受 account', () => {
+  const ctx = { tools: { register: (s) => s } }
+  const z = registerZhihuSpeak(ctx, { root: '/tmp/nope' })
+  const t = registerTiebaSpeak(ctx, { root: '/tmp/nope' })
+  assert.equal(z.parameters.properties.account.type, 'string')
+  assert.equal(t.parameters.properties.account.type, 'string')
 })

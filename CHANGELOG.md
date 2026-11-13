@@ -1,3 +1,15 @@
+## 0.1.121 — 2026-11-13
+
+- 两个登录槽补齐到知乎/贴吧的说话工具：
+  - `zhihu_look` / `tieba_look` / `zhihu_speak` / `tieba_speak` 都接受 `account: a|b`；
+  - `zhihuSpeakOnce` / `tiebaSpeakOnce` 把 account 继续传到 auth/回复/回答；
+  - 没有 account 时保持原行为，只有一个号就直接用。
+- `choose_outing` 新增 `accounts` 按平台选号：
+  `{ channels: ['bili','zhihu'], accounts: { bili: 'b', zhihu: 'a' } }`；
+  旧的全局 `account` 仍兼容，调度器每个平台单独取号。
+- rebase 到 0.1.120，保留 `wake-notes` 的纯确认/请求回答补看逻辑。
+- 测试：1623 项。
+
 ## 0.1.120 — 2026-11-13
 
 - 纯确认（好 / 嗯 / 收到）不叫醒她，但重要的人的私聊会记 `ack-wait`；

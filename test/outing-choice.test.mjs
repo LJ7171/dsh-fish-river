@@ -42,6 +42,7 @@ test('choose_outing：空选不调执行器；选了才把路交给执行器', a
   const tool = registerChooseOuting(ctx, { root: '/tmp/nope' })
   assert.equal(tool.name, 'choose_outing')
   assert.deepEqual(tool.parameters.properties.channels.items.enum, ['bili', 'douyin', 'zhihu', 'tieba'])
+  assert.ok(tool.parameters.properties.accounts, '要能按平台分别选号')
   assert.doesNotMatch(tool.description, /配额|阶段/)
 
   const calls = []
@@ -68,6 +69,10 @@ test('choose_outing：空选不调执行器；选了才把路交给执行器', a
     assert.equal(calls.length, 1)
     assert.deepEqual(calls[0].channels, ['bili', 'zhihu'], '去重保序')
     assert.equal(calls[0].wakeTurn.segmentId, 3)
+
+    await tool.execute({ channels: ['bili', 'zhihu'], accounts: { bili: 'b', zhihu: 'a' }, account: 'a' }, { sessionId: 's' })
+    assert.deepEqual(calls.at(-1).accounts, { bili: 'b', zhihu: 'a' }, '按平台选号')
+    assert.equal(calls.at(-1).account, 'a', '全局 account 仍保留')
   } finally {
     resetOutingForTests()
     resetWakeTurnForTests()

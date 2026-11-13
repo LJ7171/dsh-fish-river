@@ -277,6 +277,7 @@ export function registerZhihuLook(ctx, deps = {}) {
           },
           orderBy: { type: 'string', enum: ['score', 'time'], description: 'comments 的排序：score（默认）或 time。' },
           topN: { type: 'number', description: '最多几条（1–20，默认按各类自己的设置）。' },
+          account: { type: 'string', description: '两个号都在的时候写 a 或 b。只有一个号就不用写。' },
         },
         additionalProperties: false,
       },
@@ -305,6 +306,7 @@ export function registerZhihuLook(ctx, deps = {}) {
           target: args?.target,
           topN: args?.topN,
           orderBy: args?.orderBy,
+          account: args?.account,
           sessionId: who.sessionId,
           host,
         })
