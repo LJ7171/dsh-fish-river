@@ -956,3 +956,28 @@ test('重要的人私聊写 seen:，近人和群不算「他来过」', async ()
     await h.router.stop()
   }
 })
+
+test('纯确认：主人私聊留 ack-wait，群聊不叫醒也不留', async () => {
+  const h = await harness({
+    reply: '在。',
+    config: { im: { inboundSilenceMs: 0 }, channels: { weixin: { enabled: true } } },
+    ownerIds: { weixin: 'a' },
+  })
+  const dm = (id, text, kind = 'dm') => ({
+    channel: 'weixin', kind, conversationId: id, personId: id, personName: '甲',
+    text, images: [], mentionedSelf: false, at: 1,
+  })
+  try {
+    await h.router.accept(dm('a', '好'))
+    await soon()
+    let { events } = await readEvents(h.root)
+    assert.equal(events.filter((e) => e.type === 'heard').length, 1)
+    assert.equal(events.filter((e) => e.type === 'meta' && String(e.text).startsWith('ack-wait:')).length, 1)
+    await h.router.accept(dm('g', '好', 'group'))
+    await soon()
+    ;({ events } = await readEvents(h.root))
+    assert.equal(events.filter((e) => e.type === 'meta' && String(e.text).startsWith('ack-wait:')).length, 1, '群聊不留待读')
+  } finally {
+    await h.router.stop()
+  }
+})
