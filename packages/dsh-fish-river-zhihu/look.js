@@ -160,6 +160,7 @@ export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', target =
   const auth = await module.readAuth(root, slot || account || '').catch(() => null)
   if (auth?.needChoice) return { ok: false, text: '', picks: [], note: '知乎有两个可以出门的号。这次先不替你选。想用哪个，account 里写 a 或 b。' }
   if (!auth?.cookie) return { ok: false, text: '', picks: [], note: '现在看不了。' }
+  const mark = { slot: auth.id, owner: auth.owner, name: auth.account?.name }
 
   const n = Math.max(1, Math.min(20, Number(topN) || 0)) || null
   const parsed = parseTarget(id || '')
@@ -174,7 +175,7 @@ export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', target =
       const urls = imagesOn(cfg) ? (r.answers ?? []).flatMap((a) => a.images ?? []).slice(0, cap) : []
       const pics = urls.length ? await saveImages({ root, urls, tag: `q-${qid}`, fetchImpl, max: cap, host: h }) : []
       const text = [h.sanitize(renderQuestion(r, cfg, h)).text, ...imageLines(pics, h)].join('\n')
-      await noteAct(root, h.formatOpen(h.dateKey(), qid, r.question?.title, { slot: auth.id, owner: auth.owner, name: auth.account?.name }), sessionId, h)
+      await noteAct(root, h.formatOpen(h.dateKey(), qid, r.question?.title, mark), sessionId, h)
       return { ok: true, text, picks: r.answers, note: '' }
     }
     if (kind === 'answer') {
@@ -186,7 +187,7 @@ export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', target =
       const urls = imagesOn(cfg) ? (r.answer.images ?? []).slice(0, cap) : []
       const pics = urls.length ? await saveImages({ root, urls, tag: `a-${aid}`, fetchImpl, max: cap, host: h }) : []
       const text = [h.sanitize(renderAnswer(r.answer, cfg, h)).text, ...imageLines(pics, h)].join('\n')
-      await noteAct(root, h.formatOpen(h.dateKey(), aid, r.answer?.question?.title || r.answer?.text, { question: r.answer?.question?.id }), sessionId, h)
+      await noteAct(root, h.formatOpen(h.dateKey(), aid, r.answer?.question?.title || r.answer?.text, { question: r.answer?.question?.id, ...mark }), sessionId, h)
       return { ok: true, text, picks: [r.answer], note: '' }
     }
     if (kind === 'comments') {
@@ -208,7 +209,7 @@ export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', target =
       const pics = urls.length ? await saveImages({ root, urls, tag: `c-${rid}`, fetchImpl, max: cap, host: h }) : []
       const text = [h.sanitize(renderComments(r, h)).text, ...imageLines(pics, h)].join('\n')
       const questionOnAnswer = which === 'answer' ? (parsed.questionId || '') : ''
-      await noteAct(root, h.formatOpen(h.dateKey(), rid, '', questionOnAnswer && questionOnAnswer !== rid ? { question: questionOnAnswer } : {}), sessionId, h)
+      await noteAct(root, h.formatOpen(h.dateKey(), rid, '', { ...(questionOnAnswer && questionOnAnswer !== rid ? { question: questionOnAnswer } : {}), ...mark }), sessionId, h)
       await h.recordVoice({
         comments: r.comments,
         ref: `zh:${which}:${rid}`,
@@ -240,7 +241,7 @@ export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', target =
 
     const fresh = items.filter((x) => x.title)
     if (!fresh.length) return { ok: false, text: '', picks: [], note: '这次没看到什么。' }
-    if (BROWSE_KINDS.has(kind)) await noteAct(root, h.formatBrowse(h.dateKey(), fresh), sessionId, h)
+    if (BROWSE_KINDS.has(kind)) await noteAct(root, h.formatBrowse(h.dateKey(), fresh, mark), sessionId, h)
     return { ok: true, text: renderList(fresh, cfg, h), picks: fresh, note: '' }
   } catch (error) {
     return { ok: false, text: '', picks: [], note: `这次没看到：${errorText(error).slice(0, 120)}` }

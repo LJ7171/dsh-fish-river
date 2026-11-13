@@ -422,21 +422,31 @@ export async function fetchComments({ cookie = '', target = 'answer', id = '', l
   }
 }
 
-/** 写操作冷却只在这个进程里。要验证码或风控才记，不自动重试。 */
-const writeRisk = { until: 0, streak: 0, at: 0 }
+/** 写操作冷却只在这个进程里，按登录槽分开。要验证码或风控才记，不自动重试，也不换另一个号。 */
+const writeBuckets = new Map()
 
-export function resetZhihuWriteRisk() {
-  writeRisk.until = 0
-  writeRisk.streak = 0
-  writeRisk.at = 0
+function writeBucket(slot) {
+  const key = slot === 'b' ? 'b' : (slot === 'a' ? 'a' : '')
+  let row = writeBuckets.get(key)
+  if (!row) {
+    row = { until: 0, streak: 0, at: 0 }
+    writeBuckets.set(key, row)
+  }
+  return row
 }
 
-function zhihuCooldown(now = Date.now()) {
+export function resetZhihuWriteRisk() {
+  writeBuckets.clear()
+}
+
+function zhihuCooldown(slot, now = Date.now()) {
+  const writeRisk = writeBucket(slot)
   if (!writeRisk.until || now >= writeRisk.until) return null
   return { ok: false, code: 'COOLDOWN', why: '先歇一会儿' }
 }
 
-function noteZhihuWriteRisk(now = Date.now()) {
+function noteZhihuWriteRisk(slot, now = Date.now()) {
+  const writeRisk = writeBucket(slot)
   const streak = writeRisk.at && now - writeRisk.at < 30 * 60_000 ? writeRisk.streak + 1 : 1
   const wait = Math.min(30 * 60_000, 5 * 60_000 * 2 ** (streak - 1))
   writeRisk.until = now + wait
@@ -505,9 +515,9 @@ function classifyWrite(status, json) {
   return ''
 }
 
-function stopForRisk(kind) {
+function stopForRisk(kind, slot) {
   if (kind !== 'CAPTCHA' && kind !== 'RISK') return null
-  noteZhihuWriteRisk()
+  noteZhihuWriteRisk(slot)
   return { ok: false, code: kind, why: kind === 'CAPTCHA' ? '要验证' : '被拦了一下' }
 }
 
@@ -538,8 +548,8 @@ export async function fetchChildComments({ cookie = '', id = '', limit = 20, fet
  * 在一条回答下面写评论，或回复某一条。
  * replyCommentId 空着是主楼；有值是楼中楼（仍挂在这条回答上）。
  */
-export async function createComment({ cookie = '', id = '', content = '', replyCommentId = '', replyRootCommentId = '', fetchImpl = fetch } = {}) {
-  const blocked = zhihuCooldown()
+export async function createComment({ cookie = '', id = '', content = '', replyCommentId = '', replyRootCommentId = '', fetchImpl = fetch, slot = '' } = {}) {
+  const blocked = zhihuCooldown(slot)
   if (blocked) return blocked
   const rid = String(id ?? '').trim()
   const text = String(content ?? '').trim()
@@ -560,7 +570,7 @@ export async function createComment({ cookie = '', id = '', content = '', replyC
       },
     })
     const kind = classifyWrite(r.status, r.json)
-    const stopped = stopForRisk(kind)
+    const stopped = stopForRisk(kind, slot)
     if (stopped) return stopped
     if (kind === 'NOT_LOGIN') return { ok: false, code: 'NOT_LOGIN', why: '没登录' }
     if (kind) return { ok: false, code: 'FAIL', why: String(r.json?.error?.message ?? r.json?.message ?? '没发出去').slice(0, 60) }
@@ -632,8 +642,8 @@ export async function answerPublishControl({ cookie = '', questionId = '', fetch
 }
 
 /** 给一个问题写回答。正文按纯文本转成段落，不接收调用方拼好的 HTML。 */
-export async function createAnswer({ cookie = '', questionId = '', content = '', fetchImpl = fetch } = {}) {
-  const blocked = zhihuCooldown()
+export async function createAnswer({ cookie = '', questionId = '', content = '', fetchImpl = fetch, slot = '' } = {}) {
+  const blocked = zhihuCooldown(slot)
   if (blocked) return blocked
   const qid = String(questionId ?? '').trim()
   const text = String(content ?? '').trim()
@@ -675,7 +685,7 @@ export async function createAnswer({ cookie = '', questionId = '', content = '',
       body,
     })
     const kind = classifyWrite(r.status, r.json)
-    const stopped = stopForRisk(kind)
+    const stopped = stopForRisk(kind, slot)
     if (stopped) return stopped
     if (kind === 'NOT_LOGIN') return { ok: false, code: 'NOT_LOGIN', why: '没登录' }
     if (kind) return { ok: false, code: 'FAIL', why: String(r.json?.error?.message ?? r.json?.message ?? '没发出去').slice(0, 60) }

@@ -141,11 +141,6 @@ async function authOf(o, api, root) {
   return { cookie: '' }
 }
 
-async function cookieOf(o, api, root) {
-  const auth = await authOf(o, api, root)
-  return auth.needChoice ? '' : auth.cookie
-}
-
 async function selfIdOf(o, api, root, cookie) {
   if (o.selfId != null) return String(o.selfId)
   if (typeof api?.readAuth === 'function') {
@@ -309,7 +304,7 @@ export async function postComment(o = {}) {
   if (typeof api?.createComment !== 'function') return { ok: false, why: '没登录' }
   const cookie = auth.cookie
   if (!cookie) return { ok: false, why: '没登录' }
-  const r = await api.createComment({ cookie, id: answerId, content: gate.text, fetchImpl: o.fetchImpl })
+  const r = await api.createComment({ cookie, id: answerId, content: gate.text, fetchImpl: o.fetchImpl, slot: auth.id })
   if (!r?.ok) {
     if ((r?.code === 'NOT_LOGIN' || r?.code === 'NO_CSRF') && auth.id && typeof api.clearAuth === 'function') await api.clearAuth(root, auth.id).catch(() => {})
     return { ok: false, why: describe(r) }
@@ -342,12 +337,15 @@ export async function postReply(o = {}) {
   const answerId = String(o.answerId ?? o.id ?? '').trim()
   const parent = String(o.parentId ?? '').trim()
   if (!parent) return { ok: false, why: '不知道在回哪一条' }
-  const mine = herCommentsRecent(events, REPLY_LOOKBACK_DAYS, Date.now(), host).filter((row) => !answerId || row.answerId === answerId)
+  const api = apiOf(o)
+  const auth = await authOf(o, api, root)
+  if (auth.needChoice) return { ok: false, why: '先选定一个号' }
+  const mine = herCommentsRecent(events, REPLY_LOOKBACK_DAYS, Date.now(), host)
+    .filter((row) => (!answerId || row.answerId === answerId) && sameZhihuSlot(row.slot, auth.id))
   if (!mine.length) return { ok: false, why: '你还没在那条下面说过话' }
 
-  const api = apiOf(o)
   if (typeof api?.createComment !== 'function') return { ok: false, why: '没登录' }
-  const cookie = await cookieOf(o, api, root)
+  const cookie = auth.cookie
   if (!cookie) return { ok: false, why: '没登录' }
 
   let rootRow = null
@@ -366,9 +364,13 @@ export async function postReply(o = {}) {
     replyCommentId: parent,
     replyRootCommentId: rootRow.commentId,
     fetchImpl: o.fetchImpl,
+    slot: auth.id,
   })
-  if (!r?.ok) return { ok: false, why: describe(r) }
-  await note(root, host.formatReply(dk, rootRow.answerId, rootRow.commentId, parent, gate.text), o.sessionId, host)
+  if (!r?.ok) {
+    if ((r?.code === 'NOT_LOGIN' || r?.code === 'NO_CSRF') && auth.id && typeof api.clearAuth === 'function') await api.clearAuth(root, auth.id).catch(() => {})
+    return { ok: false, why: describe(r) }
+  }
+  await note(root, host.formatReply(dk, rootRow.answerId, rootRow.commentId, parent, gate.text, { slot: auth.id, owner: auth.owner, name: auth.name }), o.sessionId, host)
   await note(root, `zhihu-cseen:${dk} ${parent}`, o.sessionId, host)
   return { ok: true, id: String(r.id ?? '') }
 }
@@ -396,15 +398,25 @@ export async function postAnswer(o = {}) {
 
   const questionId = String(o.questionId ?? o.id ?? '').trim()
   const api = apiOf(o)
-  const cookie = api ? await cookieOf(o, api, root) : ''
-  const opened = await openedQuestion(opensToday(events, dk, host), questionId, api, cookie)
+  const auth = await authOf(o, api, root)
+  if (auth.needChoice) return { ok: false, why: '先选定一个号' }
+  const cookie = auth.cookie
+  const opened = await openedQuestion(
+    opensToday(events, dk, host).filter((row) => sameZhihuSlot(row.slot, auth.id)),
+    questionId,
+    api,
+    cookie,
+  )
   if (!opened) return { ok: false, why: '这个问题你今天没打开' }
   if (typeof api?.createAnswer !== 'function') return { ok: false, why: '没登录' }
   if (!cookie) return { ok: false, why: '没登录' }
 
-  const r = await api.createAnswer({ cookie, questionId, content: gate.text, fetchImpl: o.fetchImpl })
-  if (!r?.ok) return { ok: false, why: describe(r) }
-  await note(root, host.formatAnswer(dk, questionId, r.id, gate.text), o.sessionId, host)
+  const r = await api.createAnswer({ cookie, questionId, content: gate.text, fetchImpl: o.fetchImpl, slot: auth.id })
+  if (!r?.ok) {
+    if ((r?.code === 'NOT_LOGIN' || r?.code === 'NO_CSRF') && auth.id && typeof api.clearAuth === 'function') await api.clearAuth(root, auth.id).catch(() => {})
+    return { ok: false, why: describe(r) }
+  }
+  await note(root, host.formatAnswer(dk, questionId, r.id, gate.text, { slot: auth.id, owner: auth.owner, name: auth.name }), o.sessionId, host)
   return { ok: true, id: String(r.id ?? '') }
 }
 
