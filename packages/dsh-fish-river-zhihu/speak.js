@@ -40,7 +40,7 @@ function zhihuDescription(state, host) {
       ? '也可以给今天点开过的问题写一个回答。'
       : '可以给今天点开过的问题写一个回答。')
   }
-  bits.push(host.whoseAccount('知乎', state.owner))
+  bits.push('用哪个号，回执会说明这次是谁的号。')
   bits.push('这是会留下来的东西——别人看得见，你也收不回来。不想说就不说，没有人等着你回答。')
   return bits.join('')
 }
