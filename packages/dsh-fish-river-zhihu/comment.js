@@ -194,6 +194,7 @@ export async function scanReplies(o = {}) {
         user: s.author || '',
         text: dirty.text,
         images,
+        owner: auth.owner || '',
         ctime: Number(s.created) || 0,
       })
     }

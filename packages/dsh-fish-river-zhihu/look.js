@@ -35,16 +35,17 @@ export function parseTarget(value) {
   return out
 }
 
-function materialScene(config, host) {
-  return host.ownerLine('知乎', config?.zhihu?.owner)
+function materialScene(config, host, owner) {
+  return host.ownerLine('知乎', owner ?? config?.accountOwner ?? config?.zhihu?.owner)
 }
 
-function renderList(items, config, host) {
+function renderList(items, config, host, owner) {
+  const mine = (owner ?? config?.accountOwner ?? config?.zhihu?.owner) === 'her'
   const groups = [
     ['hot', '热榜'],
     ['recommend', '首页推给你的'],
     ['follow', '你关注的人在说'],
-    ['history', '重要的人最近看过的'],
+    ['history', mine ? '你最近看过的' : '重要的人最近看过的'],
   ]
   const out = []
   for (const [kind, title] of groups) {
@@ -57,10 +58,10 @@ function renderList(items, config, host) {
       const link = it.url ? ` ${it.url}` : ''
       out.push(`- ${who}${it.title}${heat}${link}`)
     }
-    if (kind === 'history') out.push('（这一段是重要的人看的，不是你经历的。）')
+    if (kind === 'history') out.push(mine ? '（这一段是你自己在这个号上的阅读记录。）' : '（这一段是重要的人看的，不是你经历的。）')
   }
   if (!out.length) return ''
-  return [materialScene(config, host), ...out].join('\n')
+  return [materialScene(config, host, owner), ...out].join('\n')
 }
 
 function imagesCap(cfg) {
@@ -242,7 +243,7 @@ export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', target =
     const fresh = items.filter((x) => x.title)
     if (!fresh.length) return { ok: false, text: '', picks: [], note: '这次没看到什么。' }
     if (BROWSE_KINDS.has(kind)) await noteAct(root, h.formatBrowse(h.dateKey(), fresh, mark), sessionId, h)
-    return { ok: true, text: renderList(fresh, cfg, h), picks: fresh, note: '' }
+    return { ok: true, text: renderList(fresh, cfg, h, auth.owner), picks: fresh, note: '' }
   } catch (error) {
     return { ok: false, text: '', picks: [], note: `这次没看到：${errorText(error).slice(0, 120)}` }
   }
