@@ -79,10 +79,9 @@ export async function zhihuSpeakOnce(o = {}) {
     owner = config?.zhihu?.owner === 'her' ? 'her' : 'owner'
     // 两个槽各有自己的 owner；选了哪个号，回执就说哪个号。
     const wanted = String(o.slot || o.account || '').trim()
-    if (wanted) {
-      const auth = await readAuth(root, wanted).catch(() => null)
-      if (auth?.owner === 'her' || auth?.owner === 'owner') owner = auth.owner
-    }
+    // 没写 account 时也要认“恰好一个可用槽”；只有一个号时不用她每次写 a/b。
+    const auth = await readAuth(root, wanted).catch(() => null)
+    if (auth?.owner === 'her' || auth?.owner === 'owner') owner = auth.owner
     const text = String(o.text ?? '').trim()
     if (!text) return withAccount({ ok: false, said: '', note: '没想好说什么，那就先不说。' }, owner, host)
     const screened = host.maySend(text)
@@ -159,10 +158,8 @@ export function registerZhihuSpeak(ctx, deps = {}) {
         // 先按她这次指定的槽认人，再走权限/闸门；否则 a=她自己的号也会拿全局 owner 回执。
         const wanted = String(args?.account || args?.slot || '').trim()
         let owner = config?.zhihu?.owner === 'her' ? 'her' : 'owner'
-        if (wanted) {
-          const auth = await readAuth(root, wanted).catch(() => null)
-          if (auth?.owner === 'her' || auth?.owner === 'owner') owner = auth.owner
-        }
+        const auth = await readAuth(root, wanted).catch(() => null)
+        if (auth?.owner === 'her' || auth?.owner === 'owner') owner = auth.owner
         noteZhihuSpeak({
           comment: config?.zhihu?.comment?.enabled === true,
           answer: config?.zhihu?.answer?.enabled === true,

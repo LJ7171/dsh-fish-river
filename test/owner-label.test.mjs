@@ -10,6 +10,8 @@ import { join } from 'node:path'
 import { renderMaterial } from '../packages/dsh-fish-river-zhihu/material.js'
 import { saveCookie } from '../packages/dsh-fish-river-zhihu/auth.js'
 import { zhihuSpeakOnce } from '../lib/platforms/zhihu/speak.js'
+import { tiebaSpeakOnce } from '../lib/platforms/tieba/speak.js'
+import { writeAuth as writeTiebaAuth } from '../lib/platforms/tieba/client.js'
 import { normalizeConfig } from '../lib/core/settings.js'
 import { ownerLine } from '../lib/core/ownerLabel.js'
 import { netSpeakBrief } from '../lib/mind/persona.js'
@@ -69,4 +71,17 @@ test('zhihu_look 列表按当前槽 owner 写，不读全局 owner', async () =>
   assert.match(r.text, /她自己的知乎号/)
   assert.match(r.text, /你最近看过的/)
   assert.doesNotMatch(r.text, /重要的人最近看过的/)
+})
+
+
+test('只有一个可用贴吧槽时，不写 account 也按那个槽认人', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-owner-tieba-'))
+  try {
+    await writeTiebaAuth(root, { cookie: 'BDUSS=only-b', account: { name: '乙' }, slot: 'b', owner: 'her' })
+    const r = await tiebaSpeakOnce({ root, text: '', config: normalizeConfig({ tieba: { owner: 'owner' } }) })
+    assert.match(r.note, /她自己的贴吧号/)
+    assert.doesNotMatch(r.note, /重要的人的贴吧号/)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })
