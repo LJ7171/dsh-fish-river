@@ -151,6 +151,18 @@ export async function pollQr({ token, jar, fetchImpl = fetch } = {}) {
     if (data?.z_c0) j.set('z_c0', data.z_c0)
 
     const cookies = j.all()
+    // 知乎风控：不是“还没确认”，而是这个出口被要求人机验证。
+    const err = info && typeof info === 'object' && info.error && typeof info.error === 'object' ? info.error : (info?.error ?? {})
+    const errCode = Number(err?.code ?? info?.code ?? 0)
+    const errMsg = String(err?.message ?? info?.message ?? '')
+    if (errCode === 40352 || /网络环境存在异常|人机验证/.test(errMsg)) {
+      return {
+        ok: false,
+        status: 'blocked',
+        why: '知乎要求人机验证，扫码暂时用不了；请用“手动贴一段 cookie”。',
+      }
+    }
+
     const confirmed = Boolean(cookies.z_c0)
       || Boolean(data?.access_token)
       || (data && data.user_id !== undefined && data.user_id !== null)

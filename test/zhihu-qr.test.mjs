@@ -48,3 +48,16 @@ test('扫描轮询带上 _xsrf 头', async () => {
   })
   assert.equal(headers['x-xsrftoken'], 'x1')
 })
+
+test('40352 风控识别成 blocked，而不是一直 wait', async () => {
+  const r = await pollQr({
+    token: 't',
+    jar: {},
+    fetchImpl: async () => res({
+      error: { code: 40352, message: '系统监测到您的网络环境存在异常' },
+    }, 403),
+  })
+  assert.equal(r.ok, false)
+  assert.equal(r.status, 'blocked')
+  assert.match(r.why, /手动贴/)
+})
