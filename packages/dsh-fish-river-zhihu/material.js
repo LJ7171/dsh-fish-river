@@ -88,7 +88,12 @@ export function renderMaterial(items = [], config, host) {
   if (by.follow.length) { any = true; out.push('### 你关注的人在说', ...by.follow.map(lineOf)) }
   if (by.history.length) {
     any = true
-    out.push('### 重要的人最近看过的', '（这一段是重要的人看的，不是你经历的。你知道重要的人最近在关心什么。）', ...by.history.map(lineOf))
+    const mine = (config?.accountOwner ?? config?.zhihu?.owner) === 'her'
+    out.push(
+      mine ? '### 你最近看过的' : '### 重要的人最近看过的',
+      mine ? '（这一段是你自己在这个号上的阅读记录。）' : '（这一段是重要的人看的，不是你经历的。你知道重要的人最近在关心什么。）',
+      ...by.history.map(lineOf),
+    )
   }
   if (!any) return ''
   out.push('（这些是知乎上的公开内容，不是你认识的人专门跟你说的。）')

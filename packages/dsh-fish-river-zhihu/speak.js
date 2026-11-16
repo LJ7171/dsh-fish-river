@@ -11,6 +11,7 @@ import {
   postReply,
 } from './comment.js'
 import { hostOf } from './runtime.js'
+import { readAuth } from './auth.js'
 
 let speakState = { comment: false, answer: false, owner: 'owner' }
 
@@ -76,6 +77,12 @@ export async function zhihuSpeakOnce(o = {}) {
   try {
     const { config } = o.config ? { config: o.config } : await host.loadConfig(root)
     owner = config?.zhihu?.owner === 'her' ? 'her' : 'owner'
+    // 两个槽各有自己的 owner；选了哪个号，回执就说哪个号。
+    const wanted = String(o.slot || o.account || '').trim()
+    if (wanted) {
+      const auth = await readAuth(root, wanted).catch(() => null)
+      if (auth?.owner === 'her' || auth?.owner === 'owner') owner = auth.owner
+    }
     const text = String(o.text ?? '').trim()
     if (!text) return withAccount({ ok: false, said: '', note: '没想好说什么，那就先不说。' }, owner, host)
     const screened = host.maySend(text)
