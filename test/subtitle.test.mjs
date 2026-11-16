@@ -86,3 +86,28 @@ test('subtitleFor：拿到字幕就挑好；没有字幕轨 / 没接口 / 抛异
   const e = await subtitleFor({ client: okClient })
   assert.equal(e.ok, false, '缺 cid 时不发请求')
 })
+
+test('短视频字幕整条给，不抽样', () => {
+  const lines = Array.from({ length: 133 }, (_, i) => ({ t: i * 2, text: `第 ${i} 句` }))
+  const r = pickSubtitleLines(lines)
+  assert.equal(r.ok, true)
+  assert.equal(r.mode, 'full')
+  assert.equal(r.lines.length, 133)
+  assert.equal(r.dropped, 0)
+  assert.match(r.text, /第 132 句/)
+})
+
+test('长视频仍抽样；指定时间范围只取这一段的字幕', () => {
+  const lines = Array.from({ length: 400 }, (_, i) => ({ t: i, text: `第 ${i} 句` }))
+  const all = pickSubtitleLines(lines)
+  assert.equal(all.mode, 'sample')
+  assert.ok(all.lines.length < 400)
+  const range = pickSubtitleLines(lines, { from: 100, to: 120 })
+  assert.equal(range.ok, true)
+  assert.equal(range.mode, 'range')
+  assert.ok(range.lines.every((l) => {
+    const [m, s] = String(l.t).split(':').map(Number)
+    const sec = m * 60 + s
+    return sec >= 100 && sec <= 120
+  }))
+})
