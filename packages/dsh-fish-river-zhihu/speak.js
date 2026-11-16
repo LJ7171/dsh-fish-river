@@ -156,7 +156,13 @@ export function registerZhihuSpeak(ctx, deps = {}) {
         const who = host.guardWrite(deps.tenant, exec, 'zhihu_speak')
         if (!who.ok) return { ok: false, said: '', note: who.note }
         const { config } = await host.loadConfig(root)
-        const owner = config?.zhihu?.owner === 'her' ? 'her' : 'owner'
+        // 先按她这次指定的槽认人，再走权限/闸门；否则 a=她自己的号也会拿全局 owner 回执。
+        const wanted = String(args?.account || args?.slot || '').trim()
+        let owner = config?.zhihu?.owner === 'her' ? 'her' : 'owner'
+        if (wanted) {
+          const auth = await readAuth(root, wanted).catch(() => null)
+          if (auth?.owner === 'her' || auth?.owner === 'owner') owner = auth.owner
+        }
         noteZhihuSpeak({
           comment: config?.zhihu?.comment?.enabled === true,
           answer: config?.zhihu?.answer?.enabled === true,
