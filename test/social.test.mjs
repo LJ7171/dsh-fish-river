@@ -15,7 +15,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import {
-  evaluateSocialGate, socialOpenAt, lastRefutedAt, daysAlive, gateBrief, speakAllowed,
+  evaluateSocialGate, socialOpenAt, lastRefutedAt, daysAlive, gateBrief, speakAllowed, formatGate,
   SOCIAL_STANCE_MIN, SOCIAL_QUIET_DAYS, SOCIAL_LIVE_DAYS,
 } from '../lib/life/social/socialgate.js'
 import { deriveSelf, SOCIAL_OPEN_PREFIX, DAY_MS } from '../lib/mind/derive.js'
@@ -120,6 +120,22 @@ test(`30 天内整条推翻过自己 → 稳这一条不过`, () => {
   const g = gate.gates.find((x) => x.id === 'quiet')
   assert.equal(g.ok, false)
   assert.match(g.why, /再等一等/)
+})
+
+test('设置页读数：没推翻过不写 null，活了几天不写对象', () => {
+  const quiet = evaluateSocialGate({ model: stanceModel(1, 1), events: [], now: NOW }).gates.find((x) => x.id === 'quiet')
+  assert.equal(quiet.value, null)
+  assert.equal(formatGate(quiet), '没整条推翻过 / 30 天')
+  const recent = evaluateSocialGate({
+    model: stanceModel(),
+    events: [...longStream(), ev('r', 'revise', 5, '那句是错的', { verdict: 'refuted' })],
+    now: NOW,
+  }).gates.find((x) => x.id === 'quiet')
+  assert.equal(formatGate(recent), '5 天 / 30 天')
+  const live = evaluateSocialGate({ model: stanceModel(1, 1), events: longStream(13), now: NOW }).gates.find((x) => x.id === 'live')
+  assert.equal(typeof live.value, 'object')
+  assert.equal(formatGate(live), '13 天 / 14 天')
+  assert.equal(formatGate(evaluateSocialGate({ model: { stage: 2 }, events: [], now: NOW }).gates.find((x) => x.id === 'stage')), '2 / 3')
 })
 
 test(`40 天前推翻过 → 已经稳了`, () => {

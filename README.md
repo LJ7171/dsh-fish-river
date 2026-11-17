@@ -492,7 +492,6 @@ lib/
   outreach.js    醒来主动找重要的人（额度 + 出站闸）
   sendMessage.js / sendImage.js  主动说话 / 发本机图两个工具
   album.js       相册台账（keep_image）
-  meme.js        按画面上的词挑表情包
   subtitle.js    视频字幕读取
   zhihu.js / zhihuLook.js / zhihuComment.js / zhihuSpeak.js  知乎子包的加载与宿主注入（规则在 packages/dsh-fish-river-zhihu）
   tieba.js / tiebaLook.js  贴吧素材与工具

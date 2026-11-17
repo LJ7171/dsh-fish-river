@@ -80,7 +80,8 @@ test('页签顺序：插件 → 原理 → 数据 → 反馈；出门排在「�
   assert.ok(cl.includes("showTab('channels') ? channelsPage : null"), '渠道页要挂进渲染树')
   assert.ok(!/AUTO_SAVE_TABS = new Set\(.*channels/.test(cl), '渠道不进自动保存页签')
   assert.ok(cl.includes("social: '社会："), 'TAB_HELP 必须有社会页说明')
-  assert.ok(cl.includes("showTab('social') ? socialPage : null"), '社会页要挂进渲染树')
+  assert.equal(cl.split("showTab('social') ? socialPage : null").length - 1, 1, '社会页只挂一次')
+  assert.ok(cl.includes("group('领养人验证'") && cl.includes('onClick: saveOwnerCard'), '领养人两格要点保存才写入')
   assert.ok(cl.includes("jget('/social')"), '社会页要有数据来源')
   // 门从「藏页签」改成「页面里一次性确认」：说明卡没点过，三个入口按钮先灰着。
   assert.ok(!cl.includes('const [devMode, setDevMode] = useState(null)'), '不再有藏页签的 devMode 开关')
