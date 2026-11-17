@@ -153,6 +153,56 @@ test('saveOwner 传空 cookie 是「清除」，不是「没传」', async () =>
   }
 })
 
+test('saveOwner：空的那格不当成「清空」，不抹掉已存的值（0.1.146）', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-ow-half-'))
+  try {
+    await saveOwner({ mid: '42', nickname: '大号' }, root)
+    // 界面上点「保存」会把两个输入框原样发回来：只填了昵称，uid 那格是空的。
+    const r = await saveOwner({ mid: '', nickname: '新名字' }, root)
+    assert.equal(r.ok, true)
+    assert.match(r.note, /uid/)
+    assert.match(r.note, /保持原样/)
+    const ow = await readOwner(root)
+    assert.equal(ow.mid, '42', '空的那格不许把已存的 uid 抹掉')
+    assert.equal(ow.nickname, '新名字')
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+  }
+})
+
+test('saveOwner：两格都空就不动这两格，回执说清没有改', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-ow-none-'))
+  try {
+    await saveOwner({ mid: '42', nickname: '大号' }, root)
+    const before = await readOwner(root)
+    const r = await saveOwner({ mid: '', nickname: ' ' }, root)
+    assert.equal(r.ok, true)
+    assert.match(r.note, /都是空的/)
+    const ow = await readOwner(root)
+    assert.equal(ow.mid, '42')
+    assert.equal(ow.nickname, '大号')
+    assert.deepEqual(ow, before)
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+  }
+})
+
+test('saveOwner：清 cookie 和空着两格不冲突——钥匙清掉，领养人两格留下', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-ow-both-'))
+  try {
+    await saveOwner({ mid: '42', nickname: '大号', cookie: 'SESSDATA=s1; bili_jct=j1' }, root)
+    const r = await saveOwner({ cookie: '', mid: '', nickname: '' }, root)
+    assert.equal(r.ok, true)
+    assert.match(r.note, /清掉了/)
+    const ow = await readOwner(root)
+    assert.equal(ow.accounts?.[0]?.cookie ?? '', '')
+    assert.equal(ow.mid, '42')
+    assert.equal(ow.nickname, '大号')
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+  }
+})
+
 /** 极简假 ctx：只提供 observe 需要的服务 */
 function fakeCtx() {
   const routes = []
@@ -218,6 +268,24 @@ test('/owner 路由：POST 能存 uid 与昵称', async () => {
     registerObserve(ctx, { root })
     const r = await callRoute(ctx.routes, '/owner', 'POST', { mid: '777', nickname: '主人' })
     assert.equal(r.status, 200)
+    const ow = await readOwner(root)
+    assert.equal(ow.mid, '777')
+    assert.equal(ow.nickname, '主人')
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+  }
+})
+
+test('/owner 路由：两格都空时照常 200，回执说清没有改、也没写盘', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-ow-route-'))
+  try {
+    const ctx = fakeCtx()
+    ctx.cfg.connection = { requestRejection: () => null }
+    registerObserve(ctx, { root })
+    await saveOwner({ mid: '777', nickname: '主人' }, root)
+    const r = await callRoute(ctx.routes, '/owner', 'POST', { mid: '', nickname: '' })
+    assert.equal(r.status, 200, '空两格不是失败：不能让界面拿「HTTP 400」当回执')
+    assert.match(r.body.note, /都是空的/)
     const ow = await readOwner(root)
     assert.equal(ow.mid, '777')
     assert.equal(ow.nickname, '主人')
