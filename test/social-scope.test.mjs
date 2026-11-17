@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { registerSpeak } from '../lib/platforms/bili/speak.js'
 import { updateConfig } from '../lib/core/settings.js'
-import { appendEvent } from '../lib/core/store.js'
+import { appendEvent, readEvents } from '../lib/core/store.js'
 
 function grab(ctx) {
   let spec = null
@@ -27,6 +27,23 @@ test('评论区是社会层：没开闸时她说了也不算，而且听不到�
     assert.equal(out.said, '')
     assert.doesNotMatch(out.note, /权限/)
     assert.match(out.note, /还没到/)
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+  }
+})
+
+test('临时开关放开评论区，但不写 social-open', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-speak-waive-'))
+  try {
+    await updateConfig({ comment: { enabled: true }, social: { waiveSpeak: true } }, root)
+    const ctx = { tools: {} }
+    const get = grab(ctx)
+    registerSpeak(ctx, { root, tenant: null })
+    const out = await get().execute({ text: '你说得对' }, {})
+    assert.equal(out.ok, false)
+    assert.doesNotMatch(out.note, /还没到/)
+    const { events } = await readEvents(root)
+    assert.equal(events.some((e) => String(e.text ?? '').startsWith('social-open:')), false)
   } finally {
     await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
   }

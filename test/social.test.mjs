@@ -15,7 +15,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import {
-  evaluateSocialGate, socialOpenAt, lastRefutedAt, daysAlive, gateBrief,
+  evaluateSocialGate, socialOpenAt, lastRefutedAt, daysAlive, gateBrief, speakAllowed,
   SOCIAL_STANCE_MIN, SOCIAL_QUIET_DAYS, SOCIAL_LIVE_DAYS,
 } from '../lib/life/social/socialgate.js'
 import { deriveSelf, SOCIAL_OPEN_PREFIX, DAY_MS } from '../lib/mind/derive.js'
@@ -142,6 +142,16 @@ test('开过之后 ok 恒真，why 说明已经开过', () => {
   assert.equal(gate.open, true)
   assert.equal(gate.ok, true)
   assert.match(gate.why, /开过了/)
+})
+
+test('临时开关只放开开口，社会层仍然没开', () => {
+  const events = []
+  const gate = evaluateSocialGate({ model: { stage: 4 }, events, now: NOW })
+  assert.equal(gate.open, false)
+  assert.equal(speakAllowed({ social: { waiveSpeak: true } }, events), true)
+  assert.equal(speakAllowed({ social: { waiveSpeak: false } }, events), false)
+  assert.equal(speakAllowed({}, events), false)
+  assert.equal(speakAllowed({ social: { waiveSpeak: 'true' } }, events), false)
 })
 
 test('gateBrief：没开时只说她听得到的话，不出现字段名', () => {

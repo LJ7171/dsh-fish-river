@@ -171,7 +171,7 @@ export function registerZhihuSpeak(ctx, deps = {}) {
           : config?.zhihu?.comment?.enabled === true
         if (!enabled) return withAccount({ ok: false, said: '', note: softReason('没开这个权限') }, owner, host)
         const events = await host.readEvents(root).catch(() => [])
-        if (!host.socialOpen(events)) {
+        if (!host.socialOpen(events, config)) {
           return withAccount({ ok: false, said: '', note: softReason('还没到在人堆里说话的时候') }, owner, host)
         }
         return zhihuSpeakOnce({

@@ -179,6 +179,28 @@ test('今天没点开的不说；刷列表和进吧不算点开', async () => {
   })
 })
 
+test('临时开关放开知乎和贴吧开口，不写 social-open', async () => {
+  await withRoot(async (root) => {
+    const dk = dateKey()
+    await writeConfig(normalizeConfig({
+      social: { waiveSpeak: true },
+      zhihu: { comment: { enabled: true } },
+      tieba: { comment: { enabled: true } },
+    }), root)
+    await meta(root, formatZhihuOpen(dk, 'ans1', '一条'))
+    await meta(root, formatTiebaThread(dk, 'tid1', '一帖', '吧'))
+    const z = zhihuApi()
+    const spoken = await zhihuSpeakOnce({ root, api: z, cookie: 'x', kind: 'comment', id: 'ans1', text: '人堆', dateKey: dk })
+    assert.equal(spoken.ok, true, spoken.note)
+    assert.equal(z.calls.length, 1)
+    const t = tiebaApi()
+    const posted = await tiebaSpeakOnce({ root, api: t, kind: 'comment', id: 'tid1', text: '跟一帖', dateKey: dk })
+    assert.equal(posted.ok, true, posted.note)
+    const { events } = await readEvents(root)
+    assert.equal(events.some((e) => String(e.text ?? '').startsWith('social-open:')), false)
+  })
+})
+
 test('睡着、社会层没开闸，都不说', async () => {
   await withRoot(async (root) => {
     const dk = dateKey()

@@ -290,7 +290,7 @@ export async function postComment(o = {}) {
   if (!asleep.ok) return asleep
 
   const events = o.events ?? await host.readEvents(root)
-  if (!host.socialOpen(events)) return { ok: false, why: '还没到在人堆里说话的时候' }
+  if (!host.socialOpen(events, config)) return { ok: false, why: '还没到在人堆里说话的时候' }
   const dk = o.dateKey ?? host.dateKey()
   if (commentCountToday(events, dk, host) >= Math.max(0, Number(c.perDay ?? 0))) return { ok: false, why: '今天说够了' }
 
@@ -331,7 +331,7 @@ export async function postReply(o = {}) {
   if (!asleep.ok) return asleep
 
   const events = o.events ?? await host.readEvents(root)
-  if (!host.socialOpen(events)) return { ok: false, why: '还没到在人堆里说话的时候' }
+  if (!host.socialOpen(events, config)) return { ok: false, why: '还没到在人堆里说话的时候' }
   const dk = o.dateKey ?? host.dateKey()
   if (replyCountToday(events, dk, host) >= Math.max(0, Number(c.replyPerDay ?? 0))) return { ok: false, why: '今天回够了' }
 
@@ -392,7 +392,7 @@ export async function postAnswer(o = {}) {
   if (!asleep.ok) return asleep
 
   const events = o.events ?? await host.readEvents(root)
-  if (!host.socialOpen(events)) return { ok: false, why: '还没到在人堆里说话的时候' }
+  if (!host.socialOpen(events, config)) return { ok: false, why: '还没到在人堆里说话的时候' }
   const dk = o.dateKey ?? host.dateKey()
   const cap = Math.max(0, Math.min(1, Number(a.perDay ?? 0)))
   if (answerCountToday(events, dk, host) >= cap) return { ok: false, why: '今天回答够了' }
