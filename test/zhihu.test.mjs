@@ -447,6 +447,7 @@ test('zhihuLookOnce：question / answer / comments 三种都能点进去', async
     const c = await zhihuLookOnce({ root, cfg, kind: 'comments', id: 'https://www.zhihu.com/question/36867384/answer/2101466029390151931', topN: 3, mod })
     assert.equal(c.ok, true)
     assert.match(c.text, /评论/)
+    assert.match(c.text, /评论 c1/)
     assert.match(c.text, /谢钊/)
 
     const dirty = await zhihuLookOnce({ root, cfg, kind: 'answer', id: '', mod })

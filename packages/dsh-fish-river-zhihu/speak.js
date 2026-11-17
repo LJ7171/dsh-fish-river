@@ -33,7 +33,7 @@ function zhihuDescription(state, host) {
   }
   const bits = ['在知乎说一句话。']
   if (state.comment) {
-    bits.push('可以给你今天点开过的某条回答留一条评论，或者回一句别人留在你评论下面的话。')
+    bits.push('可以给你今天点开过的某条回答留一条评论，回那下面的一条主楼，或者回一句别人留在你评论下面的话。')
   }
   if (state.answer) {
     bits.push(state.comment
@@ -55,6 +55,7 @@ function softReason(why) {
     return '这一条你今天还没点开过。要打开：zhihu_look（kind 填 answer，id 填回答号）。翻了列表、看了别的，都不算这一条。'
   }
   if (w.includes('还没在那条下面')) return '先在那条下面说过话，才能回楼里的人。'
+  if (w.includes('主楼')) return '只能回这条回答下面的主楼。'
   if (w.includes('只能回自己')) return '只能回自己说过的那条下面。'
   if (w.includes('登录') || w.includes('cookie')) return '说不出去，缺了点什么。'
   if (w.includes('不该说') || w.includes('先不说了')) return w.includes('不该说') ? '这句里有不该说出去的东西。' : '这句先不说了。'
@@ -132,11 +133,11 @@ export function registerZhihuSpeak(ctx, deps = {}) {
           type: 'string',
           required: true,
           enum: ['comment', 'reply', 'answer'],
-          description: 'comment=给今天点开过的回答留一条评论；reply=回你自己评论下面的话；answer=给今天点开过的问题写一个回答。',
+          description: 'comment=给今天点开过的回答留一条评论；reply=回今天点开过的回答下面一条主楼，或回你自己评论下面的话；answer=给今天点开过的问题写一个回答。',
         },
         id: { type: 'string', required: true, description: '回答号（comment/reply）或问题号（answer）。' },
         text: { type: 'string', required: true, description: '要说的话。说人话。' },
-        parentId: { type: 'string', required: false, description: 'kind=reply 时，你要回的是哪一条。' },
+        parentId: { type: 'string', required: false, description: 'kind=reply 时，要回的那条评论的号。' },
         account: { type: 'string', required: false, description: '两个号都在的时候写 a 或 b。只有一个号就不用写。' },
       }),
       output: {

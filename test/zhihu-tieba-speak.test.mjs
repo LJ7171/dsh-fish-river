@@ -18,7 +18,7 @@ import {
   formatZhihuOpen,
   parseAct,
 } from '../lib/core/acts.js'
-import { postAnswer, postComment as postZhihuComment, postReply as postZhihuReply, scanIfAwake as scanZhihuIfAwake, renderReplies as renderZhihuReplies } from '../lib/platforms/zhihu/comment.js'
+import { postAnswer, postComment as postZhihuComment, postReply as postZhihuReply, scanIfAwake as scanZhihuIfAwake, scanReplies as scanZhihuReplies, renderReplies as renderZhihuReplies } from '../lib/platforms/zhihu/comment.js'
 import { postComment as postTiebaComment, postReply as postTiebaReply, scanIfAwake as scanTiebaIfAwake, renderReplies as renderTiebaReplies } from '../lib/platforms/tieba/comment.js'
 import { zhihuSpeakOnce, registerZhihuSpeak, noteZhihuSpeak } from '../lib/platforms/zhihu/speak.js'
 import { tiebaSpeakOnce, registerTiebaSpeak, noteTiebaSpeak } from '../lib/platforms/tieba/speak.js'
@@ -224,7 +224,7 @@ test('睡着、社会层没开闸，都不说', async () => {
 test('楼中楼只回自己的评论下；关掉「有人回复时让她回一句」就拒', async () => {
   await withRoot(async (root) => {
     const dk = dateKey()
-    await ready(root, { zhihu: { comment: { enabled: true, replyToReplies: true } } })
+    await ready(root, { zhihu: { comment: { enabled: true, replyToReplies: true, replyPerDay: 2 } } })
     await meta(root, formatZhihuComment(dk, 'ans1', 'mine', '我说过'))
     const api = zhihuApi()
     api.fetchChildComments = async () => ({ ok: true, comments: [{ id: 'other-child', text: '别人' }] })
@@ -238,13 +238,74 @@ test('楼中楼只回自己的评论下；关掉「有人回复时让她回一�
     assert.equal(api.calls.filter((c) => c[0] === 'comment').length, 1)
 
     await writeConfig(normalizeConfig({
-      zhihu: { comment: { enabled: true, replyToReplies: false } },
+      zhihu: { comment: { enabled: true, replyToReplies: false, replyPerDay: 2 } },
     }), root)
     const callsBefore = api.calls.length
     const off = await zhihuSpeakOnce({ root, api, cookie: 'x', kind: 'reply', id: 'ans1', parentId: 'mine', text: '再回', dateKey: dk })
     assert.equal(off.ok, false)
     assert.match(off.note, /不方便/)
     assert.equal(api.calls.length, callsBefore)
+  })
+})
+
+test('今天点开过的回答可以回一条对得上的主楼；关着「有人回复」也不挡这条', async () => {
+  await withRoot(async (root) => {
+    const dk = dateKey()
+    await ready(root, { zhihu: { comment: { enabled: true, replyToReplies: false, replyPerDay: 1 } } })
+    await meta(root, formatZhihuOpen(dk, 'ans1', '一条'))
+    await meta(root, formatZhihuComment(dk, 'ans1', 'mine', '我说过'))
+    const orders = []
+    const sent = []
+    const api = {
+      async fetchComments(args) {
+        orders.push(args.orderBy)
+        assert.equal(args.target, 'answer')
+        assert.equal(String(args.id), 'ans1')
+        return { ok: true, comments: [{ id: 'rootc' }, { id: 'mine' }] }
+      },
+      async fetchChildComments() {
+        return { ok: true, comments: [{ id: 'kid' }] }
+      },
+      async createComment(args) {
+        sent.push(args)
+        return { ok: true, id: 'new1' }
+      },
+    }
+    const floor = await postZhihuReply({
+      root, api, cookie: 'x', answerId: 'ans1', parentId: 'kid', text: '回楼下', dateKey: dk,
+    })
+    assert.equal(floor.ok, false)
+    assert.match(floor.why, /没开回评论/)
+    assert.equal(sent.length, 0)
+
+    const nested = await postZhihuReply({
+      root, api, cookie: 'x', answerId: 'ans1', parentId: 'not-root', text: '钻别人楼', dateKey: dk,
+    })
+    assert.equal(nested.ok, false)
+    assert.match(nested.why, /主楼/)
+    assert.equal(sent.length, 0)
+
+    const closed = await postZhihuReply({
+      root, api, cookie: 'x', answerId: 'other', parentId: 'rootc', text: '没打开', dateKey: dk,
+    })
+    assert.equal(closed.ok, false)
+    assert.match(closed.why, /没打开/)
+
+    const said = await zhihuSpeakOnce({
+      root, api, cookie: 'x', kind: 'reply', id: 'ans1', parentId: 'rootc', text: '接这楼', dateKey: dk,
+    })
+    assert.equal(said.ok, true, said.note)
+    assert.equal(sent[0].id, 'ans1')
+    assert.equal(sent[0].replyCommentId, 'rootc')
+    assert.equal(sent[0].replyRootCommentId, 'rootc')
+    assert.ok(orders.includes('score'))
+
+    const again = await zhihuSpeakOnce({
+      root, api, cookie: 'x', kind: 'reply', id: 'ans1', parentId: 'mine', text: '再接一条', dateKey: dk,
+    })
+    assert.equal(again.ok, false)
+    assert.match(again.note, /说得够多/)
+    assert.equal(sent.length, 1)
   })
 })
 
@@ -391,6 +452,7 @@ test('扫回复不看掷骰；睡着不打请求；递给她时写清是谁的�
     assert.equal(hits, 0)
     const shown = renderZhihuReplies([{ rpid: '1', answerId: 'a', user: '路人', text: '说了句' }], 'owner')
     assert.match(shown, /重要的人的知乎号/)
+    assert.match(shown, /回答 a，评论 1/)
     const hers = renderTiebaReplies([{ rpid: '2', tid: 't', user: '路人', text: '也说了' }], 'her')
     assert.match(hers, /她自己的贴吧号/)
   })
@@ -399,6 +461,47 @@ test('扫回复不看掷骰；睡着不打请求；递给她时写清是谁的�
   assert.equal(body.includes('scanZhihuIfAwake'), false)
   assert.equal(body.includes('scanTiebaIfAwake'), false)
   assert.equal(body.includes('scanReplies'), false)
+})
+
+test('同一个号上回她的评论要扫到；她自己补过的那句不再报', async () => {
+  await withRoot(async (root) => {
+    const dk = dateKey()
+    await ready(root, { zhihu: { comment: { enabled: true, replyPerDay: 2 } } })
+    await meta(root, formatZhihuOpen(dk, 'ans1', '一条'))
+    await meta(root, formatZhihuComment(dk, 'ans1', 'rootc', '我说过'))
+    await meta(root, `zhihu-reply:${dk} ans1 rootc rootc {"text":"我又补了一句"}`)
+    const api = {
+      async createComment() { return { ok: true, id: 'made-by-her' } },
+      async fetchChildComments() {
+        return {
+          ok: true,
+          comments: [
+            { id: 'owner-reply', authorId: 'me', author: '这个号', text: '我回你了' },
+            { id: 'her-again', authorId: 'me', author: '这个号', text: '我又补了一句' },
+            { id: 'stranger', authorId: 'other', author: '路人', text: '路过' },
+          ],
+        }
+      },
+    }
+    const out = await scanZhihuReplies({ root, api, cookie: 'z', selfId: 'me' })
+    assert.deepEqual(out.map((x) => x.rpid), ['owner-reply', 'stranger'])
+
+    const said = await postZhihuReply({
+      root, api, cookie: 'z', answerId: 'ans1', parentId: 'owner-reply', text: '接一句', dateKey: dk,
+    })
+    assert.equal(said.ok, true, said.why)
+    const { events } = await readEvents(root)
+    assert.equal(events.some((e) => String(e.text ?? '') === `zhihu-cseen:${dk} made-by-her`), true)
+    api.fetchChildComments = async () => ({
+      ok: true,
+      comments: [
+        { id: 'owner-reply', authorId: 'me', author: '这个号', text: '我回你了' },
+        { id: 'made-by-her', authorId: 'me', author: '这个号', text: '接一句' },
+      ],
+    })
+    const again = await scanZhihuReplies({ root, api, cookie: 'z', selfId: 'me', events })
+    assert.deepEqual(again.map((x) => x.rpid), [])
+  })
 })
 
 test('身份文档只写真正打开的平台，并写清是谁的号', () => {

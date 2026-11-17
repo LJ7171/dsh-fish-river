@@ -1,7 +1,8 @@
 /**
- * comment.js —— 在知乎说话：评回答、回楼中楼、写回答、扫回复。
+ * comment.js —— 在知乎说话：评回答、回主楼、回自己楼下、写回答、扫回复。
  *
  * 睡着不说、社会层没开、超配额、没点开过，都在这里拒。
+ * 回别人的主楼只认今天点开过的回答，并且要在主楼列表里对上号。
  * 「醒着没有 / 这话能不能出去 / 社会层开了没有 / 记一条动作」问宿主。
  * 事件前缀保持 zhihu-open: / zhihu-comment: / zhihu-reply: / zhihu-answer: / zhihu-cseen:。
  */
@@ -112,6 +113,18 @@ export function seenReplies(events) {
   return s
 }
 
+/** 她已经发出去的回复正文。同一个号上，对得上的楼中楼是她自己补的，对不上的是这个号后面的人。 */
+function herReplyTexts(events) {
+  const s = new Set()
+  for (const line of metas(events, 'zhihu-reply:')) {
+    const sp = line.indexOf(' ')
+    if (sp < 0) continue
+    const t = replyKey(headAndJson(line.slice(sp + 1)).json?.text)
+    if (t) s.add(t)
+  }
+  return s
+}
+
 function apiOf(o) {
   if (o.api) return o.api
   return localApi()
@@ -175,6 +188,7 @@ export async function scanReplies(o = {}) {
   if (!cookie) return []
   const mine = await selfIdOf(o, api, root, cookie)
   const seen = seenReplies(events)
+  const said = herReplyTexts(events)
   const out = []
   for (const c of herCommentsRecent(events, REPLY_LOOKBACK_DAYS, Date.now(), host).filter((row) => sameZhihuSlot(row.slot, auth.id)).slice(0, MAX_SCAN_ROOTS)) {
     const r = await api.fetchChildComments({ cookie, id: c.commentId, limit: 20 }).catch(() => null)
@@ -184,7 +198,8 @@ export async function scanReplies(o = {}) {
       if (!id || seen.has(id)) continue
       const images = Array.isArray(s.images) ? s.images.filter((u) => /^https?:\/\//i.test(String(u ?? ''))) : []
       if (!s.text && !images.length) continue
-      if (mine && String(s.authorId ?? '') === mine) continue
+      // 号是同一个。她写过的句子跳过；这个号后面的人新说的一句要留下来。
+      if (mine && String(s.authorId ?? '') === mine && said.has(replyKey(s.text))) continue
       const dirty = s.text ? host.sanitize(s.text) : { text: '' }
       if (s.text && !dirty.text.trim() && !images.length) continue
       out.push({
@@ -225,7 +240,10 @@ export function renderReplies(list, owner = 'owner', host) {
   for (const x of list.slice(0, 5)) {
     const who = x.user || '有人'
     const said = oneLine(x.text, 200)
-    lines.push(`- ${who}（回答 ${x.answerId}）：${said || '（只有图）'}`)
+    // 回答号进 id，评论号进 parentId。只摆数字，不写步骤——步骤会被当成要念出来的句子。
+    const cid = String(x.rpid ?? '').trim()
+    const where = [x.answerId ? `回答 ${x.answerId}` : '', cid ? `评论 ${cid}` : ''].filter(Boolean).join('，')
+    lines.push(`- ${who}${where ? `（${where}）` : ''}：${said || '（只有图）'}`)
     for (const p of x.pics ?? []) lines.push(`  （有图存在 ${p}，想看就用 read_image。）`)
   }
   return lines.join('\n')
@@ -234,6 +252,10 @@ export function renderReplies(list, owner = 'owner', host) {
 function oneLine(s, max) {
   const t = String(s ?? '').replace(/\s+/g, ' ').trim()
   return t.length > max ? `${t.slice(0, max)}…` : t
+}
+
+function replyKey(s) {
+  return String(s ?? '').replace(/\s+/g, ' ').trim().replace(/…+$/u, '').slice(0, 300)
 }
 
 async function commentAwake(root, config, host) {
@@ -261,6 +283,28 @@ function describe(r) {
   if (code === 'CAPTCHA') return '要验证'
   if (code === 'RISK') return '被拦了一下'
   return String(r?.why ?? '没发出去').slice(0, 60)
+}
+
+async function herThreadOf(mine, parent, api, cookie, fetchImpl) {
+  for (const row of mine) {
+    if (row.commentId === parent) return row
+    if (typeof api?.fetchChildComments !== 'function') continue
+    const kids = await api.fetchChildComments({ cookie, id: row.commentId, limit: 20, fetchImpl }).catch(() => null)
+    if (kids?.ok && (kids.comments ?? []).some((x) => String(x.id) === parent)) return row
+  }
+  return null
+}
+
+/** 主楼列表里有没有这条。分数、时间各看一页，对得上她在评论页能看见的范围。 */
+async function isAnswerRootComment(api, cookie, answerId, parent, fetchImpl) {
+  if (typeof api?.fetchComments !== 'function') return false
+  for (const orderBy of ['score', 'time']) {
+    const r = await api.fetchComments({
+      cookie, target: 'answer', id: answerId, limit: 20, orderBy, fetchImpl,
+    }).catch(() => null)
+    if (r?.ok && (r.comments ?? []).some((x) => String(x.id) === parent)) return true
+  }
+  return false
 }
 
 async function openedQuestion(opens, questionId, api, cookie) {
@@ -328,7 +372,6 @@ export async function postReply(o = {}) {
   const { config } = o.config ? { config: o.config } : await host.loadConfig(root)
   const c = config?.zhihu?.comment ?? {}
   if (c.enabled !== true) return { ok: false, why: '没开这个权限' }
-  if (c.replyToReplies === false) return { ok: false, why: '没开回评论的权限' }
   const asleep = await commentAwake(root, config, host)
   if (!asleep.ok) return asleep
 
@@ -343,39 +386,56 @@ export async function postReply(o = {}) {
   const api = apiOf(o)
   const auth = await authOf(o, api, root)
   if (auth.needChoice) return { ok: false, why: '先选定一个号' }
-  const mine = herCommentsRecent(events, REPLY_LOOKBACK_DAYS, Date.now(), host)
-    .filter((row) => (!answerId || row.answerId === answerId) && sameZhihuSlot(row.slot, auth.id))
-  if (!mine.length) return { ok: false, why: '你还没在那条下面说过话' }
-
   if (typeof api?.createComment !== 'function') return { ok: false, why: '没登录' }
   const cookie = auth.cookie
   if (!cookie) return { ok: false, why: '没登录' }
 
-  let rootRow = null
-  for (const row of mine) {
-    if (row.commentId === parent) { rootRow = row; break }
-    if (typeof api.fetchChildComments !== 'function') continue
-    const kids = await api.fetchChildComments({ cookie, id: row.commentId, limit: 20, fetchImpl: o.fetchImpl }).catch(() => null)
-    if (kids?.ok && (kids.comments ?? []).some((x) => String(x.id) === parent)) { rootRow = row; break }
-  }
-  if (!rootRow) return { ok: false, why: '只能回自己说过的那条下面' }
+  const allowFloor = c.replyToReplies !== false
+  const mine = herCommentsRecent(events, REPLY_LOOKBACK_DAYS, Date.now(), host)
+    .filter((row) => (!answerId || row.answerId === answerId) && sameZhihuSlot(row.slot, auth.id))
+  const thread = mine.length ? await herThreadOf(mine, parent, api, cookie, o.fetchImpl) : null
+  const opened = Boolean(answerId) && opensToday(events, dk, host)
+    .some((row) => row.id === answerId && sameZhihuSlot(row.slot, auth.id))
 
-  const r = await api.createComment({
-    cookie,
-    id: rootRow.answerId,
-    content: gate.text,
-    replyCommentId: parent,
-    replyRootCommentId: rootRow.commentId,
-    fetchImpl: o.fetchImpl,
-    slot: auth.id,
-  })
-  if (!r?.ok) {
-    if ((r?.code === 'NOT_LOGIN' || r?.code === 'NO_CSRF') && auth.id && typeof api.clearAuth === 'function') await api.clearAuth(root, auth.id).catch(() => {})
-    return { ok: false, why: describe(r) }
+  async function deliver(answer, rootCommentId) {
+    const r = await api.createComment({
+      cookie,
+      id: answer,
+      content: gate.text,
+      replyCommentId: parent,
+      replyRootCommentId: rootCommentId,
+      fetchImpl: o.fetchImpl,
+      slot: auth.id,
+    })
+    if (!r?.ok) {
+      if ((r?.code === 'NOT_LOGIN' || r?.code === 'NO_CSRF') && auth.id && typeof api.clearAuth === 'function') await api.clearAuth(root, auth.id).catch(() => {})
+      return { ok: false, why: describe(r) }
+    }
+    await note(root, host.formatReply(dk, answer, rootCommentId, parent, gate.text, { slot: auth.id, owner: auth.owner, name: auth.name }), o.sessionId, host)
+    await note(root, `zhihu-cseen:${dk} ${parent}`, o.sessionId, host)
+    const made = String(r.id ?? '')
+    if (made && made !== '0' && made !== parent) await note(root, `zhihu-cseen:${dk} ${made}`, o.sessionId, host)
+    return { ok: true, id: made }
   }
-  await note(root, host.formatReply(dk, rootRow.answerId, rootRow.commentId, parent, gate.text, { slot: auth.id, owner: auth.owner, name: auth.name }), o.sessionId, host)
-  await note(root, `zhihu-cseen:${dk} ${parent}`, o.sessionId, host)
-  return { ok: true, id: String(r.id ?? '') }
+
+  // 别人留在她自己评论下面：只受「有人回复时让她回一句」管。
+  if (thread && thread.commentId !== parent) {
+    if (!allowFloor) return { ok: false, why: '没开回评论的权限' }
+    return deliver(thread.answerId, thread.commentId)
+  }
+  // 回她自己那条主楼，开关开着就直接发，不必再对一遍评论列表。
+  if (thread && allowFloor) return deliver(thread.answerId, thread.commentId)
+
+  // 今天点开过的回答下面，一条对得上的主楼。开关不管这条。
+  if (opened && await isAnswerRootComment(api, cookie, answerId, parent, o.fetchImpl)) {
+    return deliver(answerId, parent)
+  }
+
+  if (thread && !allowFloor) return { ok: false, why: '没开回评论的权限' }
+  if (!opened) {
+    return { ok: false, why: mine.length ? '只能回自己说过的那条下面' : '这个回答你今天没打开' }
+  }
+  return { ok: false, why: '这条不是这条回答下面的主楼' }
 }
 
 export async function postAnswer(o = {}) {

@@ -149,7 +149,9 @@ function renderComments(c, host) {
   const scene = host.commentScene()
   const out = [scene, `### 评论${c.total ? `（共 ${c.total} 条，这里按分数取前 ${c.comments.length} 条）` : ''}`]
   for (const x of c.comments) {
-    out.push(`- ${x.author || '匿名'}（赞 ${x.likes}${x.replies ? ` · 回复 ${x.replies}` : ''}）：${x.text}`)
+    const cid = String(x.id ?? '').trim()
+    const meta = [cid ? `评论 ${cid}` : '', `赞 ${x.likes}`, x.replies ? `回复 ${x.replies}` : ''].filter(Boolean).join('，')
+    out.push(`- ${x.author || '匿名'}（${meta}）：${x.text}`)
   }
   return out.join('\n')
 }
