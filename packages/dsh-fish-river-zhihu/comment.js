@@ -237,7 +237,9 @@ function oneLine(s, max) {
 }
 
 async function commentAwake(root, config, host) {
-  const gate = await host.isAwake(root, config)
+  const gate = typeof host.commentAwake === 'function'
+    ? await host.commentAwake(root, config)
+    : await host.isAwake(root, config)
   if (gate.governed && !gate.open) return { ok: false, why: '现在在睡，先不在评论区说话' }
   return { ok: true }
 }

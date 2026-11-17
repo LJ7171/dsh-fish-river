@@ -15,7 +15,7 @@ import { writeConfig } from '../lib/core/store.js'
 import { startScheduler } from '../lib/life/schedule/scheduler.js'
 import { postComment, scanIfAwake } from '../lib/platforms/bili/comment.js'
 import {
-  advance, armRoll, blankState, diceOpen, dueRolls, markAct, markBlocked, rollSegment,
+  advance, armRoll, blankState, diceOpen, commentOpen, dueRolls, markAct, markBlocked, rollSegment,
   inActiveWindow, nextActiveStart, noteWeixin, readDailySpent, readSleep, sleepEnabled, writeSleep,
 } from '../lib/life/schedule/sleep.js'
 import { appendEvent } from '../lib/core/store.js'
@@ -364,4 +364,13 @@ test('writeSleep：旧快照不会把刚被消息叫醒的状态盖回 asleep', 
   } finally {
     await rm(root, { recursive: true, force: true })
   }
+})
+
+
+test('评论区：session_awake 算醒着，asleep 不算', () => {
+  const cfg = normalizeConfig({})
+  assert.equal(commentOpen(cfg, { mode: 'dice_awake' }).open, true)
+  assert.equal(commentOpen(cfg, { mode: 'session_awake' }).open, true)
+  assert.equal(commentOpen(cfg, { mode: 'asleep' }).open, false)
+  assert.equal(commentOpen(cfg, null).open, true)
 })
