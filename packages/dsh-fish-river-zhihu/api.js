@@ -206,6 +206,61 @@ export async function fetchRecommend({ cookie = '', limit = 6, pages = 1, fetchI
   }
 }
 
+function stripEm(value) {
+  return htmlToText(String(value ?? '').replace(/<\/?em>/gi, ''))
+}
+
+/** 搜索结果里只留她现有眼睛能打开的三种。广告、用户、话题丢掉。 */
+function searchItem(raw) {
+  const object = raw?.object && typeof raw.object === 'object' ? raw.object : raw
+  const kind = String(object?.type ?? raw?.type ?? '').trim()
+  if (kind !== 'answer' && kind !== 'question' && kind !== 'article') return null
+  const question = object?.question && typeof object.question === 'object' ? object.question : null
+  const title = stripEm(raw?.highlight?.title || question?.title || question?.name || object?.title || object?.name || '')
+  const id = String(object?.id ?? '').trim()
+  if (!title || !id) return null
+  const questionId = String(question?.id ?? '').trim()
+  const author = stripEm(object?.author?.name ?? '')
+  const url = kind === 'answer'
+    ? `${WEB}/answer/${id}`
+    : kind === 'question'
+      ? `${WEB}/question/${id}`
+      : `https://zhuanlan.zhihu.com/p/${id}`
+  return { id, kind, title, author, url, ...(questionId ? { questionId } : {}) }
+}
+
+/**
+ * 搜一个词。移动端 search_v3，不签名、不重试。
+ * 网页端这条要 x-zse-96，这里不走。
+ *
+ * @returns {Promise<{ok:boolean, items:{id,kind,title,author,url,questionId?}[], why:string}>}
+ */
+export async function fetchSearch({ cookie = '', keyword = '', limit = 8, fetchImpl = fetch } = {}) {
+  const kw = String(keyword ?? '').trim().slice(0, 40)
+  if (!kw) return { ok: false, items: [], why: '要搜什么？给个词。' }
+  try {
+    const n = clamp(limit, 1, 20)
+    const r = await getJson({
+      fetchImpl,
+      url: `${MOBILE}/search_v3?t=general&q=${encodeURIComponent(kw)}&correction=1&offset=0&limit=${n}`,
+      cookie,
+      referer: `${WEB}/search?type=content&q=${encodeURIComponent(kw)}`,
+      mobile: true,
+    })
+    if (!Array.isArray(r.json?.data)) return { ok: false, items: [], why: `搜索拿不到（HTTP ${r.status}）` }
+    const items = []
+    for (const row of r.json.data) {
+      const it = searchItem(row)
+      if (!it) continue
+      items.push(it)
+      if (items.length >= n) break
+    }
+    return { ok: items.length > 0, items, why: items.length ? '' : '这次什么都没找到。' }
+  } catch (error) {
+    return { ok: false, items: [], why: `搜索请求失败：${errorText(error)}` }
+  }
+}
+
 /**
  * 邀请回答里的问题。跳过已经回答过、关闭、删除的。
  * GET www.zhihu.com/api/v4/notifications/v3/timeline/entry/invite?…
@@ -721,6 +776,6 @@ export async function probe({ cookie = '', fetchImpl = fetch } = {}) {
 
 export const ENDPOINTS = { WEB, MOBILE }
 export default {
-  fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchQuestionInvites, fetchQuestionRecommend, fetchQuestion, fetchAnswer, fetchComments,
+  fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchSearch, fetchQuestionInvites, fetchQuestionRecommend, fetchQuestion, fetchAnswer, fetchComments,
   fetchChildComments, createComment, createAnswer, answerPublishControl, htmlToText, extractImages, probe, ENDPOINTS,
 }

@@ -36,6 +36,7 @@ export function localApi() {
     fetchFollow: api.fetchFollow,
     fetchHistory: api.fetchHistory,
     fetchRecommend: api.fetchRecommend,
+    fetchSearch: api.fetchSearch,
     fetchQuestionInvites: api.fetchQuestionInvites,
     fetchQuestionRecommend: api.fetchQuestionRecommend,
     fetchQuestion: api.fetchQuestion,

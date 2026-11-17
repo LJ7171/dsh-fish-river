@@ -14,7 +14,7 @@ import { mkdtemp, readdir, rm, readFile, stat } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { fetchHot, fetchFollow } from '../packages/dsh-fish-river-zhihu/api.js'
+import { fetchHot, fetchFollow, fetchSearch } from '../packages/dsh-fish-river-zhihu/api.js'
 import {
   gatherZhihu, loadZhihu, readState, writeState, runsToday, statePath,
   fetchZhihuMaterial, renderMaterial,
@@ -486,9 +486,84 @@ test('再拉热榜记 zhihu:，点进去记 zhihu-open:，都不加 runs', async
 test('zhihu_look 的参数里包含 question / answer / comments', () => {
   const ctx = { tools: { register: (t) => t } }
   const tool = registerZhihuLook(ctx, { root: '/tmp/x' })
-  for (const k of ['question', 'answer', 'comments']) assert.ok(tool.parameters.properties.kind.enum.includes(k))
+  for (const k of ['question', 'answer', 'comments', 'search']) assert.ok(tool.parameters.properties.kind.enum.includes(k))
   assert.ok(tool.parameters.properties.id)
+  assert.ok(tool.parameters.properties.keyword)
   assert.deepEqual(tool.parameters.properties.target.enum, ['answer', 'article', 'question'])
+})
+
+test('fetchSearch：只留回答、问题、文章，高亮标记去掉，空词不发请求', async () => {
+  const seen = []
+  const body = {
+    data: [
+      { type: 'search_result', highlight: { title: '<em>海边</em>日落' }, object: { type: 'answer', id: '11', author: { name: '甲' }, question: { id: '22', title: '问题原题' } } },
+      { type: 'search_result', object: { type: 'question', id: '33', title: '这是问题' } },
+      { type: 'search_result', object: { type: 'article', id: '44', title: '一篇文章', author: { name: '乙' } } },
+      { type: 'search_result', object: { type: 'people', id: '55', name: '某人' } },
+    ],
+  }
+  const r = await fetchSearch({
+    cookie: 'z',
+    keyword: '海边',
+    limit: 8,
+    fetchImpl: async (url) => { seen.push(String(url)); return fakeResponse(body) },
+  })
+  assert.equal(r.ok, true)
+  assert.match(seen[0], /api\.zhihu\.com\/search_v3/)
+  assert.match(seen[0], /[?&]q=/)
+  assert.equal(r.items.length, 3)
+  assert.equal(r.items[0].kind, 'answer')
+  assert.equal(r.items[0].id, '11')
+  assert.equal(r.items[0].questionId, '22')
+  assert.equal(r.items[0].title, '海边日落')
+  assert.doesNotMatch(r.items[0].title, /em>/)
+  assert.match(r.items[0].url, /\/answer\/11$/)
+  assert.equal(r.items[1].kind, 'question')
+  assert.match(r.items[1].url, /\/question\/33$/)
+  assert.equal(r.items[2].kind, 'article')
+  assert.match(r.items[2].url, /zhuanlan\.zhihu\.com\/p\/44$/)
+  let hits = 0
+  const empty = await fetchSearch({ keyword: '  ', fetchImpl: async () => { hits += 1; return fakeResponse(body) } })
+  assert.equal(empty.ok, false)
+  assert.match(empty.why, /词/)
+  assert.equal(hits, 0)
+  const bad = await fetchSearch({ keyword: 'x', fetchImpl: async () => fakeResponse({ data: {} }, 403) })
+  assert.equal(bad.ok, false)
+  assert.match(bad.why, /拿不到/)
+})
+
+test('zhihuLookOnce：搜索记下浏览，不写成点开', async () => {
+  const root = await tempRoot()
+  try {
+    const cfg = normalizeConfig({ zhihu: { enabled: true } })
+    let hits = 0
+    const mod = {
+      async readAuth() { return { cookie: 'z' } },
+      async fetchSearch(args) {
+        hits += 1
+        assert.equal(args.keyword, '海边')
+        return {
+          ok: true,
+          items: [{ id: '11', kind: 'answer', title: '海边日落', author: '甲', url: 'https://www.zhihu.com/answer/11', questionId: '22' }],
+        }
+      },
+    }
+    const miss = await zhihuLookOnce({ root, cfg, kind: 'search', keyword: '   ', mod })
+    assert.equal(miss.ok, false)
+    assert.match(miss.note, /词/)
+    assert.equal(hits, 0)
+    const r = await zhihuLookOnce({ root, cfg, kind: 'search', keyword: '海边', mod })
+    assert.equal(r.ok, true, r.note)
+    assert.match(r.text, /回答 11/)
+    assert.match(r.text, /问题 22/)
+    assert.equal(hits, 1)
+    const { events } = await readEvents(root)
+    const texts = events.map((e) => String(e.text ?? ''))
+    assert.ok(texts.some((t) => t.startsWith(`zhihu:${dateKey()} `)), texts.join('\n'))
+    assert.equal(texts.some((t) => t.startsWith('zhihu-open:')), false)
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
 })
 
 

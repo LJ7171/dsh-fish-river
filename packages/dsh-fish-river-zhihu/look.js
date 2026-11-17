@@ -9,10 +9,10 @@ import { mkdir, readdir, stat, unlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { errorText, hostOf, localApi } from './runtime.js'
 
-const LIST_KINDS = ['all', 'hot', 'recommend', 'follow', 'history']
+const LIST_KINDS = ['all', 'hot', 'recommend', 'follow', 'history', 'search']
 const DETAIL_KINDS = ['question', 'answer', 'comments']
 const KINDS = [...LIST_KINDS, ...DETAIL_KINDS]
-const BROWSE_KINDS = new Set(['all', 'hot', 'recommend'])
+const BROWSE_KINDS = new Set(['all', 'hot', 'recommend', 'search'])
 
 const MEDIA_DIR = 'zhihu-media'
 const IMG_MAX_DEFAULT = 2
@@ -62,6 +62,21 @@ function renderList(items, config, host, owner) {
   }
   if (!out.length) return ''
   return [materialScene(config, host, owner), ...out].join('\n')
+}
+
+function renderSearch(items, config, host, owner) {
+  const out = [materialScene(config, host, owner), '### 搜到的']
+  for (const it of items) {
+    const who = it.author ? `${it.author}：` : ''
+    const tags = []
+    if (it.kind === 'answer' && it.id) tags.push(`回答 ${it.id}`)
+    if ((it.kind === 'question' && it.id) || it.questionId) tags.push(`问题 ${it.kind === 'question' ? it.id : it.questionId}`)
+    if (it.kind === 'article' && it.id) tags.push(`文章 ${it.id}`)
+    const meta = tags.length ? `（${tags.join('，')}）` : ''
+    const link = it.url ? ` ${it.url}` : ''
+    out.push(`- ${who}${it.title}${meta}${link}`)
+  }
+  return out.join('\n')
 }
 
 function imagesCap(cfg) {
@@ -156,7 +171,7 @@ function renderComments(c, host) {
   return out.join('\n')
 }
 
-export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', target = '', topN, orderBy = 'score', mod, fetchImpl, sessionId = '', host, account, slot } = {}) {
+export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', keyword = '', target = '', topN, orderBy = 'score', mod, fetchImpl, sessionId = '', host, account, slot } = {}) {
   const h = hostOf(host)
   if (!cfg?.zhihu?.enabled) return { ok: false, text: '', picks: [], note: '现在看不了。' }
   const module = mod ?? localApi()
@@ -223,6 +238,18 @@ export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', target =
       return { ok: true, text, picks: r.comments, note: '' }
     }
 
+    if (kind === 'search') {
+      const kw = String(keyword ?? '').trim().slice(0, 40)
+      if (!kw) return { ok: false, text: '', picks: [], note: '要搜什么？给个词。' }
+      const r = await module.fetchSearch({ cookie: auth.cookie, keyword: kw, limit: n ?? 8, fetchImpl }).catch(() => null)
+      const found = (r?.items ?? []).filter((x) => x?.title && x?.id)
+      if (!r?.ok || !found.length) return { ok: false, text: '', picks: [], note: r?.why || '这次什么都没找到。' }
+      const text = h.sanitize(renderSearch(found, cfg, h, auth.owner)).text
+      if (!text.trim()) return { ok: false, text: '', picks: [], note: '这次什么都没找到。' }
+      await noteAct(root, h.formatBrowse(h.dateKey(), found, mark), sessionId, h)
+      return { ok: true, text, picks: found, note: '' }
+    }
+
     const items = []
     const want = (k) => kind === 'all' || kind === k
     const push = (k, raw) => {
@@ -261,6 +288,7 @@ export function registerZhihuLook(ctx, deps = {}) {
       name: 'zhihu_look',
       description:
         '看知乎。列表：热榜 / 首页推荐 / 你关注的人在说什么 / 重要的人最近看过什么（kind=all 或那几个名字）。' +
+        '也可以搜一个词（kind=search，带 keyword）。' +
         '也可以点进去看一页：kind=question 看一个问题下面的回答，kind=answer 看一条回答的全文，' +
         'kind=comments 看一条回答/文章/问题下面的评论；这时要带 id——给链接也行' +
         '（比如 https://www.zhihu.com/question/123/answer/456）。回答和评论里的图会下载到本机并告诉你路径，用 read_image 看。只读，不会在账号上留下痕迹。',
@@ -270,8 +298,9 @@ export function registerZhihuLook(ctx, deps = {}) {
           kind: {
             type: 'string',
             enum: KINDS,
-            description: '看什么：all / hot / recommend / follow / history / question / answer / comments。默认 all。',
+            description: '看什么：all / hot / recommend / follow / history / search / question / answer / comments。默认 all。',
           },
+          keyword: { type: 'string', description: 'kind=search 时搜什么。' },
           id: { type: 'string', description: '问题号、回答号，或者直接贴链接（question/answer/comments 时用）。' },
           target: {
             type: 'string',
@@ -306,6 +335,7 @@ export function registerZhihuLook(ctx, deps = {}) {
           cfg: config,
           kind,
           id: args?.id,
+          keyword: args?.keyword,
           target: args?.target,
           topN: args?.topN,
           orderBy: args?.orderBy,

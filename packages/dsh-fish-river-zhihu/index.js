@@ -6,7 +6,7 @@
  */
 
 export {
-  fetchHot, fetchFollow, fetchHistory, fetchRecommend,
+  fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchSearch,
   fetchQuestionInvites, fetchQuestionRecommend,
   fetchQuestion, fetchAnswer, fetchComments, fetchChildComments,
   createComment, createAnswer, answerPublishControl,
@@ -35,7 +35,7 @@ export { noteZhihuSpeak, zhihuSpeakOnce, registerZhihuSpeak } from './speak.js'
 export { bindHost } from './runtime.js'
 
 import {
-  fetchHot, fetchFollow, fetchHistory, fetchRecommend,
+  fetchHot, fetchFollow, fetchHistory, fetchRecommend, fetchSearch,
   fetchQuestionInvites, fetchQuestionRecommend,
   fetchQuestion, fetchAnswer, fetchComments, fetchChildComments,
   createComment, createAnswer, answerPublishControl,
@@ -54,6 +54,7 @@ export default {
   fetchFollow,
   fetchHistory,
   fetchRecommend,
+  fetchSearch,
   fetchQuestionInvites,
   fetchQuestionRecommend,
   fetchQuestion,
