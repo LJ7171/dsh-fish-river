@@ -56,7 +56,7 @@ export const ZHIHU_COPY = {
   commentLabel: '允许在知乎评论',
   commentHint: '她自己写。只能评今天点开过的回答。标成主人的号也可以发，她会知道这是谁的号。',
   answerLabel: '允许回答问题',
-  answerHint: '和评论分开，默认关。刷知乎时会额外看邀请回答、作者推荐和首页推荐里的问题；只能回答今天用 zhihu_look 点开过的问题。标成主人的号也可以发，她会知道这是谁的号。',
+  answerHint: '和评论分开，默认关。刷知乎时会额外看邀请回答、作者推荐和首页推荐里的问题；只能回答她今天点开看过的问题。标成主人的号也可以发，她会知道这是谁的号。',
 }
 
 function normalizeImages(raw, fallback = { enabled: true, max: 2 }) {

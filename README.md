@@ -478,7 +478,7 @@ lib/
   channels/runtime.js      渠道装配：全关时不建文件、不连网
   channels/router.js    收到 → 记账 → 判断 → 叫醒 → 发送（队列 / 静默窗 / 分段 / 出站闸）
   channels/gate.js      该不该接这句话
-  channels/qq.js / biliDm.js / douyin.js / weixin.js   渠道适配器
+  channels/qq.js / bili.js / douyin.js / weixin.js      渠道适配器
   channels/subpackage.js       可选子包（抖音）懒加载
   channels/pace.js      进站静默窗 + 纯确认识别
   channels/occasion.js  场合（重要的人 / 近人 / 陌生人 / 群 / 评论）

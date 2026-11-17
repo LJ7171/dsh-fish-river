@@ -1,3 +1,21 @@
+## 0.1.138 — 2026-11-17
+
+- 修渠道层装配失联：0.1.119 把 `lib/channels/bili.js` 改名为 `biliDm.js`，但渠道适配器
+  仍按 `./<渠道名>.js` 动态加载，B 站私信渠道从那版起一直起不来；改回 `bili.js` 并同步
+  测试与 README 的路径。
+- 删死代码（定义后零引用）：`index.js` 的 `SEED_KEY`、`outing.js` 的 `emptyOutings` /
+  `emptyPossessions`、`scheduler.js` 的 `ensureSchedule` / `hashSeed` / `WAKE_MIN_GAP_MS`
+  （作息状态机接管后遗留）、`qr.js` 的 `nowMs`、`zhihu/load.js` 的 `CONFIG_SPECS`、
+  `ask.js` 的 `VIA_LABEL`、`status.js` 的 `DK_RE` / `idleWakeCount`、`restrict.js` 的
+  `isHerAnywhere`、`locate.js` 的 `looksLikeRoot`、`media.js` 的 `probeDuration`、
+  `persona.js` 的 `STAGE_BRIEF`、`tenant.js` 的 `leafName`、`voices.js` 的
+  `zhihuCommentTarget`。
+- 设置页文案按使用视角改写：删掉「聊满多少轮换新会话」提示里夹带的无关句；重写
+  「单次上下文限制」「每轮对话认知记忆条数」「让我看日记」「允许在评论区说话」
+  「允许挑表情包」「每轮最多挑几张」「工具面收窄」的说明；界面文案不再暴露
+  `keep_image` / `zhihu_look` / `choose_outing` / `tieba_look` / `pick_meme` / `send_image`
+  等内部工具名，知乎组文案与子包 `ZHIHU_COPY` 两处同步改。
+
 ## 0.1.137 — 2026-11-17
 
 - 评论区作息闸把 `session_awake` 算作醒着：重要的人发微信把她叫醒后，她可以在评论/回复/回答里说话；
