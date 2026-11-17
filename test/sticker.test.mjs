@@ -345,3 +345,17 @@ test('send_image 按名字取表情包，和路径互斥，关着不发', async 
     }
   })
 })
+
+test('表情包关着时 keep_sticker 不收图', async () => {
+  await withRoot(async (root) => {
+    await enable(root, { sticker: false })
+    const regs = new Map()
+    registerKeepSticker({ tools: { register: (spec) => { regs.set(spec.name, spec); return () => {} } } }, { root })
+    const file = join(root, 'off.png')
+    await writeFile(file, pngN(99))
+    const r = await regs.get('keep_sticker').execute({ path: file, name: '哈', when: '想笑' })
+    assert.equal(r.ok, false)
+    assert.match(r.note, /现在用不上/)
+    assert.equal((await pageStickers(root)).total, 0)
+  })
+})
