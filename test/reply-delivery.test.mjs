@@ -207,6 +207,20 @@ test('回复间隔：模块默认不延迟；配置 30 秒时落在 21–30 秒�
   resetPacingForTests()
 })
 
+test('waitReplyGap：两条回复之间真的会等，不是只算了个数', async () => {
+  resetPacingForTests()
+  try {
+    // 0.05 秒 × 0.7~1.0 = 35~50ms；第一次写不等，第二次必须等。
+    setPacing({ maxReplyGapSec: 0.05 })
+    const t0 = Date.now()
+    await waitReplyGap()
+    await waitReplyGap()
+    assert.ok(Date.now() - t0 >= 30, '第二条回复要等够间隔')
+  } finally {
+    resetPacingForTests()
+  }
+})
+
 test('扫回复：三平台按作息窗口扫（睡着也扫），不再走 scanIfAwake', async () => {
   const src = await readFile(new URL('../lib/life/schedule/scheduler.js', import.meta.url), 'utf8')
   assert.match(src, /if \(!inActiveWindow\(config, new Date\(now\)\)\) return/)
