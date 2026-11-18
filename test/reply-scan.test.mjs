@@ -4,11 +4,11 @@
  * 守这些事：
  *   1. 三个平台都能手动扫，扫到的进各自的盒子（与定时扫共用同一条攒盒路）。
  *   2. 绕过间隔：刚扫完立刻再点，仍真的打接口。
- *   3. 睡着也真扫（定时扫睡着不发请求，手动扫绕开这道闸）。
- *   4. 不叫醒、不代回、不占掷骰：事件流一行不多，睡眠台账一动不动。
- *   5. 成功后回写 lastScanAt / 内存时钟，定时扫不马上再来一遍。
- *   6. 没登录 / 没装子包 / 号没放行 / 风控冷却，回执都说得清；
- *      「允许评论」「有人回复时让她回一句」都不拦手动扫。
+ *   3. 手动扫与定时扫是同一件事，只有「间隔还没到」这一关算作已过：
+ *      睡着不发请求（scanIfAwake 的闸照旧）、没开评论不开工、回执都说清。
+ *   4. 不叫醒、不代回、不占掷骰：睡眠台账一动不动。
+ *   5. 成功后回写 lastScanAt / 内存时钟，下一次定时扫从现在重新计时。
+ *   6. 没登录 / 没装子包 / 号没放行 / 风控冷却，回执都说得清。
  */
 
 import test from 'node:test'
@@ -113,16 +113,52 @@ test('B 站手动扫：扫到进盒子，立刻再扫仍打接口（绕过间隔
   })
 })
 
-test('知乎手动扫：睡着也真扫，进知乎盒子，lastScanAt 写回去', async () => {
+test('知乎/贴吧手动扫与定时扫同一道闸：睡着不发请求，回执说清，lastScanAt 不写', async () => {
   await withRoot(async (root) => {
     const dk = dateKey()
-    await ready(root, { zhihu: { comment: { enabled: true } } })
+    await ready(root, { zhihu: { comment: { enabled: true } }, tieba: { comment: { enabled: true } } })
     await writeSleep(root, { mode: 'asleep' })
     await meta(root, formatZhihuComment(dk, 'ans1', 'rootc', '我说过'))
-    const calls = []
+    await meta(root, formatTiebaComment(dk, 'tid1', 'pid1', '我说过'))
+    let zHits = 0
+    let tHits = 0
+    const zApi = { async fetchChildComments() { zHits += 1; return { ok: true, comments: [] } } }
+    const tApi = { async floor() { tHits += 1; return { ok: true, replies: [] } } }
+    const s = startScheduler(herCtx(), { root, log: () => {}, sessionId: 's-main' })
+    try {
+      const z = await s.manualScanReplies('zhihu', { zhihu: { api: zApi, cookie: 'z', selfId: 'me' } })
+      assert.equal(z.ok, false)
+      assert.equal(z.why, 'asleep', '睡着的闸与定时扫同一道，回执如实说')
+      assert.equal(zHits, 0, '睡着不发请求')
+      assert.equal(z.added, 0)
+      const t = await s.manualScanReplies('tieba', { tieba: { api: tApi, cookie: 'BDUSS=x' } })
+      assert.equal(t.ok, false)
+      assert.equal(t.why, 'asleep')
+      assert.equal(tHits, 0)
+      // 与定时扫相同：睡着这一趟不把 lastScanAt 写回去，盒子也不动
+      const { config } = await loadConfig(root)
+      assert.equal(config.zhihu.comment.lastScanAt, '')
+      assert.equal(config.tieba.comment.lastScanAt, '')
+      assert.deepEqual((await readReplyBox(root, { file: 'zhihu-reply-box.json' })).items, [])
+      assert.deepEqual((await readReplyBox(root, { file: 'tieba-reply-box.json' })).items, [])
+      assert.equal((await readSleep(root))?.mode, 'asleep', '不叫醒，睡眠台账不动')
+    } finally {
+      s.dispose()
+    }
+  })
+})
+
+test('知乎手动扫（醒着）：真扫、进盒子、lastScanAt 写回去，下一次定时扫重新计时', async () => {
+  await withRoot(async (root) => {
+    const dk = dateKey()
+    // 「有人回复时让她回一句」只管她能不能回，管不着扫：关着也照扫。
+    await ready(root, { zhihu: { comment: { enabled: true, replyToReplies: false } } })
+    await writeSleep(root, { mode: 'dice_awake' })
+    await meta(root, formatZhihuComment(dk, 'ans1', 'rootc', '我说过'))
+    let hits = 0
     const api = {
-      async fetchChildComments(args) {
-        calls.push(args)
+      async fetchChildComments() {
+        hits += 1
         return { ok: true, comments: [{ id: 'r1', authorId: 'other', author: '路人', text: '回你一句', created: 100 }] }
       },
     }
@@ -130,31 +166,32 @@ test('知乎手动扫：睡着也真扫，进知乎盒子，lastScanAt 写回去
     try {
       const r = await s.manualScanReplies('zhihu', { zhihu: { api, cookie: 'z', selfId: 'me' } })
       assert.equal(r.ok, true, r.why)
-      assert.equal(r.total, 1)
+      assert.equal(hits, 1, '醒着就真的发请求')
       assert.equal(r.added, 1)
-      assert.equal(calls.length, 1, '睡着也要真的发请求')
       const box = await readReplyBox(root, { file: 'zhihu-reply-box.json' })
       assert.deepEqual(box.items.map((x) => x.rpid), ['r1'])
       const { config } = await loadConfig(root)
-      assert.ok(Number(config.zhihu.comment.lastScanAt) > 0, 'lastScanAt 要写回去')
-      // 睡眠台账原样：手动扫不碰作息
-      assert.equal((await readSleep(root))?.mode, 'asleep')
+      const stamped = config.zhihu.comment.lastScanAt
+      assert.ok(Number(stamped) > 0, 'lastScanAt 要写回去（定时扫从现在重新计时）')
+      // 重新计时：紧接着的这一拍，定时扫看到新时间戳就不再扫、也不再写
+      await s.tick()
+      const { config: again } = await loadConfig(root)
+      assert.equal(again.zhihu.comment.lastScanAt, stamped, '定时扫从手动扫那一刻重新计时')
+      assert.equal((await readSleep(root))?.mode, 'dice_awake')
     } finally {
       s.dispose()
     }
   })
 })
 
-test('贴吧手动扫：睡着也真扫，进贴吧盒子，lastScanAt 写回去', async () => {
+test('贴吧手动扫（醒着）：真扫、进盒子、lastScanAt 写回去', async () => {
   await withRoot(async (root) => {
     const dk = dateKey()
     await ready(root, { tieba: { comment: { enabled: true } } })
-    await writeSleep(root, { mode: 'asleep' })
+    await writeSleep(root, { mode: 'dice_awake' })
     await meta(root, formatTiebaComment(dk, 'tid1', 'pid1', '我说过'))
-    const calls = []
     const api = {
-      async floor(args) {
-        calls.push(args)
+      async floor() {
         return { ok: true, replies: [{ id: 'r9', authorId: 'someone', author: '路人', text: '跟一句', time: 7 }] }
       },
     }
@@ -163,38 +200,37 @@ test('贴吧手动扫：睡着也真扫，进贴吧盒子，lastScanAt 写回去
       const r = await s.manualScanReplies('tieba', { tieba: { api, cookie: 'BDUSS=x' } })
       assert.equal(r.ok, true, r.why)
       assert.equal(r.added, 1)
-      assert.equal(calls.length, 1, '睡着也要真的发请求')
       const box = await readReplyBox(root, { file: 'tieba-reply-box.json' })
       assert.deepEqual(box.items.map((x) => x.rpid), ['r9'])
       const { config } = await loadConfig(root)
       assert.ok(Number(config.tieba.comment.lastScanAt) > 0, 'lastScanAt 要写回去')
-      assert.equal((await readSleep(root))?.mode, 'asleep')
+      assert.equal((await readSleep(root))?.mode, 'dice_awake')
     } finally {
       s.dispose()
     }
   })
 })
 
-test('「允许评论」关着、「有人回复时让她回一句」关着，都不拦手动扫', async () => {
+test('「允许在知乎评论」关着：手动扫不开工，回执说清，与定时扫同一道门', async () => {
   await withRoot(async (root) => {
     const dk = dateKey()
-    await ready(root, { zhihu: { comment: { enabled: false, replyToReplies: false } } })
-    await writeSleep(root, { mode: 'asleep' })
+    await ready(root, { zhihu: { comment: { enabled: false } } })
+    await writeSleep(root, { mode: 'dice_awake' })
     await meta(root, formatZhihuComment(dk, 'ans1', 'rootc', '我说过'))
     let hits = 0
     const api = {
       async fetchChildComments() {
         hits += 1
-        return { ok: true, comments: [{ id: 'r2', authorId: 'other', author: '路人', text: '回你', created: 1 }] }
+        return { ok: true, comments: [] }
       },
     }
     const s = startScheduler(herCtx(), { root, log: () => {}, sessionId: 's-main' })
     try {
       const r = await s.manualScanReplies('zhihu', { zhihu: { api, cookie: 'z', selfId: 'me' } })
-      assert.equal(r.ok, true, r.why)
-      assert.equal(hits, 1, '两个开关都关着，手动扫照样真的扫')
-      const box = await readReplyBox(root, { file: 'zhihu-reply-box.json' })
-      assert.equal(box.items.length, 1, '扫到的照旧攒盒')
+      assert.equal(r.ok, false)
+      assert.equal(r.why, 'disabled')
+      assert.equal(hits, 0, '没开评论就不打请求')
+      assert.equal((await readReplyBox(root, { file: 'zhihu-reply-box.json' })).items.length, 0)
     } finally {
       s.dispose()
     }
@@ -294,7 +330,7 @@ test('/reply-scan：平台参数认三个，别的拒掉；GET 不放行', async
   })
 })
 
-test('/reply-scan：扫成功带回条数；「允许评论」关着时如实说明递不出去', async () => {
+test('/reply-scan：扫成功带回条数；关着 / 睡着都有各自的说法', async () => {
   await withRoot(async (root) => {
     await ready(root, { comment: { enabled: true } })
     const seen = []
@@ -306,12 +342,19 @@ test('/reply-scan：扫成功带回条数；「允许评论」关着时如实说
     assert.deepEqual(seen, ['bili'], '平台参数要传给调度器')
     assert.equal(r.json.ok, true)
     assert.equal(r.json.added, 2)
-    assert.equal(r.json.delivering, true)
+    assert.equal(r.json.total, 3)
 
-    await ready(root, { comment: { enabled: false } })
-    const r2 = await postRoute(routes, '/reply-scan', { platform: 'bili' })
-    assert.equal(r2.json.ok, true)
-    assert.equal(r2.json.delivering, false, '开关关着时回执要如实说明')
+    const disabled = routeCtx()
+    registerObserve(disabled.ctx, { root, getScheduler: () => ({ manualScanReplies: async () => ({ ok: false, why: 'disabled' }) }) })
+    const r2 = await postRoute(disabled.routes, '/reply-scan', { platform: 'bili' })
+    assert.equal(r2.json.ok, false)
+    assert.equal(r2.json.reason, 'disabled', JSON.stringify(r2.json))
+
+    const asleep = routeCtx()
+    registerObserve(asleep.ctx, { root, getScheduler: () => ({ manualScanReplies: async () => ({ ok: false, why: 'asleep' }) }) })
+    const r3 = await postRoute(asleep.routes, '/reply-scan', { platform: 'bili' })
+    assert.equal(r3.json.ok, false)
+    assert.equal(r3.json.reason, 'asleep', JSON.stringify(r3.json))
   })
 })
 
@@ -380,6 +423,7 @@ test('/reply-scan：后台没起、正在扫、扫出错，回执都分得清', 
 
 test('/reply-scan 接真调度器：没评论可扫时也是一条诚实回执', async () => {
   await withRoot(async (root) => {
+    await ready(root, { comment: { enabled: true } })
     const s = startScheduler(herCtx(), { root, log: () => {}, sessionId: 's-main' })
     try {
       const { ctx, routes } = routeCtx()

@@ -753,5 +753,6 @@ test('「立刻扫回复」按钮在三个平台的间隔选择与回话开关�
     assert.ok(atToggle > atBtn, `${p} 的「立刻扫回复」要排在「有人回复时让她回一句」前面`)
   }
   assert.equal((src.match(/scanNowCell\('/g) ?? []).length, 3, '三个平台各一个按钮位，别多别少')
-  assert.ok(src.includes("'不用等到点，现在就扫一遍"), '按钮的短 hint 要在')
+  assert.ok(src.includes("'不用等下一次到点，现在就把这一路的扫跑一遍"), '按钮的短 hint 要在')
+  assert.ok(!src.includes('睡着也真扫'), '「睡着也真扫」的说法已撤回，hint 不能再暗示它与定时扫不同')
 })
