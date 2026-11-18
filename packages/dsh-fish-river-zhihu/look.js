@@ -241,7 +241,11 @@ export async function zhihuLookOnce({ root, cfg, kind = 'all', id = '', keyword 
     if (kind === 'search') {
       const kw = String(keyword ?? '').trim().slice(0, 40)
       if (!kw) return { ok: false, text: '', picks: [], note: '要搜什么？给个词。' }
-      const r = await module.fetchSearch({ cookie: auth.cookie, keyword: kw, limit: n ?? 8, fetchImpl }).catch(() => null)
+      // 搜索词也是出门说的话：路径、cookie、私密内容不能拼进 URL 发给知乎。
+      const screened = h.maySend(kw)
+      if (!screened.ok) return { ok: false, text: '', picks: [], note: '这个搜索词不能发出去。' }
+      const safeKw = String(screened.text ?? kw)
+      const r = await module.fetchSearch({ cookie: auth.cookie, keyword: safeKw, limit: n ?? 8, fetchImpl }).catch(() => null)
       const found = (r?.items ?? []).filter((x) => x?.title && x?.id)
       if (!r?.ok || !found.length) return { ok: false, text: '', picks: [], note: r?.why || '这次什么都没找到。' }
       const text = h.sanitize(renderSearch(found, cfg, h, auth.owner)).text

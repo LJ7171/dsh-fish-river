@@ -367,3 +367,24 @@ test('/events：别人的私聊只回形状，主人的私聊照常', async () =
     await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
   }
 })
+
+
+test('saveOwner：显式 null 才能清空 uid / 昵称，空字符串仍是不改', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'fish-ow-clear-'))
+  try {
+    await saveOwner({ mid: '42', nickname: '大号' }, root)
+    const r = await saveOwner({ mid: null }, root)
+    assert.equal(r.ok, true)
+    assert.match(r.note, /清空/)
+    let ow = await readOwner(root)
+    assert.equal(ow.mid, '')
+    assert.equal(ow.nickname, '大号')
+    const r2 = await saveOwner({ nickname: null }, root)
+    assert.equal(r2.ok, true)
+    ow = await readOwner(root)
+    assert.equal(ow.mid, '')
+    assert.equal(ow.nickname, '')
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 })
+  }
+})
