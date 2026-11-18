@@ -204,19 +204,20 @@ test('签名接口重试仍 -412 才认作风控', async () => {
 test('请求间隔可配：setPacing 夹值并在运行时被客户端读到', () => {
   const before = getPacing()
   try {
-    setPacing({ minIntervalMs: 2500, jitterMs: 300 })
-    assert.deepEqual(getPacing(), { minIntervalMs: 2500, jitterMs: 300 })
+    setPacing({ minIntervalMs: 2500, jitterMs: 300, maxReplyGapSec: 45 })
+    assert.deepEqual(getPacing(), { minIntervalMs: 2500, jitterMs: 300, maxReplyGapSec: 45 })
 
     // 低于下限 / 高于上限都夹到边界（和 settings.js 的 LIMITS 一致）
-    setPacing({ minIntervalMs: 10, jitterMs: -5 })
-    assert.deepEqual(getPacing(), { minIntervalMs: 200, jitterMs: 0 })
+    setPacing({ minIntervalMs: 10, jitterMs: -5, maxReplyGapSec: -3 })
+    assert.deepEqual(getPacing(), { minIntervalMs: 200, jitterMs: 0, maxReplyGapSec: 0 })
 
-    setPacing({ minIntervalMs: 10_000_000, jitterMs: 10_000_000 })
-    assert.deepEqual(getPacing(), { minIntervalMs: 120_000, jitterMs: 60_000 })
+    setPacing({ minIntervalMs: 10_000_000, jitterMs: 10_000_000, maxReplyGapSec: 99_999 })
+    assert.deepEqual(getPacing(), { minIntervalMs: 120_000, jitterMs: 60_000, maxReplyGapSec: 3600 })
 
-    // 坏值回默认，不是变成 0（0 = 不限速，最危险的错值）
-    setPacing({ minIntervalMs: 'abc', jitterMs: null })
-    assert.deepEqual(getPacing(), { minIntervalMs: 800, jitterMs: 500 })
+    // 抓取的两个坏值回默认，不是变成 0（0 = 不限速，最危险的错值）；
+    // 回复间隔的 0 是合法值（不限制），坏值回模块默认 0。
+    setPacing({ minIntervalMs: 'abc', jitterMs: null, maxReplyGapSec: 'abc' })
+    assert.deepEqual(getPacing(), { minIntervalMs: 800, jitterMs: 500, maxReplyGapSec: 0 })
   } finally {
     setPacing(before)
   }

@@ -242,7 +242,8 @@ export function renderReplies(list, owner = 'owner', host) {
   const h = hostOf(host)
   // 条目上的 sameAccount 是扫的时候记下的（作者就是登录的那个号）。旧盒子里的条目没有
   // 这个记号，一律按陌生人摆——宁可少说一句，也不把重要的人的话标成谁都能认的。
-  const shown = list.slice(0, 5)
+  // 2026-11-18：不再截 5 条。递给她时要一次看全（盒子本身有上限）。
+  const shown = list
   const own = shown.filter((x) => x?.sameAccount === true)
   const strangers = shown.filter((x) => x?.sameAccount !== true)
   const lines = ['## 有人在你下面说话了', h.whoseAccount('知乎', owner)]
@@ -369,6 +370,8 @@ export async function postComment(o = {}) {
   if (typeof api?.createComment !== 'function') return { ok: false, why: '没登录' }
   const cookie = auth.cookie
   if (!cookie) return { ok: false, why: '没登录' }
+  // 2026-11-18：真要发出去之前等够回复间隔（跨平台共用）。
+  await host.replyPace?.()
   const r = await api.createComment({ cookie, id: answerId, content: gate.text, fetchImpl: o.fetchImpl, slot: auth.id })
   if (!r?.ok) {
     if ((r?.code === 'NOT_LOGIN' || r?.code === 'NO_CSRF') && auth.id && typeof api.clearAuth === 'function') await api.clearAuth(root, auth.id).catch(() => {})
@@ -416,6 +419,8 @@ export async function postReply(o = {}) {
     .some((row) => row.id === answerId && sameZhihuSlot(row.slot, auth.id))
 
   async function deliver(answer, rootCommentId) {
+    // 2026-11-18：真要发出去之前等够回复间隔（跨平台共用）。
+    await host.replyPace?.()
     const r = await api.createComment({
       cookie,
       id: answer,
@@ -494,6 +499,8 @@ export async function postAnswer(o = {}) {
   if (typeof api?.createAnswer !== 'function') return { ok: false, why: '没登录' }
   if (!cookie) return { ok: false, why: '没登录' }
 
+  // 2026-11-18：真要发出去之前等够回复间隔（跨平台共用）。
+  await host.replyPace?.()
   const r = await api.createAnswer({ cookie, questionId, content: gate.text, fetchImpl: o.fetchImpl, slot: auth.id })
   if (!r?.ok) {
     if ((r?.code === 'NOT_LOGIN' || r?.code === 'NO_CSRF') && auth.id && typeof api.clearAuth === 'function') await api.clearAuth(root, auth.id).catch(() => {})

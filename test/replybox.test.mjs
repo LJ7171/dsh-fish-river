@@ -1,5 +1,5 @@
 /**
- * replybox —— 回复先攒着，等她醒来再递（2026-11-06 A 案）
+ * replybox —— 回复先放盒里；醒着立刻递，睡着/忙时等醒来再递（2026-11-18 起）
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
@@ -34,14 +34,14 @@ test('回复进盒：按 rpid 去重，取走后清空，0600', async () => {
   }
 })
 
-test('盒子最多留 20 条：新的挤掉最旧的', async () => {
+test('盒子最多留 50 条：新的挤掉最旧的', async () => {
   const root = await mkdtemp(join(tmpdir(), 'fish-reply-cap-'))
   try {
-    for (let i = 1; i <= 25; i += 1) await addReplies(root, [{ rpid: i, text: String(i) }])
+    for (let i = 1; i <= 55; i += 1) await addReplies(root, [{ rpid: i, text: String(i) }])
     const box = await readReplyBox(root)
-    assert.equal(box.items.length, 20)
+    assert.equal(box.items.length, 50)
     assert.equal(box.items[0].rpid, 6)
-    assert.equal(box.items[19].rpid, 25)
+    assert.equal(box.items[49].rpid, 55)
   } finally {
     await rm(root, { recursive: true, force: true })
   }
