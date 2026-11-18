@@ -231,8 +231,12 @@ export async function scanIfAwake(o = {}) {
   const host = hostOf(o.host)
   const root = o.root ?? host.rootDir()
   const cfg = o.config ?? (await host.loadConfig(root)).config
-  const gate = await host.isAwake(root, cfg, o.sleepState)
-  if (gate.governed && !gate.open) return { ok: false, why: 'asleep', list: [] }
+  // ignoreSleep（0.1.148 手动「立刻扫回复」）：领养人点了就是要现在看，
+  // 跳过睡着这一闸，扫到的照旧攒盒等她醒来。定时扫不带这个标记，行为不变。
+  if (o.ignoreSleep !== true) {
+    const gate = await host.isAwake(root, cfg, o.sleepState)
+    if (gate.governed && !gate.open) return { ok: false, why: 'asleep', list: [] }
+  }
   const list = await scanReplies({ ...o, host, root })
   return { ok: true, why: '', list }
 }
