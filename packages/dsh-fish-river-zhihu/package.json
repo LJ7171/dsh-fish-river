@@ -1,6 +1,6 @@
 {
   "name": "dsh-fish-river-zhihu",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "知乎素材、点开、评论、楼中楼和写回答—— dsh-fish-river 的可选子包",
   "type": "module",
   "main": "index.js",

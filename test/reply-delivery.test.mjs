@@ -223,9 +223,9 @@ test('waitReplyGap：两条回复之间真的会等，不是只算了个数', as
 
 test('扫回复：三平台按作息窗口扫（睡着也扫），不再走 scanIfAwake', async () => {
   const src = await readFile(new URL('../lib/life/schedule/scheduler.js', import.meta.url), 'utf8')
-  assert.match(src, /if \(!inActiveWindow\(config, new Date\(now\)\)\) return/)
-  assert.match(src, /scanZhihuReplies\(\{ root \}\)/)
-  assert.match(src, /scanTiebaReplies\(\{ root \}\)/)
+  assert.match(src, /manual !== true && !inActiveWindow\(config, new Date\(now\)\)/)
+  assert.match(src, /scanZhihuReplies/)
+  assert.match(src, /scanTiebaReplies/)
   assert.equal(src.includes('scanZhihuIfAwake'), false)
   assert.equal(src.includes('scanTiebaIfAwake'), false)
 })

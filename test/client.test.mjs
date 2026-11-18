@@ -731,3 +731,28 @@ test('设置页切页不能把判据 showTab 当成开关用（issue #12）', as
   assert.match(src, /const showTab = \(id\) => tab === id/, 'showTab 的定义不能被删')
   assert.match(src, /showTab\('bili'\) \? h\('div', null, biliPage, outingPage\) : null/, '判据照旧用于渲染条件')
 })
+
+// ---------------------------------------------------------------------------
+// 0.1.148：三个平台（B 站 / 知乎 / 贴吧）各一个「立刻扫回复」按钮。
+// 摆法是同一套：间隔选择 → 按钮 → 「有人回复时让她回一句」。按钮少了哪一路、
+// 或者被挪到开关后面，都算改坏了。
+// ---------------------------------------------------------------------------
+
+test('「立刻扫回复」按钮在三个平台的间隔选择与回话开关之间', async () => {
+  const src = await readFile(CLIENT, 'utf8')
+  for (const [p, selSrc, toggleSrc] of [
+    ['bili', 'value: commentScanMin', 'on: commentReplyTo'],
+    ['zhihu', 'value: zhihuCommentScanMin', 'on: zhihuCommentReplyTo'],
+    ['tieba', 'value: tiebaCommentScanMin', 'on: tiebaCommentReplyTo'],
+  ]) {
+    const atSel = src.indexOf(selSrc)
+    const atBtn = src.indexOf(`scanNowCell('${p}')`)
+    const atToggle = src.indexOf(toggleSrc)
+    assert.ok(atSel > 0, `${p} 的间隔选择要在`)
+    assert.ok(atBtn > atSel, `${p} 的「立刻扫回复」要排在间隔选择后面`)
+    assert.ok(atToggle > atBtn, `${p} 的「立刻扫回复」要排在「有人回复时让她回一句」前面`)
+  }
+  assert.equal((src.match(/scanNowCell\('/g) ?? []).length, 3, '三个平台各一个按钮位，别多别少')
+  assert.ok(src.includes("'不用等下一次到点（也不必在作息时段），现在就把这一路的扫跑一遍"), '按钮的短 hint 要在')
+  assert.ok(!src.includes('睡着也真扫'), '「睡着也真扫」的说法已撤回，hint 不能再暗示它与定时扫不同')
+})

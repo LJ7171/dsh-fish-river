@@ -93,7 +93,7 @@ test('两种配额各自独立计数，且能从事件流复原', async () => {
   await withRoot(async (root) => {
     const dk = dateKey()
     // 事件文本格式：`prefix:日期 <key> <value>`（与 browse 记账同构）
-    await appendEvent({ type: 'meta', text: `comment:${dk} BV1 111` }, { day: 1, stage: 1, source: 'system' }, root)
+    await appendEvent({ type: 'meta', text: `comment:${dk} BV1 111 {"slot":"a"}` }, { day: 1, stage: 1, source: 'system' }, root)
     await appendEvent({ type: 'meta', text: `creply:${dk} BV1 111 222` }, { day: 1, stage: 1, source: 'system' }, root)
     const { events } = await readEvents(root)
 
@@ -102,7 +102,7 @@ test('两种配额各自独立计数，且能从事件流复原', async () => {
     // 昨天的 quota 不算今天的
     assert.equal(commentCountToday(events, '1999-01-01'), 0)
 
-    assert.deepEqual(herComments(events, dk), [{ bvid: 'BV1', rpid: 111 }])
+    assert.deepEqual(herComments(events, dk), [{ bvid: 'BV1', rpid: 111, slot: 'a' }])
     // creply 是"回复记账"，不等于"看过了"——两条是分开写的：
     // postReply 会先写 creply，再写 cseen。这里只造了 creply，所以 seen 应为空。
     assert.equal(seenReplies(events, dk).has(222), false)
@@ -116,7 +116,7 @@ test('扫回复会跳过她自己发的、已看过的、以及别人的（只�
   await withRoot(async (root) => {
     const dk = dateKey()
     await seedBrowse(root, 'BV1', dk)
-    await appendEvent({ type: 'meta', text: `comment:${dk} BV1 111` }, { day: 1, stage: 1, source: 'system' }, root)
+    await appendEvent({ type: 'meta', text: `comment:${dk} BV1 111 {"slot":"a"}` }, { day: 1, stage: 1, source: 'system' }, root)
     await appendEvent({ type: 'meta', text: `cseen:${dk} 333` }, { day: 1, stage: 1, source: 'system' }, root)
 
     const client = fakeClient({
@@ -184,7 +184,7 @@ test('隔天有人回她，她也能收到（旧实现只扫当天，那条回�
   await withRoot(async (root) => {
     const now = Date.now()
     const yesterday = dateKey(new Date(now - 86_400_000))
-    await appendEvent({ type: 'meta', text: `comment:${yesterday} BV1 111` }, { day: 1, stage: 1, source: 'system' }, root)
+    await appendEvent({ type: 'meta', text: `comment:${yesterday} BV1 111 {"slot":"a"}` }, { day: 1, stage: 1, source: 'system' }, root)
 
     const client = fakeClient({
       subReplies: async () => ({
@@ -203,7 +203,7 @@ test('评论楼再多，一次唤醒也最多扫 MAX_SCAN_ROOTS 个（窗口变�
   await withRoot(async (root) => {
     const dk = dateKey()
     for (let i = 0; i < 10; i++) {
-      await appendEvent({ type: 'meta', text: `comment:${dk} BV${i} ${1000 + i}` }, { day: 1, stage: 1, source: 'system' }, root)
+      await appendEvent({ type: 'meta', text: `comment:${dk} BV${i} ${1000 + i} {"slot":"a"}` }, { day: 1, stage: 1, source: 'system' }, root)
     }
     const client = fakeClient({ view: async () => ({ ok: true, data: { aid: 1001 } }) })
     await scanReplies({ root, client, dateKey: dk })
