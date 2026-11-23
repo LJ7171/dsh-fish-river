@@ -1,3 +1,15 @@
+## 0.1.152 — 2026-11-23
+
+- 修冷落逻辑两处：
+  - `assess` 以前只要 `seen` 晚于最后一条 absence 就永远返回 `returned`；他回来一次之后
+    再消失，也不会再记新的 absence。现在按「absence 是否晚于最近一次 seen」判断这段空档
+    记没记过，到阈值就写新的一条。
+  - `deriveSelf` 的 `absenceDays` 以前只看 absence 事件里的 `days` 快照：他继续不来不涨，
+    回来了也不归零。现在还在冷落时按最近一次 `seen` 重算（取 max：事件 days / 当前整天数 /
+    成长日差兜底）；他回来（`seen` 晚于 absence）或她写了 `reunion` 就归零。
+- 测试：p1 补「回来过又再消失要写新 absence」「冷落继续时天数要涨」「回来之后归零」；
+  `node --test` 1689 全绿。
+
 ## 0.1.151 — 2026-11-23
 
 - 修 B 站私信渠道起不来：两个号之后 cookie 在 `owner.accounts` 里，适配器还在读顶层旧

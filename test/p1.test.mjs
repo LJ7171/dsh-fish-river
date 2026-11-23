@@ -220,6 +220,40 @@ test('absence：同一次冷落不重复写；他回来之后才算结束', () =
   assert.equal(assess([seenEvent(laterSeen), abs], now, { afterDays: 2 }).reason, 'returned')
 })
 
+test('absence：他回来过、之后又再消失，到阈值要能写新的一条', () => {
+  const now = Date.now()
+  const oldAbs = {
+    id: 'ev_old_abs', type: 'absence', text: '他有 2 天没出现。', days: 2,
+    ts: new Date(now - 6 * DAY).toISOString(),
+  }
+  // 他 3 天前回来过；现在又 3 天没出现了——这是新的空档，不是上一次的尾巴。
+  const a = assess([seenEvent(now - 3 * DAY), oldAbs], now, { afterDays: 2 })
+  assert.equal(a.absent, true)
+  assert.equal(a.days, 3)
+  assert.equal(a.reason, 'absent')
+})
+
+test('deriveSelf：冷落还在继续时按当前空档算天数，他不回来就一直是旧快照', () => {
+  const now = Date.now()
+  const seed = { id: 'ev_seed', type: 'seed', text: '起点。', ts: new Date(now - 10 * DAY).toISOString(), day: 1, stage: 1 }
+  const abs = {
+    id: 'ev_abs', type: 'absence', text: '他有 1 天没出现。', days: 1,
+    ts: new Date(now - 2 * DAY).toISOString(), day: 8, stage: 1, source: 'system',
+  }
+  const m = deriveSelf([seed, seenEvent(now - 3 * DAY), abs], { now })
+  assert.equal(m.absenceDays, 3, '事件里写的是 1，但当前已经 3 天')
+})
+
+test('deriveSelf：他回来之后 absenceDays 归零，不用等她写 reunion', () => {
+  const now = Date.now()
+  const abs = {
+    id: 'ev_abs2', type: 'absence', text: '他有 2 天没出现。', days: 2,
+    ts: new Date(now - 3 * DAY).toISOString(), day: 8, stage: 1, source: 'system',
+  }
+  const m = deriveSelf([seenEvent(now - 1 * DAY), abs], { now })
+  assert.equal(m.absenceDays, 0)
+})
+
 test('detectAbsence 落库时带上按毫秒算的 days', async () => {
   await withRoot(async (root) => {
     await writeConfig(normalizeConfig({ absenceAfterDays: 2 }), root)
