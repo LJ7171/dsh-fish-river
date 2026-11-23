@@ -144,6 +144,64 @@ test('没传 opts.cookie：从 owner.json 读；owner 也没有才算 no cookie'
   }
 })
 
+test('没传 opts.cookie：owner.json 有两个号时，用标成她自己的那个号的 cookie', async () => {
+  resetRisk()
+  const f = makeFetch()
+  const ownerDoc = {
+    accounts: [
+      {
+        id: 'a',
+        owner: 'her',
+        allowed: true,
+        cookie: 'SESSDATA=her-sess; bili_jct=her-jct; DedeUserID=42; buvid3=B3',
+        account: { mid: '42', name: '鲸鲸71号' },
+      },
+      {
+        id: 'b',
+        owner: 'owner',
+        allowed: true,
+        cookie: 'SESSDATA=owner-sess; bili_jct=owner-jct; DedeUserID=99; buvid3=B3',
+        account: { mid: '99', name: '放空心绪' },
+      },
+    ],
+  }
+  const a = create({
+    fetchImpl: f.fetchImpl,
+    now: () => NOW,
+    intervalMs: 60_000,
+    readOwnerImpl: async () => ownerDoc,
+  })
+  try {
+    assert.deepEqual(await a.start(), { ok: true })
+    const nav = f.find('/x/web-interface/nav')
+    assert.match(nav.headers.cookie, /SESSDATA=her-sess/, '要拿她自己那个号的 cookie，不是主人的')
+    assert.doesNotMatch(nav.headers.cookie, /owner-sess/)
+  } finally {
+    await a.stop()
+  }
+})
+
+test('没传 opts.cookie：只有主人的号、顶层也没有 cookie 时，照样 no cookie', async () => {
+  resetRisk()
+  const f = makeFetch()
+  const a = create({
+    fetchImpl: f.fetchImpl,
+    now: () => NOW,
+    readOwnerImpl: async () => ({
+      accounts: [
+        { id: 'a', owner: 'owner', allowed: true, cookie: 'SESSDATA=owner-sess; bili_jct=x; DedeUserID=99', account: { mid: '99', name: '放空心绪' } },
+      ],
+    }),
+  })
+  try {
+    const r = await a.start()
+    assert.equal(r.ok, false)
+    assert.equal(r.why, 'no cookie')
+  } finally {
+    await a.stop()
+  }
+})
+
 test('cookie 有效：nav 记下 selfUid；首轮只建基线，不回溯历史', async () => {
   resetRisk()
   const f = makeFetch()

@@ -56,6 +56,27 @@ test('host：渠道配置以 opts.config 递到适配器手里（QQ 的令牌才
   }
 })
 
+test('host：适配器 start 失败时日志说「没连上」，不混进「渠道已起」', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'fish-host-fail-'))
+  const logs = []
+  try {
+    const h = startChannels({
+      ctx: { on: () => () => {} },
+      root,
+      config: { channels: { bili: { enabled: true, ownerId: '1' } } },
+      log: (m) => logs.push(String(m)),
+    })
+    const boot = await h.ready
+    assert.equal(boot.ok, true)
+    const all = logs.join('\n')
+    assert.match(all, /渠道 bili 没连上：no cookie/)
+    assert.doesNotMatch(all, /渠道已起：.*bili/)
+    await h.dispose()
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
+  }
+})
+
 test('host：一个渠道都没开时，不建目录、不连网', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'fish-host-'))
   const prev = globalThis.WebSocket

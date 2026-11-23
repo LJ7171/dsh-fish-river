@@ -1,3 +1,13 @@
+## 0.1.151 — 2026-11-23
+
+- 修 B 站私信渠道起不来：两个号之后 cookie 在 `owner.accounts` 里，适配器还在读顶层旧
+  `cookie`，启动直接 `no cookie`，大号私聊小号收不到。现在取「标成她自己」那一槽
+  （鲸鲸71号）的 cookie，顶层旧 cookie 只作兼容兜底；读 owner 时带上 root，别读默认目录。
+- 渠道启动日志不再把 `start()` 失败的渠道混进「渠道已起」：单独写一行
+  「渠道 bili 没连上：no cookie」。
+- 测试：bili-channel 补「两个号时取 her 槽」「只有主人号时 no cookie」；channels-host
+  补「start 失败要如实记日志」；`node --test` 1686 全绿。
+
 ## 0.1.150 — 2026-11-18
 
 - 身份文档「醒来时主动找他」那句改写：从「想现在送到他微信，就用 send_to_owner」
