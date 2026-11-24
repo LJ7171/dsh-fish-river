@@ -11,7 +11,7 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { startChannels } from '../lib/channels/runtime.js'
+import { startChannels, channelSessionId } from '../lib/channels/runtime.js'
 
 class FakeWS {
   static urls = []
@@ -72,6 +72,24 @@ test('host：适配器 start 失败时日志说「没连上」，不混进「渠
     assert.match(all, /渠道 bili 没连上：no cookie/)
     assert.doesNotMatch(all, /渠道已起：.*bili/)
     await h.dispose()
+  } finally {
+    await fs.rm(root, { recursive: true, force: true })
+  }
+})
+
+test('渠道跟 home.json 的会话走：运行中轮换后不往旧会话写', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'fish-host-session-'))
+  try {
+    const home = path.join(root, 'home.json')
+    await fs.writeFile(home, JSON.stringify({ sessionId: 'session-old' }))
+    assert.equal(await channelSessionId(root, 'session-boot'), 'session-old')
+
+    // 运行中轮换：home.json 换了一条，渠道下一次必须跟着换。
+    await fs.writeFile(home, JSON.stringify({ sessionId: 'session-new' }))
+    assert.equal(await channelSessionId(root, 'session-boot'), 'session-new')
+
+    await fs.rm(home)
+    assert.equal(await channelSessionId(root, 'session-boot'), 'session-boot')
   } finally {
     await fs.rm(root, { recursive: true, force: true })
   }
