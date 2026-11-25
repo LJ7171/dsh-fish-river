@@ -150,7 +150,11 @@ export function registerZhihuSpeak(ctx, deps = {}) {
           },
           required: ['ok', 'said', 'note'],
         },
-        render: (_args, out) => [{ type: 'text', text: out.ok ? `说出去了：「${out.said}」` : `没说：${out.note}` }],
+        render: (_args, out) => {
+          if (!out.ok) return [{ type: 'text', text: `没说：${out.note}` }]
+          const tail = String(out.note ?? '').replace(/^说出去了。/, '')
+          return [{ type: 'text', text: `说出去了：「${out.said}」${tail ? ` ${tail}` : ''}` }]
+        },
       },
       async execute(args, exec) {
         const who = host.guardWrite(deps.tenant, exec, 'zhihu_speak')

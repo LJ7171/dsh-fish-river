@@ -213,12 +213,17 @@ test('点开和发言绑同一个号；从重要的人的号发不加 @', async 
     const okHer = await speakOnce({ root: dir, kind: 'comment', bvid: 'BV1xx411c7mD', text: '在', account: 'a', dateKey: dk, client: own })
     assert.equal(okHer.ok, true)
     assert.match(okHer.said, /^@大号 /)
+    // 2026-11-25：@大号 是正文里的提及，不是作者。回执要说明这次用的是谁的号，
+    // 否则她会把 @ 当成"发到他名下了"。
+    assert.match(okHer.note, /她自己的B 站号/)
+    assert.doesNotMatch(okHer.note, /重要的人/)
     const okOwner = await speakOnce({ root: dir, kind: 'comment', bvid: 'BV1xx411c7mD', text: '也在', account: 'a', dateKey: dk, client: own })
     assert.match(cookies.at(-1), /@大号/)
     await appendEvent({ type: 'meta', text: formatBiliLook(dk, 'BV1yy411c7mD', '另一条', { slot: 'b', owner: 'owner', name: '人' }) }, { day: 1, stage: 1, source: 'system' }, dir)
     const ownerSaid = await speakOnce({ root: dir, kind: 'comment', bvid: 'BV1yy411c7mD', text: '用这个号', account: 'b', dateKey: dk, client: own })
     assert.equal(ownerSaid.ok, true)
     assert.equal(ownerSaid.said.startsWith('@'), false)
+    assert.match(ownerSaid.note, /重要的人的B 站号/)
     const events = (await readEvents(dir)).events.map((e) => e.text).join('\n')
     assert.equal(events.includes('SESSDATA'), false)
     assert.match(events, /"slot":"a"/)

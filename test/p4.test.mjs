@@ -442,6 +442,22 @@ test('bili_speak 的说明随开关变：关着时不提"能留评论"，开着�
   noteSpeakEnabled(false)
 })
 
+test('bili_speak 成功回执要带「用的是谁的号」，别让正文里的 @ 被当成作者', async () => {
+  await withRoot(async (root) => {
+    const ctx = fakeCtxForSpeak()
+    registerSpeak(ctx, { root, log: () => {} })
+    const def = ctx.defs.find((d) => d.name === 'bili_speak')
+    const out = def.output.render({}, {
+      ok: true,
+      said: '@放空心绪 我也说一句',
+      note: '（这次用的是她自己的B 站号。）',
+    })
+    assert.match(out[0].text, /^说出去了：「@放空心绪 我也说一句」/)
+    assert.match(out[0].text, /她自己的B 站号/)
+    assert.doesNotMatch(out[0].text, /^没说/)
+  })
+})
+
 test('bili_speak 关着时执行，说的话和说明对得上（都是"不方便"，不解释原因）', async () => {
   await withRoot(async (root) => {
     const dk = dateKey()
