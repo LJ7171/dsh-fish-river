@@ -188,7 +188,7 @@ test('临时开关放开知乎和贴吧开口，不写 social-open', async () =>
       tieba: { comment: { enabled: true } },
     }), root)
     await meta(root, formatZhihuOpen(dk, 'ans1', '一条'))
-    await meta(root, formatTiebaThread(dk, 'tid1', '一帖', '吧'))
+    await meta(root, formatTiebaThread(dk, 'tid1', '一帖', '吧', { fid: '88' }))
     const z = zhihuApi()
     const spoken = await zhihuSpeakOnce({ root, api: z, cookie: 'x', kind: 'comment', id: 'ans1', text: '人堆', dateKey: dk })
     assert.equal(spoken.ok, true, spoken.note)
@@ -352,10 +352,11 @@ test('贴吧同样只回自己那一层，主人号也可以发', async () => {
   await withRoot(async (root) => {
     const dk = dateKey()
     await ready(root, { tieba: { owner: 'owner', comment: { enabled: true, replyToReplies: true } } })
-    await meta(root, formatTiebaThread(dk, 'tid1', '一个帖', 'meme吧'))
+    await meta(root, formatTiebaThread(dk, 'tid1', '一个帖', 'meme吧', { fid: '276' }))
     const api = tiebaApi()
     const said = await tiebaSpeakOnce({ root, api, kind: 'comment', id: 'tid1', text: '跟一帖', dateKey: dk })
     assert.equal(said.ok, true, said.note)
+    assert.equal(api.calls[0][1].fid, '276')
     assert.match(said.note, /重要的人的贴吧号/)
     const { events } = await readEvents(root)
     const line = events.map((e) => String(e.text ?? '')).find((t) => t.startsWith(`tieba-comment:${dk} `))
@@ -387,16 +388,21 @@ test('要验证码就停，不再发请求去过验证', async () => {
 
     let tFetches = 0
     const urls = []
-    const tFetch = async (url) => {
+    const bodies = []
+    const tFetch = async (url, init) => {
       tFetches += 1
       urls.push(String(url))
+      bodies.push(String(init?.body ?? ''))
       const body = String(url).includes('/c/s/pc/sync')
         ? JSON.stringify({ data: { anti: { tbs: 'tbs1' } } })
         : JSON.stringify({ error_code: '40', error_msg: '请输入验证码', info: { need_vcode: '1' } })
       return { ok: true, status: 200, text: async () => body }
     }
-    const post = await addThreadPost({ cookie: 'BDUSS=abc', tid: '9', kw: 'meme吧', content: '跟', fetchImpl: tFetch })
+    const post = await addThreadPost({ cookie: 'BDUSS=abc', tid: '9', kw: 'meme吧', fid: '276', content: '跟', fetchImpl: tFetch })
     assert.equal(post.code, 'CAPTCHA')
+    const sent = bodies.find((b) => b.includes('tid=9'))
+    assert.match(sent, /(?:^|&)fid=276(?:&|$)/)
+    assert.match(sent, /(?:^|&)can_no_forum=0(?:&|$)/)
     const tn = tFetches
     const again = await addThreadPost({ cookie: 'BDUSS=abc', tid: '9', content: '再跟', fetchImpl: tFetch })
     assert.equal(again.code, 'COOLDOWN')
@@ -675,7 +681,7 @@ test('贴吧楼中楼拒绝不在自己那层下面的回复', async () => {
   await withRoot(async (root) => {
     const dk = dateKey()
     await ready(root, { tieba: { owner: 'her', comment: { enabled: true, replyPerDay: 2 } } })
-    await meta(root, `tieba-comment:${dk} tid1 mine {"text":"我跟过","forum":"meme吧"}`)
+    await meta(root, `tieba-comment:${dk} tid1 mine {"text":"我跟过","forum":"meme吧","fid":"276"}`)
     const api = tiebaApi()
     const r = await postTiebaReply({ root, api, tid: 'tid1', parentId: 'nope', text: '乱回', dateKey: dk })
     assert.equal(r.ok, false)
@@ -685,6 +691,7 @@ test('贴吧楼中楼拒绝不在自己那层下面的回复', async () => {
     assert.equal(ok.ok, true, ok.why)
     const posted = api.calls.find((c) => c[0] === 'post')
     assert.equal(posted[1].quoteId, 'mine')
+    assert.equal(posted[1].fid, '276')
     const heard = await tiebaSpeakOnce({ root, api, kind: 'reply', id: 'tid1', parentId: 'mine', text: '再说一句', dateKey: dk })
     assert.equal(heard.ok, true, heard.note)
     assert.match(heard.note, /她自己的贴吧号/)

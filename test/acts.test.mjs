@@ -10,6 +10,7 @@ import {
   formatBiliComment,
   formatBiliLook,
   formatBiliReply,
+  formatTiebaComment,
   formatTiebaForum,
   formatTiebaThread,
   formatZhihuOpen,
@@ -85,6 +86,16 @@ test('点开的前缀各归各的', () => {
   assert.match(formatTiebaForum('2026-11-07', 'meme吧'), /^tieba-forum:2026-11-07 meme吧 /)
   assert.equal(parseAct(formatZhihuOpen('2026-11-07', '123', '一个问题')).label, '在看知乎的一页')
   assert.equal(parseAct(formatTiebaThread('2026-11-07', '999', '一个帖子', 'meme吧')).label, '在看一个帖子')
+  const withFid = formatTiebaThread('2026-11-07', '999', '一个帖子', 'meme吧', { fid: '276', slot: 'a' })
+  assert.match(withFid, /^tieba-thread:2026-11-07 999 /)
+  assert.match(withFid, /"fid":"276"/)
+  assert.doesNotMatch(withFid, /tieba-thread-fid:/)
+  assert.equal(parseAct(withFid).id, '999')
+  assert.equal(parseAct(withFid).label, '在看一个帖子')
+  assert.doesNotMatch(formatTiebaThread('2026-11-07', '999', '一个帖子', 'meme吧'), /"fid"/)
+  const comment = formatTiebaComment('2026-11-07', '999', '42', '跟', 'meme吧', { fid: '276' })
+  assert.match(comment, /^tieba-comment:2026-11-07 999 42 /)
+  assert.match(comment, /"fid":"276"/)
   assert.equal(parseAct('dy-browse:2026-11-07 [{"id":"1","title":"一条"}]').label, '在刷抖音')
 })
 

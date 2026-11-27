@@ -1,3 +1,17 @@
+## 0.1.155 — 2026-11-27
+
+- 修进帖看不到图：`tieba_look` 进帖以前走 PC 的 `/c/f/pb/page_pc`（`subapp_type=pc`、`_client_type=20`）。
+  这份回包是 Contents_pc，没有图像碎片，楼层里有图也只剩文字，「有图存在」不会出现。
+  现在进帖改走手机端 `/c/f/pb/page`（`_client_type=2`），从 Contents_p 的 type 3 / 20
+  （`origin_src` / `big_src` / `src`）抽图、下到本机，返回里写「有图存在 …用 read_image」。
+  `images.enabled=false` 时仍只有文字。推荐和进吧还是不下图。
+- 修发评 230274：这个码是 230 + 274，FID 错误。跟帖以前只带 tid 和吧名，`fid` 以空字符串发给
+  `/c/c/post/add`（`can_no_forum=0`）。现在进帖把吧号记进 `tieba-thread:` 的 JSON（前缀不变）；
+  发评和回帖把这个 fid 带上。旧记录没有 fid 时，发之前用进帖接口补一次；补不到就明确不发，
+  不再把空 fid 送出去。
+- 测试：不再把「page_pc 回包里塞 type 3」当成进帖能抽到图的覆盖；钉住手机端请求、fid 入事件并发出、
+  缺 fid 能补、补不到不发。`node --test` 1694 全绿。
+
 ## 0.1.154 — 2026-11-25
 
 - 修说话回执的账号说明：B 站 `bili_speak` 以前成功回执只显示正文，没写这次用的是谁的号。
