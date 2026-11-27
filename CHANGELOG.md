@@ -1,10 +1,12 @@
 ## 0.1.155 — 2026-11-27
 
-- 修进帖看不到图：`tieba_look` 进帖以前走 PC 的 `/c/f/pb/page_pc`（`subapp_type=pc`、`_client_type=20`）。
-  这份回包是 Contents_pc，没有图像碎片，楼层里有图也只剩文字，「有图存在」不会出现。
-  现在进帖改走手机端 `/c/f/pb/page`（`_client_type=2`），从 Contents_p 的 type 3 / 20
-  （`origin_src` / `big_src` / `src`）抽图、下到本机，返回里写「有图存在 …用 read_image」。
+- 修进帖看不到图：`tieba_look` 进帖以前走 `/c/f/pb/page_pc`，回包是 Contents_pc，
+  没有图像碎片，楼层里有图也只剩文字，「有图存在」不会出现。
+  现在进帖改走 `/c/f/pb/page`，**仍用 PC 参数**（`subapp_type=pc`、`_client_type=20`、PC UA）；
+  同一个 `/page` 用 PC 参数就能拿到 Contents_p 的 type 3 / 20（`origin_src` / `big_src` / `src`），
+  抽图下到本机，返回里写「有图存在 …用 read_image」。
   `images.enabled=false` 时仍只有文字。推荐和进吧还是不下图。
+  （不要切 `_client_type=2` / 手机 UA：2026-11-27 实测这个账号打 `/page` 会回 110001「未知错误」。）
 - 修发评 230274：这个码是 230 + 274，FID 错误。跟帖以前只带 tid 和吧名，`fid` 以空字符串发给
   `/c/c/post/add`（`can_no_forum=0`）。现在进帖把吧号记进 `tieba-thread:` 的 JSON（前缀不变）；
   发评和回帖把这个 fid 带上。旧记录没有 fid 时，发之前用进帖接口补一次；补不到就明确不发，

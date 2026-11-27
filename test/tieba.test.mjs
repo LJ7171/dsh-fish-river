@@ -82,7 +82,7 @@ test('推荐卡片和帖子页能抽出标题，楼中楼不进正文', () => {
   assert.doesNotMatch(renderMaterial({ threads: [page] }), /楼中楼/)
 })
 
-test('page_pc 形状没有图；手机端楼层才抽得出 type 3/20', () => {
+test('page_pc 形状没有图；/page 的楼层才抽得出 type 3/20', () => {
   // Contents_pc：文字、表情、@、链接、语音。表情自己的 src 不是帖里的图。
   const pc = postsFrom({
     thread: { id: '1', title: 'pc' },
@@ -166,7 +166,7 @@ test('tieba_look 进帖：开着看图就落盘；关着只有文字', async () 
       ok: true, status: 200, text: async () => '{"error_code":0,"data":{"user":{}}}', headers: { getSetCookie: () => [] },
     }))
     const tid = '11157099999'
-    // 真手机端楼层：type 是字符串。page_pc 就算被叫到，也只有 Contents_pc，没有 type 3。
+    // /page 的楼层：type 可能是字符串。page_pc 就算被叫到，也只有 Contents_pc，没有 type 3。
     const mobileJson = {
       error_code: '0',
       thread: { id: tid, title: '有图帖' },
@@ -214,9 +214,9 @@ test('tieba_look 进帖：开着看图就落盘；关着只有文字', async () 
       if (path === '/c/f/pb/page') {
         pageBodies.push(String(init?.body ?? ''))
         const q = new URLSearchParams(String(init?.body ?? ''))
-        assert.equal(q.get('_client_type'), '2')
-        assert.equal(q.get('subapp_type'), null)
-        assert.match(String(init?.headers?.['user-agent'] ?? ''), /Android/)
+        assert.equal(q.get('_client_type'), '20')
+        assert.equal(q.get('subapp_type'), 'pc')
+        assert.match(String(init?.headers?.['user-agent'] ?? ''), /Mozilla/)
         return jsonRes(mobileJson)
       }
       return jsonRes({ error_code: 0, data: { anti: { tbs: 't' }, user: {} } })
@@ -578,8 +578,8 @@ test('记下的 fid 会进发评和回帖；旧进帖没有 fid 会先补再发'
     const pageHit = recover.hits.find((h) => h.path === '/c/f/pb/page')
     assert.ok(pageHit, '缺 fid 要先补进帖')
     const pq = new URLSearchParams(pageHit.body)
-    assert.equal(pq.get('_client_type'), '2')
-    assert.equal(pq.get('subapp_type'), null)
+    assert.equal(pq.get('_client_type'), '20')
+    assert.equal(pq.get('subapp_type'), 'pc')
     assert.equal(pq.get('kz'), tid)
     const sent = addBody(recover.hits)
     assert.equal(sent.get('fid'), '418')
