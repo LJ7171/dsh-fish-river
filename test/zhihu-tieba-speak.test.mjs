@@ -462,6 +462,7 @@ test('扫回复不看掷骰；睡着不打请求；递给她时写清是谁的�
     assert.match(shown, /回答 a，评论 1/)
     const hers = renderTiebaReplies([{ rpid: '2', tid: 't', user: '路人', text: '也说了' }], 'her')
     assert.match(hers, /你自己的号/)
+    assert.match(hers, /帖 t，回复 2/, '回楼中楼要带回复编号，不能只给帖号')
   })
   const src = await readFile(new URL('../lib/life/schedule/scheduler.js', import.meta.url), 'utf8')
   const body = src.slice(src.indexOf('async function runOutingChoice'), src.indexOf('出门路线只用模块级'))
